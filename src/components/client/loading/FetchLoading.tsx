@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Logo from "../../../../../public/icons/round_corner_logo.png";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useStudentData } from "@/context/StudentContext";
@@ -43,7 +44,7 @@ export default function LoadingPage() {
           <div className="absolute -inset-3 bg-blue-500/30 rounded-full blur-2xl animate-pulse" />
           <div className="relative bg-white/30 dark:bg-white/15 backdrop-blur-2xl p-4 rounded-3xl border border-white/35 dark:border-white/20 shadow-lg">
             <Image
-              src="/icons/round_corner_logo.png?v=2"
+              src={Logo}
               alt="SRMAP Logo"
               width={76}
               height={76}
