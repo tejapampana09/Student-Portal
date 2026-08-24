@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Logo from "../../../../../public/icons/round_corner_logo.png";
+import Logo from "../../../../public/icons/round_corner_logo.png";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { useStudentData } from "@/context/StudentContext";
