@@ -7,14 +7,12 @@ on:
 
 jobs:
   deploy:
-    name: Smart Deploy
+    name: Deploy
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -23,30 +21,14 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          command_timeout: 15m
-          script_stop: true
+          command_timeout: 30m
           script: |
-            set -e
             cd /var/www/student-portal
-
-            echo "=== Syncing with remote ==="
+            echo "=== Fetching latest code ==="
             git fetch origin main
             git reset --hard origin/main
-
-            echo "=== Checking what changed ==="
-            CHANGED=$(git diff HEAD~1 HEAD --name-only 2>/dev/null || echo "unknown")
-            echo "Changed files: $CHANGED"
-
-            PKG_CHANGED=$(echo "$CHANGED" | grep -E "package.*\.json|Dockerfile" || true)
-
-            if [ -n "$PKG_CHANGED" ]; then
-              echo "=== Dependencies changed — full rebuild ==="
-              sudo docker compose up -d --build
-            else
-              echo "=== Source only — fast build with cache ==="
-              sudo DOCKER_BUILDKIT=1 docker compose up -d --build
-            fi
-
+            echo "=== Building and starting containers ==="
+            sudo docker compose up -d --build
             echo "=== Container Status ==="
             sudo docker ps --filter "name=srmap-student-portal"
-            echo "=== Deploy Done! ==="
+            echo "=== Deploy Finished Successfully! ==="
