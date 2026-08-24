@@ -39,4 +39,5 @@ yarn-debug.log*
 yarn-error.log*
 empty_classrooms.json
 .DS_Store
-Thumbs.db
+Thumbs.dbuser-data.sh
+mapping.json
