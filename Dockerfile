@@ -11,6 +11,7 @@ RUN npm install --legacy-peer-deps
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* ./
 # Copy config files first (change less often = better cache)
 COPY next.config.ts tsconfig.json tailwind.config.* postcss.config.* ./
 COPY public ./public
