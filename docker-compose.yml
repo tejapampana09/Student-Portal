@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  student-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: srmap-student-portal
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=${MONGO_URI}
+      - FORUMS_MONGO_URI=${FORUMS_MONGO_URI}
+      - ACCESS_SECRET=${ACCESS_SECRET}
+      - ACCESS_EXPIRE=${ACCESS_EXPIRE:-30d}
+    env_file:
+      - .env
