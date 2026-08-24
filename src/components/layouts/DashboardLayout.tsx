@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/utils/useMobile";
@@ -548,21 +548,16 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen flex w-full bg-transparent relative">
       {!isMobile && (
-        <Sidebar className="border-r border-white/10 dark:border-white/[0.06] glass-panel shadow-xl backdrop-blur-2xl" collapsible="icon">
+        <Sidebar className="border-r-0 shadow-2xl" style={{ background: "rgba(15,15,20,0.55)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", borderRight: "1px solid rgba(255,255,255,0.07)" }} collapsible="icon">
           <SidebarContent className="bg-transparent">
             {!isCollapsed && (
-              <div className="p-4 bg-white/5 dark:bg-white/[0.02] backdrop-blur-md relative border-b border-white/10 dark:border-white/[0.06]">
-                <h1
-                  className="text-lg font-bold text-foreground tracking-tight"
-                >
-                  {profile?.registerNo}
-                </h1>
-                <p className="text-xs text-muted-foreground truncate">{profile?.studentName}</p>
+              <div className="p-4 relative border-b border-white/[0.07]">
+                <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg shrink-0"><Image src={profile?.picture || Logo_White} alt="P" width={36} height={36} unoptimized={Boolean(profile?.picture)} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="text-sm font-semibold text-foreground truncate">{profile?.registerNo}</p><p className="text-[11px] text-muted-foreground truncate">{profile?.studentName}</p></div></div>
               </div>
             )}
             {isCollapsed && (
               <div className="py-3 px-2 border-b border-white/10 dark:border-white/[0.06] flex justify-center">
-                <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/20 shadow-sm bg-white/10 dark:bg-white/5 p-1">
+                <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-md">
                   <Image
                     src={profile?.picture || Logo_White}
                     alt="Profile"
@@ -578,7 +573,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             <SidebarGroup className="flex-1">
               {!isCollapsed && <SidebarGroupLabel>Navigation</SidebarGroupLabel>}
               <SidebarGroupContent>
-                <SidebarMenu className={`space-y-2 ${isCollapsed ? "items-center px-1" : ""}`}>
+                <SidebarMenu className={`space-y-0.5 ${isCollapsed ? "items-center px-1" : "px-2"}`}>
                   {menuItems.map((item) => (
                     <SidebarMenuItem key={item.path}>
                       {isCollapsed ? (
@@ -587,10 +582,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                             onMouseEnter={(e) => handleMouseEnter(item, e)}
                             onMouseLeave={handleMouseLeave}
                             onClick={() => handleMenuClick(item)}
-                            className={`group transition-all duration-200 cursor-pointer relative w-10 h-10 p-0 flex items-center justify-center rounded-md ${isSubPathActive(item.path)
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "hover:bg-sidebar-accent/50"
-                              }`}
+                            className={`group transition-all duration-200 cursor-pointer relative w-10 h-10 p-0 flex items-center justify-center rounded-xl ${isSubPathActive(item.path) ? "bg-white/15 text-foreground ring-1 ring-white/20" : "hover:bg-white/10 text-muted-foreground hover:text-foreground"}`}
                           >
                             <item.icon className="h-4 w-4" />
 
@@ -616,10 +608,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                           <SidebarMenuButton
                             onClick={() => handleMenuClick(item)}
                             hasSubItems={!!item.subItems}
-                            className={`group transition-all duration-200 cursor-pointer relative ${isSubPathActive(item.path)
-                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                              : "hover:bg-sidebar-accent/50"
-                              } ${isMobile ? "text-sm py-2" : "py-2.5"}`}
+                            className={`group transition-all duration-150 cursor-pointer relative rounded-xl ${isSubPathActive(item.path) ? "bg-white/[0.12] dark:bg-white/[0.08] text-foreground ring-1 ring-white/12" : "hover:bg-white/[0.07] text-muted-foreground hover:text-foreground"} ${isMobile ? "text-sm py-2" : "py-2.5"}`}
                           >
                             <div className="flex items-center justify-between w-full">
                               <div className="flex items-center">
@@ -681,7 +670,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <div className={`border-t border-sidebar-border bg-sidebar/30 ${isCollapsed ? 'py-4 px-2' : 'p-4'}`}>
+            <div className={`border-t border-white/[0.07] ${isCollapsed ? 'py-4 px-2' : 'p-4'}`}>
               {!isCollapsed ? (
                 <>
                   <div className="mb-4 space-y-2">
@@ -702,10 +691,10 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full bg-transparent border-sidebar-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-all duration-200"
+                    className="w-full justify-start gap-2 text-sm text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 border-0"
                     onClick={() => logout()}
                   >
-                    Logout
+                    <LogOut className="h-4 w-4" /> Sign Out
                   </Button>
                 </>
               ) : (
@@ -772,13 +761,13 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             </Button>
           </div>
         )}
-        <div className="sticky top-2 sm:top-3 z-40 w-full px-2 sm:px-6">
+        <div className="sticky top-3 sm:top-4 z-40 w-full px-3 sm:px-6">
           <motion.div
             animate={{ opacity: isMobile && activeMobileToast ? 0 : 1 }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
             className={isMobile && activeMobileToast ? "pointer-events-none" : ""}
           >
-            <header className="h-14 glass-dock rounded-2xl px-3 sm:px-5 flex items-center shadow-md border border-white/15 dark:border-white/[0.07]">
+            <header className="h-14 rounded-2xl px-3 sm:px-5 flex items-center shadow-xl border border-white/[0.12] dark:border-white/[0.08]" style={{ background: "rgba(15,15,20,0.6)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }}>
               <div className="flex items-center px-2 sm:px-4 h-full w-full">
                 {!isMobile && (
                   <div className="relative">
