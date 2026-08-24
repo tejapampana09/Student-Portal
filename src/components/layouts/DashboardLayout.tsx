@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/utils/useMobile";
@@ -161,7 +161,12 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isFetchingNewData, setIsFetchingNewData] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [profile?.picture]);
   const [showTutorial, setShowTutorial] = useState(false);
   const lastRefreshRef = React.useRef<number>(0);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -552,19 +557,36 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
           <SidebarContent className="bg-transparent">
             {!isCollapsed && (
               <div className="p-4 relative border-b border-white/[0.07]">
-                <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg shrink-0"><Image src={profile?.picture || Logo_White} alt="P" width={36} height={36} unoptimized={Boolean(profile?.picture)} className="w-full h-full object-cover" /></div><div className="min-w-0"><p className="text-sm font-semibold text-foreground truncate">{profile?.registerNo}</p><p className="text-[11px] text-muted-foreground truncate">{profile?.studentName}</p></div></div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg shrink-0 bg-white/5">
+                    <Image
+                      src={!imgError && profile?.picture ? profile.picture : Logo_White}
+                      alt="Profile"
+                      width={36}
+                      height={36}
+                      unoptimized
+                      onError={() => setImgError(true)}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{profile?.registerNo}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{profile?.studentName}</p>
+                  </div>
+                </div>
               </div>
             )}
             {isCollapsed && (
               <div className="py-3 px-2 border-b border-white/10 dark:border-white/[0.06] flex justify-center">
-                <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-md">
+                <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-md bg-white/5">
                   <Image
-                    src={profile?.picture || Logo_White}
+                    src={!imgError && profile?.picture ? profile.picture : Logo_White}
                     alt="Profile"
-                    width={200}
-                    height={200}
-                    unoptimized={Boolean(profile?.picture)}
-                    className="w-full h-full object-contain"
+                    width={36}
+                    height={36}
+                    unoptimized
+                    onError={() => setImgError(true)}
+                    className="w-full h-full object-cover"
                   />
                 </div>
               </div>
@@ -834,13 +856,14 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                         className="rounded-full overflow-hidden hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
                         aria-label="Switch account"
                       >
-                        {profile?.picture ? (
+                        {!imgError && profile?.picture ? (
                           <Image
                             src={profile.picture}
                             alt="Profile"
                             width={32}
                             height={32}
                             unoptimized
+                            onError={() => setImgError(true)}
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (

@@ -200,7 +200,21 @@ async function fetchFromWebsite(sessionId: string): Promise<WebsiteData | null> 
     });
 
     const pic = $original("div.profile_pic img").attr("src");
-    if (pic) profile.picture = `https://student.srmap.edu.in${pic}`;
+    if (pic) {
+      const fullUrl = pic.startsWith("http") ? pic : `https://student.srmap.edu.in${pic}`;
+      try {
+        const picRes = await client.get(fullUrl, { responseType: "arraybuffer", timeout: 6000 });
+        if (picRes.data) {
+          const contentType = picRes.headers["content-type"] || "image/jpeg";
+          const base64 = Buffer.from(picRes.data).toString("base64");
+          profile.picture = `data:${contentType};base64,${base64}`;
+        } else {
+          profile.picture = fullUrl;
+        }
+      } catch {
+        profile.picture = fullUrl;
+      }
+    }
 
     return {
       name: profile.studentName ?? "",

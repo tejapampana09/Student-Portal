@@ -7,7 +7,13 @@ const config = {
   trailingSlash: false,
   devIndicators: false,
   images: {
-    unoptimized: isDev,
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "student.srmap.edu.in",
+      },
+    ],
   },
   typescript: {
     ignoreBuildErrors: true,
