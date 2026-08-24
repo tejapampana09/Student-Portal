@@ -1,36 +1,32 @@
 {
-  "name": "Srmap API",
-  "short_name": "Srmapi",
-  "start_url": "/",
+  "name": "SRMAP Student Portal",
+  "short_name": "Student Portal",
+  "description": "Next-Gen Apple Liquid Glass academic portal with attendance tracking, real GPA calculator, and timetable for SRM University AP.",
+  "start_url": "/dashboard",
   "display": "standalone",
-  "display_override": ["standalone", "browser"],
-  "background_color": "#020817",
-  "theme_color": "#020817",
-  "form_factor": "wide",
+  "orientation": "portrait-primary",
+  "display_override": ["standalone", "window-controls-overlay", "browser"],
+  "background_color": "#0a0d14",
+  "theme_color": "#0a0d14",
+  "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "./icons/192x192.png",
+      "src": "/icons/192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "./icons/512x512.png",
+      "src": "/icons/512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/mobile.jpg",
       "type": "image/png",
-      "sizes": "384x815",
-      "form_factor": "narrow"
+      "purpose": "any maskable"
     },
     {
-      "src": "/screenshots/pc.jpg",
+      "src": "/icons/round_corner_logo.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "sizes": "1393x795",
-      "form_factor": "wide"
+      "purpose": "any"
     }
   ]
 }
