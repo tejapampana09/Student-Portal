@@ -29,8 +29,9 @@ jobs:
             set -e
             cd /var/www/student-portal
 
-            echo "=== Pulling latest code ==="
-            git pull origin main
+            echo "=== Syncing with remote ==="
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "=== Checking what changed ==="
             CHANGED=$(git diff HEAD~1 HEAD --name-only 2>/dev/null || echo "unknown")
@@ -39,13 +40,13 @@ jobs:
             PKG_CHANGED=$(echo "$CHANGED" | grep -E "package.*\.json|Dockerfile" || true)
 
             if [ -n "$PKG_CHANGED" ]; then
-              echo "=== package.json/Dockerfile changed — full rebuild ==="
+              echo "=== Dependencies changed — full rebuild ==="
               sudo docker compose up -d --build
             else
-              echo "=== Only source files changed — using cached layers (fast!) ==="
+              echo "=== Source only — fast build with cache ==="
               sudo DOCKER_BUILDKIT=1 docker compose up -d --build
             fi
 
             echo "=== Container Status ==="
             sudo docker ps --filter "name=srmap-student-portal"
-            echo "=== Done! ==="
+            echo "=== Deploy Done! ==="
