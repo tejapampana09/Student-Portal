@@ -1,0 +1,33 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            cd /var/www/student-portal
+            echo "Pulling latest code..."
+            git pull origin main
+            echo "Building and restarting containers..."
+            sudo docker compose up -d --build
+            echo "Status:"
+            sudo docker ps --filter "name=srmap-student-portal"
+            echo "Deploy complete!"
