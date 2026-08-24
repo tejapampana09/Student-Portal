@@ -47,7 +47,7 @@ export interface TimetableEntry {
 
 export interface StudentDataContextType {
   profile: Profile | null;
-  cgpa: CGPA | null;
+  cgpa: string | CGPA | null;
   subjects: Subject[];
   attendance: Attendance[];
   timetable: TimetableEntry[];

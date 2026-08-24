@@ -14,7 +14,7 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
   const { updateActiveAccount, profile: lProfile } = useLocalStorageContext();
 
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [cgpa, setCgpa] = useState<CGPA | null>(null);
+  const [cgpa, setCgpa] = useState<string | CGPA | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
@@ -29,7 +29,8 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
     if (!data) return;
     const parsed = typeof data === "string" ? JSON.parse(data) : data;
     setProfile(parsed.profile || null);
-    setCgpa(parsed.cgpa?.cgpa || null);
+    const resolvedCgpa = typeof parsed.cgpa === "object" && parsed.cgpa?.cgpa ? parsed.cgpa.cgpa : parsed.cgpa;
+    setCgpa(resolvedCgpa || null);
     setSubjects(parsed.subjects || []);
     setAttendance(parsed.attendance || []);
     setTimetable(parsed.timetable || []);
