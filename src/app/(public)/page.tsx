@@ -1,6 +1,6 @@
 "use client";
-import Index from "@/components/page/index/Index";
+import Login from "@/app/(public)/login/page";
 
 export default function App() {
-  return <Index />;
+  return <Login />;
 }

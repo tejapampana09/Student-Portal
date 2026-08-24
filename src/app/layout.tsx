@@ -13,6 +13,7 @@ import ProgressBar from "@/components/client/utils/PageProgress";
 import SplashScreen from "@/components/client/loading/SplashScreen";
 import { LocalStorageProvider } from "@/context/LocalStorageContext";
 import GoogleAnalytics from "@/components/client/analytics/GoogleAnalytics";
+import AuroraBackground from "@/components/ui/AuroraBackground";
 
 export const metadata: Metadata = {
   referrer: "origin-when-cross-origin",
@@ -64,14 +65,17 @@ export const metadata: Metadata = {
     locale: "en_US",
     type: "website",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "SRMAP API | SRMAP Alternative Portal",
-    description: "SRMAP API is an alternative student portal for SRMAP students with modern design and better performance.",
-    images: ["/icons/round_corner_logo.png"],
-  },
   verification: {
     google: "7jojaX5OVabW3qlu",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/round_corner_logo.png?v=2", sizes: "any" },
+      { url: "/icons/192x192.png?v=2", sizes: "192x192", type: "image/png" },
+      { url: "/icons/512x512.png?v=2", sizes: "512x512", type: "image/png" },
+    ],
+    shortcut: "/icons/round_corner_logo.png?v=2",
+    apple: "/icons/apple-touch-icon.png?v=2",
   },
 };
 
@@ -139,20 +143,23 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon" />
+        <link rel="icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
+        <link rel="shortcut icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(sitelinksJsonLd) }}
         />
       </head>
-      <body>
+      <body className="relative min-h-screen overflow-x-hidden">
+        <AuroraBackground />
         <GoogleAnalytics />
         <LocalStorageProvider>
           <AuthProvider>
             <StudentDataProvider>
               <ThemeProvider>
                 <ErrorBoundary fallback={<ErrorFallBack />}>
-                  <Suspense fallback={<SplashScreen />}>
+                  <Suspense fallback={null}>
                     <ProgressBar />
                     {children}
                   </Suspense>

@@ -162,199 +162,203 @@ const CGPACalculator = () => {
     };
 
     return (
-        <div>
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle className="text-xl">
-                                    {isManualMode ? "Manual Mode" : "Auto Subjects Fill Mode"}
-                                </CardTitle>
-                                <CardDescription>
-                                    {isManualMode
-                                        ? "Add Your Subjects And Grades"
-                                        : "All Subjects All Already Filled Just Mark Your Expected Grades"}
-                                </CardDescription>
-                            </div>
-                            <Button
-                                variant={isManualMode ? "default" : "outline"}
-                                onClick={() => setIsManualMode(!isManualMode)}
-                            >
-                                {isManualMode ? "Auto Mode" : "Manual Mode"}
-                            </Button>
+        <div className="space-y-4 pb-6">
+            <Card className="glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg">
+                <CardHeader className="p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <CardTitle className="text-xl font-bold">
+                                {isManualMode ? "Manual Subjects Mode" : "Auto-Filled Subjects Mode"}
+                            </CardTitle>
+                            <CardDescription className="text-xs sm:text-sm mt-0.5">
+                                {isManualMode
+                                    ? "Add your customized subjects, credit weightages, and expected grades"
+                                    : "Subjects pre-populated from your semester registration — assign grades to simulate CGPA"}
+                            </CardDescription>
                         </div>
-                    </CardHeader>
-                </Card>
+                        <Button
+                            variant={isManualMode ? "glass-primary" : "glass"}
+                            onClick={() => setIsManualMode(!isManualMode)}
+                            className="rounded-xl shrink-0 text-xs font-semibold h-9"
+                        >
+                            {isManualMode ? "Switch to Auto Mode" : "Switch to Manual Mode"}
+                        </Button>
+                    </div>
+                </CardHeader>
+            </Card>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Current Academic Status</CardTitle>
-                        <CardDescription>Your Current Semester And CGPA</CardDescription>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="glass-card rounded-2xl border border-white/20 dark:border-white/10 shadow-md">
+                    <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-sm font-semibold text-muted-foreground">Current Semester</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="text-sm font-medium text-muted-foreground">Current Semester</h3>
-                                <p className="text-xl font-bold">{profile?.semester || "Not available"}</p>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Current CGPA</h3>
-                                <p className="text-xl font-bold">{Number(currentCGPA)}</p>
-                            </div>
-                        </div>
+                    <CardContent className="p-4 pt-0">
+                        <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{profile?.semester || "Not available"}</p>
                     </CardContent>
                 </Card>
 
-                <Card>
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <CardTitle>Subjects</CardTitle>
-                                <CardDescription>Enter Your Grades For Each Subject</CardDescription>
-                            </div>
-                            {isManualMode && (
-                                <Button onClick={addNewSubject} size="sm" className="text-white bg-university-700 hover:bg-university-800">
-                                    <Plus className="h-4 w-4 mr-1" /> Add Subject
-                                </Button>
-                            )}
-                        </div>
+                <Card className="glass-card rounded-2xl border border-white/20 dark:border-white/10 shadow-md">
+                    <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-sm font-semibold text-muted-foreground">Current Baseline CGPA</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-12 gap-4 font-medium text-sm text-muted-foreground border-b pb-2">
-                                <div className="col-span-6">Subject</div>
-                                <div className="col-span-2">Credits</div>
-                                <div className="col-span-3">Grade</div>
-                                <div className="col-span-1"></div>
-                            </div>
-
-                            {localSubjects.length > 0 ? (
-                                localSubjects.map((subject) => (
-                                    <div
-                                        key={subject.id}
-                                        className="grid grid-cols-12 gap-4 items-center"
-                                    >
-                                        <div className="col-span-6">
-                                            {isManualMode ? (
-                                                <Input
-                                                    value={subject.name}
-                                                    onChange={(e) =>
-                                                        updateSubject(subject.id, "name", e.target.value)
-                                                    }
-                                                    placeholder="Enter subject name"
-                                                />
-                                            ) : (
-                                                <span className="text-sm font-medium">{subject.name}</span>
-                                            )}
-                                        </div>
-
-                                        <div className="col-span-2">
-                                            {isManualMode ? (
-                                                <Input
-                                                    type="number"
-                                                    value={subject.credits}
-                                                    onChange={(e) =>
-                                                        updateSubject(subject.id, "credits", Number(e.target.value) || 0)
-                                                    }
-                                                    min={1}
-                                                    max={6}
-                                                />
-                                            ) : (
-                                                <span className="text-sm">{subject.credits}</span>
-                                            )}
-                                        </div>
-
-                                        <div className="col-span-3">
-                                            <Select
-                                                value={subject.grade}
-                                                onValueChange={(value) =>
-                                                    updateSubject(subject.id, "grade", value)
-                                                }
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select grade" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="O">O (10)</SelectItem>
-                                                    <SelectItem value="A+">A+ (9)</SelectItem>
-                                                    <SelectItem value="A">A (8)</SelectItem>
-                                                    <SelectItem value="B+">B+ (7)</SelectItem>
-                                                    <SelectItem value="B">B (6)</SelectItem>
-                                                    <SelectItem value="C">C (5)</SelectItem>
-                                                    <SelectItem value="P">P (4)</SelectItem>
-                                                    <SelectItem value="F">F (0)</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        <div className="col-span-1">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => removeSubject(subject.id)}
-                                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-4 text-muted-foreground">
-                                    {isManualMode ? (
-                                        <p>No Subjects Added, Click "Add Subject" Button To Add Subjects Manually..</p>
-                                    ) : (
-                                        <p>No Subjects Avilable In Your Profile.</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-university-700 dark:text-university-300">{calculatedSGPA}</div>
-                                <div className="text-sm text-muted-foreground">Current SGPA</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">{Number(calculatedCGPA)}</div>
-                                <div className="text-sm text-muted-foreground">New CGPA</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold">
-                                    {localSubjects.reduce((sum, s) => sum + Number(s.credits), 0)}
-                                </div>
-                                <div className="text-sm text-muted-foreground">Total Credits</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold">
-                                    {localSubjects.filter((s) => s.grade).length}/{localSubjects.length}
-                                </div>
-                                <div className="text-sm text-muted-foreground">Subjects Graded</div>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 flex flex-col sm:flex-row sm:justify-center sm:space-x-4 space-y-3 sm:space-y-0 items-center">
-                            <Button
-                                onClick={performCalculation}
-                                className="w-full sm:w-auto bg-university-700 hover:bg-university-800 dark:bg-university-500 dark:hover:bg-university-600 text-white dark:text-white"
-                            >
-                                Calculate SGPA & CGPA
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={resetSubjects}
-                                className="w-full sm:w-auto"
-                            >
-                                Reset All Grades
-                            </Button>
-                        </div>
+                    <CardContent className="p-4 pt-0">
+                        <p className="text-2xl font-bold text-emerald-500 tabular-nums">{Number(currentCGPA).toFixed(2)}</p>
                     </CardContent>
                 </Card>
             </div>
+
+            <Card className="glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg">
+                <CardHeader className="p-4 sm:p-5 border-b border-white/10">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle className="text-lg font-bold">Subjects & Grades</CardTitle>
+                            <CardDescription className="text-xs sm:text-sm">Select expected grade for each course</CardDescription>
+                        </div>
+                        {isManualMode && (
+                            <Button onClick={addNewSubject} size="sm" variant="glass-primary" className="rounded-xl text-xs h-8">
+                                <Plus className="h-4 w-4 mr-1" /> Add Subject
+                            </Button>
+                        )}
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4 sm:p-5">
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-12 gap-3 font-semibold text-xs text-muted-foreground border-b border-white/10 pb-2">
+                            <div className="col-span-6">Subject</div>
+                            <div className="col-span-2">Credits</div>
+                            <div className="col-span-3">Grade</div>
+                            <div className="col-span-1"></div>
+                        </div>
+
+                        {localSubjects.length > 0 ? (
+                            localSubjects.map((subject) => (
+                                <div
+                                    key={subject.id}
+                                    className="grid grid-cols-12 gap-3 items-center p-2 rounded-xl bg-white/10 dark:bg-white/5 border border-white/10 hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+                                >
+                                    <div className="col-span-6">
+                                        {isManualMode ? (
+                                            <Input
+                                                value={subject.name}
+                                                onChange={(e) =>
+                                                    updateSubject(subject.id, "name", e.target.value)
+                                                }
+                                                placeholder="Subject name"
+                                                className="h-9 text-xs"
+                                            />
+                                        ) : (
+                                            <span className="text-xs sm:text-sm font-semibold truncate block">{subject.name}</span>
+                                        )}
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        {isManualMode ? (
+                                            <Input
+                                                type="number"
+                                                value={subject.credits}
+                                                onChange={(e) =>
+                                                    updateSubject(subject.id, "credits", Number(e.target.value) || 0)
+                                                }
+                                                min={1}
+                                                max={6}
+                                                className="h-9 text-xs"
+                                            />
+                                        ) : (
+                                            <span className="text-xs sm:text-sm font-bold text-primary pl-2">{subject.credits}</span>
+                                        )}
+                                    </div>
+
+                                    <div className="col-span-3">
+                                        <Select
+                                            value={subject.grade}
+                                            onValueChange={(value) =>
+                                                updateSubject(subject.id, "grade", value)
+                                            }
+                                        >
+                                            <SelectTrigger className="h-9 text-xs rounded-xl glass-input border-white/20">
+                                                <SelectValue placeholder="Grade" />
+                                            </SelectTrigger>
+                                            <SelectContent className="glass-panel rounded-xl">
+                                                <SelectItem value="O">O (10)</SelectItem>
+                                                <SelectItem value="A+">A+ (9)</SelectItem>
+                                                <SelectItem value="A">A (8)</SelectItem>
+                                                <SelectItem value="B+">B+ (7)</SelectItem>
+                                                <SelectItem value="B">B (6)</SelectItem>
+                                                <SelectItem value="C">C (5)</SelectItem>
+                                                <SelectItem value="P">P (4)</SelectItem>
+                                                <SelectItem value="F">F (0)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="col-span-1 flex justify-end">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => removeSubject(subject.id)}
+                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-6 text-muted-foreground text-sm">
+                                {isManualMode ? (
+                                    <p>No subjects added yet. Click &quot;Add Subject&quot; above to begin.</p>
+                                ) : (
+                                    <p>No subjects found for current semester.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-xl overflow-hidden">
+                <CardContent className="p-5 sm:p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="glass-panel p-4 rounded-xl text-center border border-white/20">
+                            <div className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{calculatedSGPA}</div>
+                            <div className="text-xs text-muted-foreground font-semibold mt-1">Simulated SGPA</div>
+                        </div>
+                        <div className="glass-panel p-4 rounded-xl text-center border border-white/20">
+                            <div className="text-2xl sm:text-3xl font-extrabold text-emerald-500">{Number(calculatedCGPA).toFixed(2)}</div>
+                            <div className="text-xs text-muted-foreground font-semibold mt-1">Predicted CGPA</div>
+                        </div>
+                        <div className="glass-panel p-4 rounded-xl text-center border border-white/20">
+                            <div className="text-2xl sm:text-3xl font-extrabold text-foreground">
+                                {localSubjects.reduce((sum, s) => sum + Number(s.credits), 0)}
+                            </div>
+                            <div className="text-xs text-muted-foreground font-semibold mt-1">Total Credits</div>
+                        </div>
+                        <div className="glass-panel p-4 rounded-xl text-center border border-white/20">
+                            <div className="text-2xl sm:text-3xl font-extrabold text-primary">
+                                {localSubjects.filter((s) => s.grade).length}/{localSubjects.length}
+                            </div>
+                            <div className="text-xs text-muted-foreground font-semibold mt-1">Graded / Total</div>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+                        <Button
+                            onClick={performCalculation}
+                            variant="glass-primary"
+                            className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold shadow-lg shadow-indigo-500/25"
+                        >
+                            Calculate SGPA & Predicted CGPA
+                        </Button>
+                        <Button
+                            variant="glass"
+                            onClick={resetSubjects}
+                            className="w-full sm:w-auto h-11 px-6 rounded-xl font-semibold"
+                        >
+                            Reset Grades
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };

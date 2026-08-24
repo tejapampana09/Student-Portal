@@ -227,36 +227,36 @@ const Resources = () => {
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-                <div className={`w-full md:w-1/3 lg:w-1/4 border border-primary/20 rounded-lg ${showSubjects ? "block" : "hidden md:block"}`}>
-                    <div className="space-y-2 mt-4 max-h-[50vh] md:max-h-[70vh] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500">
-                        <h3 className="font-medium ml-6 text-lg">Subjects</h3>
+                <div className={`w-full md:w-1/3 lg:w-1/4 glass-card border border-white/25 dark:border-white/10 rounded-2xl p-3 shadow-lg ${showSubjects ? "block" : "hidden md:block"}`}>
+                    <div className="space-y-2 max-h-[50vh] md:max-h-[70vh] overflow-y-auto pr-1">
+                        <h3 className="font-bold px-2 text-base text-foreground">Subjects</h3>
                         {!selectedCourse ? (
-                            <div className="text-center py-4 text-gray-500">
+                            <div className="text-center py-6 text-muted-foreground text-xs">
                                 Select a course to view subjects
                             </div>
                         ) : loading.subjects ? (
-                            <div className="flex justify-center py-4">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-university-700"></div>
+                            <div className="flex justify-center py-6">
+                                <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
                             </div>
                         ) : subjects.length > 0 ? (
                             subjects.map((subject) => (
                                 <div
                                     key={subject.id}
-                                    className={`p-3 border ml-4 rounded-md cursor-pointer transition-colors ${selectedSubject === subject.id
-                                        ? "bg-university-700 text-white"
-                                        : "hover:bg-gray-100 hover:dark:bg-gray-800"
+                                    className={`p-3 rounded-xl cursor-pointer transition-all duration-200 ${selectedSubject === subject.id
+                                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25 font-bold"
+                                        : "bg-white/15 dark:bg-white/5 hover:bg-white/30 dark:hover:bg-white/10 border border-white/10"
                                         }`}
                                     onClick={() => {
                                         setSelectedSubject(subject.id);
                                         if (isMobile) setShowSubjects(false);
                                     }}
                                 >
-                                    <p className="font-medium">{subject.code}</p>
-                                    <p className="text-sm">{subject.name}</p>
+                                    <p className="font-bold text-xs uppercase tracking-wider">{subject.code}</p>
+                                    <p className="text-xs truncate mt-0.5 opacity-90">{subject.name}</p>
                                 </div>
                             ))
                         ) : (
-                            <div className="text-center py-4 text-gray-500">
+                            <div className="text-center py-6 text-muted-foreground text-xs">
                                 No subjects found for this course
                             </div>
                         )}

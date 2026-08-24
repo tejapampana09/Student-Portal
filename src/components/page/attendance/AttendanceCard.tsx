@@ -85,22 +85,22 @@ const AttendanceCard = ({ subject }: { subject: Subject }) => {
 
   return (
     <>
-      <Card className="mb-4">
-        <CardHeader className="pb-2">
+      <Card className="glass-card mb-4 rounded-2xl border border-white/10 dark:border-white/[0.07] shadow-md overflow-hidden transition-all duration-200">
+        <CardHeader className="pb-3 px-4 pt-4 border-b border-white/10 dark:border-white/[0.06]">
           <div className="flex justify-between items-start gap-2">
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-lg">{subject.subject_name}</CardTitle>
-              <p className="text-muted-foreground text-xs">{subject.subject_code}</p>
+              <CardTitle className="text-base font-bold text-foreground truncate leading-snug">{subject.subject_name}</CardTitle>
+              <p className="text-muted-foreground text-xs font-mono mt-0.5">{subject.subject_code}</p>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <div className="bg-muted px-2 py-1.5 rounded-lg">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="glass-panel px-2.5 py-1 rounded-xl border border-white/15 shadow-sm">
                 <span
-                  className={`text-base font-bold ${
+                  className={`text-sm font-bold tabular-nums ${
                     simulatedPercentage < 75
-                      ? "text-red-600"
+                      ? "text-red-500"
                       : simulatedPercentage <= 80
-                      ? "text-orange-500"
-                      : "text-blue-600"
+                      ? "text-amber-500"
+                      : "text-emerald-500"
                   }`}
                 >
                   {simulatedPercentage.toFixed(2)}%
@@ -110,75 +110,77 @@ const AttendanceCard = ({ subject }: { subject: Subject }) => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-3 p-4">
           <div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-2 rounded-full transition-all duration-500 ${
                   simulatedPercentage < 75
-                    ? "bg-red-600"
+                    ? "bg-red-500"
                     : simulatedPercentage <= 80
-                    ? "bg-orange-500"
-                    : "bg-blue-600"
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
                 }`}
                 style={{ width: `${Math.min(simulatedPercentage, 100)}%` }}
               />
             </div>
-            <div className="flex justify-between mt-1 text-xs">
-              <span>Min: 75%</span>
-              <span>Current: {simulatedPercentage.toFixed(2)}%</span>
+            <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
+              <span>Target: 75%</span>
+              <span className="font-semibold text-foreground">Current: {simulatedPercentage.toFixed(2)}%</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted p-2 rounded">
-              <p className="text-xs">Present</p>
-              <p className="text-lg font-bold text-green-600">{displayedAttended}</p>
+            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Present</p>
+              <p className="text-lg font-bold text-emerald-500 mt-0.5">{displayedAttended}</p>
             </div>
-            <div className="bg-muted p-2 rounded">
-              <p className="text-xs">Absent</p>
-              <p className="text-lg font-bold text-red-600">{absentClasses}</p>
+            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Absent</p>
+              <p className="text-lg font-bold text-red-500 mt-0.5">{absentClasses}</p>
             </div>
-            <div className="bg-muted p-2 rounded">
-              <p className="text-xs">Total</p>
-              <p className="text-lg font-bold">{displayedTotal}</p>
+            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Total Classes</p>
+              <p className="text-lg font-bold text-foreground mt-0.5">{displayedTotal}</p>
             </div>
-            <div className="bg-muted p-2 rounded">
-              <p className="text-xs">Can Skip</p>
-              <p className="text-lg font-bold">{remainingBunks}</p>
+            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Can Bunk</p>
+              <p className="text-lg font-bold text-blue-500 mt-0.5">{remainingBunks}</p>
             </div>
             {simulatedPercentage < 75 && (
-              <div className="bg-muted p-2 rounded col-span-2">
-                <p className="text-xs">Need to Attend</p>
-                <p className="text-lg font-bold">{classesNeeded}</p>
+              <div className="bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl col-span-2">
+                <p className="text-[11px] text-red-500 font-medium">Classes Needed for 75%</p>
+                <p className="text-lg font-bold text-red-500 mt-0.5">{classesNeeded}</p>
               </div>
             )}
           </div>
-          <div className="bg-muted p-3 rounded">
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-sm font-medium">Calculators</p>
+          <div className="glass-panel p-3 rounded-xl border border-white/15 shadow-sm">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-xs font-semibold text-muted-foreground">Simulators & Predictions</p>
               {hasSimulations && (
                 <Button
                   onClick={handleRevertChanges}
                   variant="ghost"
                   size="sm"
-                  className={`p-1 h-7 w-7 ${isRotating ? "animate-spin" : ""}`}
+                  className={`p-1 h-6 w-6 rounded-lg ${isRotating ? "animate-spin" : ""}`}
                 >
-                  <RotateCcw className="h-3 w-3" />
+                  <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2">
               <Button
                 onClick={() => setBunksDialogOpen(true)}
-                className="flex-1 text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white"
+                variant="glass"
+                className="flex-1 text-xs h-8 rounded-xl font-medium"
               >
                 Plan Bunks
               </Button>
               <Button
                 onClick={() => setFutureDialogOpen(true)}
-                className="flex-1 text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white"
+                variant="glass-primary"
+                className="flex-1 text-xs h-8 rounded-xl font-medium"
               >
-                Future
+                Future Target
               </Button>
             </div>
           </div>

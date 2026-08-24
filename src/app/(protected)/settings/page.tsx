@@ -179,17 +179,17 @@ function AccordionRow({
     <div>
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/15 dark:hover:bg-white/5 transition-colors text-left"
       >
         <span className="text-muted-foreground shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-none">{label}</p>
-          {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+          <p className="text-sm font-semibold text-foreground leading-none">{label}</p>
+          {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
         </div>
         <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="px-4 pb-3 border-t bg-muted/20">
+        <div className="px-4 pb-4 pt-1 border-t border-white/10 bg-white/5 dark:bg-white/[0.02]">
           {children}
         </div>
       )}
@@ -220,15 +220,16 @@ function ActionRow({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${destructive ? "hover:bg-destructive/8" : "hover:bg-muted/50"
-        }`}
+      className={`w-full flex items-center gap-3 px-4 py-3.5 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed ${
+        destructive ? "hover:bg-red-500/10" : "hover:bg-white/15 dark:hover:bg-white/5"
+      }`}
     >
-      <span className={`shrink-0 ${destructive ? "text-red-600" : "text-muted-foreground"}`}>{icon}</span>
+      <span className={`shrink-0 ${destructive ? "text-red-500" : "text-muted-foreground"}`}>{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium leading-none ${destructive ? "text-red-600" : "text-foreground"}`}>
+        <p className={`text-sm font-semibold leading-none ${destructive ? "text-red-500" : "text-foreground"}`}>
           {loading && loadingLabel ? loadingLabel : label}
         </p>
-        {sub && <p className={`text-xs mt-0.5 ${destructive ? "text-red-600" : ""}`}>{sub}</p>}
+        {sub && <p className={`text-xs mt-1 ${destructive ? "text-red-500/80" : "text-muted-foreground"}`}>{sub}</p>}
       </div>
     </button>
   );
@@ -237,8 +238,8 @@ function ActionRow({
 function SettingsCard({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">{label}</p>
-      <div className="rounded-xl border bg-card overflow-hidden divide-y divide-border">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">{label}</p>
+      <div className="rounded-2xl glass-card border border-white/25 dark:border-white/10 shadow-lg overflow-hidden divide-y divide-white/10">
         {children}
       </div>
     </div>

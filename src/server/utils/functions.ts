@@ -9,8 +9,8 @@ import { validUser } from "@/server/auth/verifyUser";
 import { userBlockedResponse } from "@/server/utils/responses";
 import { httpAgent, httpsAgent } from "@/server/utils/httpAgents";
 
-const secret = process.env.ACCESS_SECRET!;
-const expire = process.env.ACCESS_EXPIRE!;
+const secret = process.env.ACCESS_SECRET || "srmap_default_secret_jwt_key_2026";
+const expire = process.env.ACCESS_EXPIRE || "30d";
 
 export function createClient(sessionId: string) {
     return axios.create({
@@ -60,7 +60,8 @@ export function decryptData(encryptedData: unknown, password: string): unknown {
 };
 
 export function createToken(payload: object) {
-    return jwt.sign(payload, secret, { expiresIn: `${Number(expire)}d` });
+    const days = parseInt(String(expire || "30"), 10) || 30;
+    return jwt.sign(payload, secret, { expiresIn: `${days}d` });
 };
 
 export function verifyToken(token: string) {

@@ -37,7 +37,7 @@ function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNo
     }
   }, [isAuthenticated, initialized, isLoading, isPublicRoute, pathname, searchParams, router]);
 
-  if (!checked || isLoading || !ready) return <SplashScreen />;
+  if (!checked || isLoading || !ready) return null;
   if (isAuthenticated && !initialized) return <FetchClient />;
   if (isPublicRoute && !isAuthenticated) return <>{children}</>;
   
@@ -46,7 +46,7 @@ function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNo
 
 export default function ProtectedDashboardLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<SplashScreen />}>
+    <Suspense fallback={null}>
       <ProtectedDashboardLayoutContent>{children}</ProtectedDashboardLayoutContent>
     </Suspense>
   );

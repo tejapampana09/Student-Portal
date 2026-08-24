@@ -1,6 +1,7 @@
 import sharp from "sharp";
+import path from "path";
+import { spawn } from "child_process";
 import * as tf from "@tensorflow/tfjs";
-import * as tfliteModule from "tfjs-tflite-node";
 import { captchaModelPath } from "@/static/captcha/captchaModel";
 
 const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
@@ -12,8 +13,6 @@ for (let i = 0; i < CHARS.length; i++) {
 let cachedModel: any = null;
 let loadingPromise: Promise<any> | null = null;
 
-const loadTFLiteModel = tfliteModule.loadTFLiteModel;
-
 export async function getCaptchaModel(): Promise<any> {
     if (cachedModel) return cachedModel;
     if (loadingPromise) return await loadingPromise;
@@ -21,8 +20,10 @@ export async function getCaptchaModel(): Promise<any> {
     loadingPromise = (async () => {
         try {
             console.log("[Captcha Solver] Loading model from:- ", captchaModelPath);
+            const tfliteModule: any = await import("tfjs-tflite-node");
+            const loadTFLiteModel = tfliteModule?.loadTFLiteModel || tfliteModule?.default?.loadTFLiteModel;
             if (typeof loadTFLiteModel !== "function") {
-                throw new Error("Captcha model failed to load!");
+                throw new Error("Captcha model loader function not available!");
             }
             cachedModel = await loadTFLiteModel(captchaModelPath);
             console.log("[Captcha Solver] Model successfully loaded and cached!");
@@ -75,6 +76,47 @@ export function decodeCaptchaOutput(outputTensor: tf.Tensor): string {
     return predictedText.replace(/_/g, "");
 }
 
+function solveWithPython(imageBuffer: Buffer): Promise<string | null> {
+    return new Promise((resolve) => {
+        try {
+            const scriptPath = path.join(process.cwd(), "scripts", "solve_captcha.py");
+            const py = spawn("python", [scriptPath]);
+            let output = "";
+            let errorOutput = "";
+
+            py.stdout.on("data", (data) => {
+                output += data.toString();
+            });
+
+            py.stderr.on("data", (data) => {
+                errorOutput += data.toString();
+            });
+
+            py.on("close", (code) => {
+                if (code === 0 && output.trim()) {
+                    const lines = output.trim().split("\n");
+                    const lastLine = lines[lines.length - 1].trim();
+                    resolve(lastLine || null);
+                } else {
+                    console.error("[Python Captcha] Exit with error:", errorOutput);
+                    resolve(null);
+                }
+            });
+
+            py.on("error", (err) => {
+                console.error("[Python Captcha] Process error:", err);
+                resolve(null);
+            });
+
+            py.stdin.write(imageBuffer);
+            py.stdin.end();
+        } catch (e) {
+            console.error("[Python Captcha] Exception:", e);
+            resolve(null);
+        }
+    });
+}
+
 export async function solveCaptcha(imageBuffer: Buffer): Promise<string | null> {
     try {
         const model = await getCaptchaModel();
@@ -88,7 +130,7 @@ export async function solveCaptcha(imageBuffer: Buffer): Promise<string | null> 
 
         return captchaText || null;
     } catch (error: any) {
-        console.error("[Captcha Solver] Error solving captcha:", error?.message || error);
-        return null;
+        console.log("[Captcha Solver] In-process model unavailable, using Python LiteRT engine fallback...");
+        return await solveWithPython(imageBuffer);
     }
 }

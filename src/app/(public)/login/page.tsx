@@ -49,38 +49,37 @@ const Login = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${theme === "dark" ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" : "bg-gradient-to-br from-blue-50 via-white to-blue-100"}`}>
-      <nav className="container mx-auto px-6 py-6 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md">
+    <div className="min-h-screen relative flex flex-col justify-between p-4 sm:p-6 transition-colors duration-500">
+      {/* 🍏 Sleek Apple Liquid Glass Top Nav */}
+      <nav className="container mx-auto max-w-5xl py-2.5 px-4 sm:px-5 flex items-center justify-between glass-dock rounded-2xl">
+        <Link href="/" className="flex items-center space-x-2.5 group">
+          <div className="w-8 h-8 rounded-xl bg-white/10 dark:bg-white/5 border border-white/15 flex items-center justify-center shadow-sm">
             <Image
               src={Logo_White}
               alt="Profile"
-              className="w-8 h-8 object-contain"
+              className="w-5 h-5 object-contain"
             />
           </div>
-          <span className={`text-xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"
-            }`}>SRMAP API</span>
+          <span className="text-base font-bold tracking-tight text-foreground">
+            SRMAP API
+          </span>
         </Link>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => toggleTheme()}
-          className={`transition-colors duration-200 ${theme === "dark"
-            ? "bg-gray-800 border border-gray-700 text-gray-300 hover:text-white"
-            : "bg-white border border-gray-200 text-gray-600 hover:text-gray-900"
-            }`}
+          className="rounded-xl h-8 w-8 hover:bg-white/10 dark:hover:bg-white/5"
           aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           <div className="relative w-4 h-4">
             <Sun
-              className={`absolute inset-0 h-4 w-4 transition-all duration-300 ${theme === "light"
+              className={`absolute inset-0 h-4 w-4 transition-all duration-300 text-amber-500 ${theme === "light"
                 ? "rotate-0 scale-100 opacity-100"
                 : "rotate-90 scale-0 opacity-0"
                 }`}
             />
             <Moon
-              className={`absolute inset-0 h-4 w-4 transition-all duration-300 ${theme === "dark"
+              className={`absolute inset-0 h-4 w-4 transition-all duration-300 text-blue-400 ${theme === "dark"
                 ? "rotate-0 scale-100 opacity-100"
                 : "-rotate-90 scale-0 opacity-0"
                 }`}
@@ -89,33 +88,30 @@ const Login = () => {
         </Button>
       </nav>
 
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)] p-4">
-        <Card className={`w-full max-w-md shadow-2xl ${theme === "dark"
-          ? "bg-gray-800 border-gray-700"
-          : "bg-white border-gray-200"
-          }`}>
-          <CardHeader className="space-y-1 text-center pb-6">
-            <div className="mx-auto mb-4 relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-university-400 to-blue-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-              <div className="relative bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg">
+      {/* 🍏 Apple Liquid Glass Login Card */}
+      <div className="flex items-center justify-center my-auto py-8">
+        <Card className="w-full max-w-md glass-card rounded-3xl p-2 sm:p-4 shadow-2xl border border-white/10 dark:border-white/[0.08]">
+          <CardHeader className="space-y-2 text-center pt-6 pb-4">
+            <div className="mx-auto mb-2 cursor-pointer" onClick={toggleTheme}>
+              <div className="relative bg-white/10 dark:bg-white/5 backdrop-blur-xl p-2.5 rounded-2xl border border-white/15 shadow-sm inline-block">
                 <Image
                   src={Logo}
-                  alt="Profile"
-                  onClick={toggleTheme}
-                  className="h-16 w-16 cursor-pointer rounded-full object-cover mx-auto transition-transform duration-300 group-hover:scale-110"
+                  alt="SRMAP Logo"
+                  className="h-14 w-14 object-contain mx-auto transition-transform duration-300 hover:scale-105"
+                  priority
                 />
               </div>
             </div>
-            <CardTitle className={`text-xl font-semibold ${theme === "dark" ? "text-white" : "text-gray-900"
-              }`}>Srmap API - Portal</CardTitle>
-            <CardDescription className={`text-sm leading-relaxed ${theme === "dark" ? "text-gray-400" : "text-gray-600"
-              }`}>
-              Enter Your Registration Number And Password, Using Same Credentials As Srmap Student Portal.
+            <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Sign In to SRMAP
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto">
+              Student Portal & Attendance Tracker
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4 px-6">
-              <div className="space-y-2">
+            <CardContent className="space-y-4 px-4 sm:px-6">
+              <div className="space-y-1.5">
                 <Input
                   id="regNumber"
                   label="Registration Number"
@@ -124,53 +120,48 @@ const Login = () => {
                   animated={true}
                   onChange={(e) => setUsername(handleRegNumberChange(e))}
                   required
-                  className={`uppercase h-11 focus:ring-blue-500 ${theme === "dark"
-                    ? "bg-gray-900/40 border-gray-700 text-white placeholder:text-gray-400 focus:border-blue-500"
-                    : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500"
-                    }`}
+                  className="uppercase h-11"
                 />
-                <p className={`text-xs ${theme === "dark" ? "text-gray-400" : "text-gray-500"
-                  }`}>Must Start With AP</p>
+                <p className="text-[11px] text-muted-foreground pl-1">
+                  Format: AP followed by 11 digits
+                </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="relative">
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      label="Password"
-                      type={passwordToggle.inputType}
-                      value={password}
-                      placeholder='Student Portal Password'
-                      animated={true}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className={`h-11 pr-12 focus:ring-blue-500 ${theme === "dark"
-                        ? "bg-gray-900/40 border-gray-700 text-white placeholder:text-gray-400 focus:border-blue-500"
-                        : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500"
-                        }`}
-                    />
-                    {passwordToggle.toggleButton}
-                  </div>
+                  <Input
+                    id="password"
+                    label="Password"
+                    type={passwordToggle.inputType}
+                    value={password}
+                    placeholder="Student Portal Password"
+                    animated={true}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-12"
+                  />
+                  {passwordToggle.toggleButton}
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="flex flex-col gap-3 px-6 pb-6">
+            <CardFooter className="flex flex-col gap-3 px-4 sm:px-6 pt-2 pb-6">
               <Button
                 type="submit"
-                className="w-full h-11 font-medium bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+                className="w-full h-11 font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20 transition-all duration-200"
                 disabled={isLoginLoading}
               >
                 {isLoginLoading ? (
                   <span className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Logging in...
+                    Authenticating...
                   </span>
-                ) : "Login"}
+                ) : (
+                  "Continue with Portal ID"
+                )}
               </Button>
               <button
                 type="button"
                 onClick={() => router.push('/forgot')}
-                className={`text-sm underline transition-colors ${theme === "dark" ? "text-blue-300 hover:text-blue-200" : "text-blue-600 hover:text-blue-700"}`}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors hover:underline"
               >
                 Forgot Password?
               </button>

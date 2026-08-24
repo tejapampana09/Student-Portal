@@ -126,43 +126,6 @@ const MobileSubMenuDrawer: React.FC<MobileSubMenuDrawerProps> = ({ isOpen, onClo
   );
 };
 
-function ResourceChooserDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const router = useRouter();
-
-  const navigate = (path: string) => {
-    onClose();
-    router.push(path);
-  };
-
-  return (
-    <Drawer open={isOpen} onOpenChange={onClose}>
-      <DrawerContent className="max-h-[80vh]">
-        <DrawerHeader className="border-b">
-          <DrawerTitle>Explore Srmapi</DrawerTitle>
-        </DrawerHeader>
-        <div className="grid gap-3 p-4 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => navigate("/aboutus")}
-            className="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-          >
-            <Users className="h-5 w-5 text-primary" />
-            <span className="font-medium">About Us</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/github")}
-            className="flex items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-          >
-            <GitHubMark className="h-5 w-5 text-primary" />
-            <span className="font-medium">GitHub</span>
-          </button>
-        </div>
-      </DrawerContent>
-    </Drawer>
-  );
-}
-
 const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   const routeRegex = /\/[a-zA-Z0-9\/-]+/g;
   const mdLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -218,7 +181,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
     isOpen: false,
     menuItem: null
   });
-  const [resourceChooserOpen, setResourceChooserOpen] = useState(false);
   const mobileNavScrollRef = React.useRef<HTMLDivElement | null>(null);
   const notificationPanelRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -457,10 +419,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   };
 
   const handleMenuClick = (item: MenuItem) => {
-    if (item.opensResourceChooser && isMobile) {
-      setResourceChooserOpen(true);
-      return;
-    }
     if (item.subItems) {
       if (isCollapsed || isMobile) {
         openMobileSubMenu(item);
@@ -485,10 +443,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const handleMobileNavClick = (item: MenuItem) => {
     setSelectedMobileNav(item.path);
-    if (item.opensResourceChooser) {
-      setResourceChooserOpen(true);
-      return;
-    }
     if (item.subItems) {
       openMobileSubMenu(item);
     } else {
@@ -508,7 +462,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
       { title: "Attendance Details", shortTitle: "Attendance", path: "/attendance", icon: List },
       { title: "Time Table", shortTitle: "Timetable", path: "/timetable", icon: Calendar },
       { title: "Mark Attendance", shortTitle: "Mark", path: "/markattendance", icon: ListChecks },
-      { title: "Vacant", shortTitle: "Empty", path: "/vacant", icon: Building },
       {
         title: "Exams",
         shortTitle: "Exam",
@@ -520,14 +473,11 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
           { title: "Semester Results", path: "/exams/semester-results" },
         ],
       },
-      { title: "Resources", shortTitle: "Files", path: "/resources", icon: Folder },
       { title: "Cgpa Calculator", shortTitle: "CGPA", path: "/cgpa", icon: Calculator },
       { title: "Academic Calender", shortTitle: "Calendar", path: "/calender", icon: CalendarDays },
-      { title: "Forums", shortTitle: "Forum", path: "/forums", icon: MessageSquare },
       { title: "Subjects", shortTitle: "Subs", path: "/subjects", icon: Library },
       { title: "Profile", shortTitle: "Me", path: "/profile", icon: User },
       { title: "Feedback", shortTitle: "Feed", path: "/feedback", icon: Edit },
-      // { title: "Apps", path: "/apps", icon: AppWindow },
       { title: "Settings", shortTitle: "Set", path: "/settings", icon: Settings },
     ];
 
@@ -542,17 +492,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
         }
       );
     }
-    menu.push({
-      title: "About & GitHub",
-      shortTitle: "More",
-      path: "/aboutus",
-      icon: Users,
-      opensResourceChooser: true,
-      subItems: [
-        { title: "About Us", path: "/aboutus" },
-        { title: "GitHub", path: "/github" },
-      ],
-    });
     setMenuItems(menu);
   }, [isAdmin]);
 
@@ -607,23 +546,23 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   }, [expandedMenus]);
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen flex w-full bg-transparent relative">
       {!isMobile && (
-        <Sidebar className="border-r" collapsible="icon">
-          <SidebarContent>
+        <Sidebar className="border-r border-white/10 dark:border-white/[0.06] glass-panel shadow-xl backdrop-blur-2xl" collapsible="icon">
+          <SidebarContent className="bg-transparent">
             {!isCollapsed && (
-              <div className="p-4 bg-sidebar/50 relative">
+              <div className="p-4 bg-white/5 dark:bg-white/[0.02] backdrop-blur-md relative border-b border-white/10 dark:border-white/[0.06]">
                 <h1
-                  className="text-xl font-bold text-sidebar-foreground"
+                  className="text-lg font-bold text-foreground tracking-tight"
                 >
                   {profile?.registerNo}
                 </h1>
-                <div className="absolute bottom-0 left-0 w-full h-px bg-sidebar-border translate-y-[4px]" />
+                <p className="text-xs text-muted-foreground truncate">{profile?.studentName}</p>
               </div>
             )}
             {isCollapsed && (
-              <div className="py-4 px-3 border-b border-sidebar-border bg-sidebar/50 flex justify-center">
-                <div className="w-28 h-8 rounded-full overflow-hidden border border-primary/20 shadow-md bg-white">
+              <div className="py-3 px-2 border-b border-white/10 dark:border-white/[0.06] flex justify-center">
+                <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/20 shadow-sm bg-white/10 dark:bg-white/5 p-1">
                   <Image
                     src={profile?.picture || Logo_White}
                     alt="Profile"
@@ -833,14 +772,14 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             </Button>
           </div>
         )}
-        <div className="sticky top-0 z-40 w-full bg-background relative border-b border-border shadow-sm">
+        <div className="sticky top-2 sm:top-3 z-40 w-full px-2 sm:px-6">
           <motion.div
             animate={{ opacity: isMobile && activeMobileToast ? 0 : 1 }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
             className={isMobile && activeMobileToast ? "pointer-events-none" : ""}
           >
-            <header className="h-16 border-b bg-background/80 backdrop-blur-sm">
-              <div className="flex items-center px-6 h-full">
+            <header className="h-14 glass-dock rounded-2xl px-3 sm:px-5 flex items-center shadow-md border border-white/15 dark:border-white/[0.07]">
+              <div className="flex items-center px-2 sm:px-4 h-full w-full">
                 {!isMobile && (
                   <div className="relative">
                     <SidebarTrigger
@@ -1010,33 +949,33 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
             </header>
 
-            <div ref={notificationPanelRef} className="relative">
+            <div ref={notificationPanelRef} className="relative mt-2">
               <div
                 onClick={handleNotificationBarClick}
-                className={`notifications-bar cursor-pointer bg-slate-200 text-black py-2 pr-6 pl-6 flex items-center justify-between shadow-md ${isMobile && usesMobileSideNav ? "ml-12" : ""}`}
+                className={`notifications-bar cursor-pointer glass-card text-foreground py-2 px-4 flex items-center justify-between rounded-xl shadow-sm border border-white/20 dark:border-white/10 ${isMobile && usesMobileSideNav ? "ml-12" : ""}`}
               >
-                <span className="font-medium text-sm">
+                <span className="font-medium text-sm truncate">
                   {notifications.notifications.length > 0 ? renderNotification(notifications.notifications[0].notification) : "No Notifications"}
                 </span>
                 <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${isNotificationsOpen ? "rotate-180" : ""}`}
+                  className={`h-4 w-4 transition-transform duration-200 shrink-0 ml-2 ${isNotificationsOpen ? "rotate-180" : ""}`}
                 />
               </div>
 
               {isNotificationsOpen && (
                 <div
-                  className={`notifications-bar absolute right-0 top-full z-50 bg-popover border border-border shadow-lg ${isMobile && usesMobileSideNav ? "left-12" : "left-0"}`}
+                  className={`notifications-bar absolute right-0 top-full mt-2 z-50 glass-panel rounded-2xl p-2 shadow-2xl ${isMobile && usesMobileSideNav ? "left-12" : "left-0"}`}
                   onMouseEnter={handleMouseEnterNotifications}
                   onMouseLeave={handleMouseLeaveNotifications}
                 >
-                  <div className="max-h-64 overflow-y-auto">
+                  <div className="max-h-64 overflow-y-auto space-y-1">
                     {notifications.notifications.length === 0 ? (
                       <p className="p-4 text-sm text-muted-foreground text-center">
                         {notifications.isLoading ? "Loading..." : "No new notifications"}
                       </p>
                     ) : (
                       notifications.notifications.slice(1).map((note, index) => (
-                        <div key={index} className="p-3 border-b bg-accent border-border text-sm hover:bg-accent/30 cursor-pointer">
+                        <div key={index} className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 border border-white/10 text-sm cursor-pointer transition-all duration-200">
                           {renderNotification(note.notification)}
                         </div>
                       ))
@@ -1188,7 +1127,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             />
           </>
         )}
-        <ResourceChooserDrawer isOpen={resourceChooserOpen} onClose={() => setResourceChooserOpen(false)} />
       </div>
     </div>
   );

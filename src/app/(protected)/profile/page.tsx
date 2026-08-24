@@ -18,73 +18,77 @@ const Profile = () => {
         : Male.src);
 
     return (
-        <div>
-            <div className="mb-6">
-                <h2 className="text-3xl font-bold mb-2">Student Profile</h2>
-                <p className="text-muted-foreground">
-                    Your Academic Information
+        <div className="space-y-4 pb-6">
+            <div className="mb-2">
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600 bg-clip-text text-transparent">Student Profile</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                    Verified Academic Identity & Enrollment Info
                 </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-                <Card className="md:col-span-1">
-                    <CardHeader className="text-center">
-                        <div className="flex justify-center mb-4">
-                            <Avatar className="h-24 w-24">
-                                <AvatarFallback className="bg-university-700 text-white text-2xl">
-                                    <img
-                                        src={avatarSrc}
-                                        alt={toTitleCase(profile?.studentName || "")}
-                                        className="h-full w-full rounded-full object-cover"
-                                    />
-                                </AvatarFallback>
-                            </Avatar>
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card className="md:col-span-1 glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg p-2">
+                    <CardHeader className="text-center pb-2">
+                        <div className="flex justify-center mb-3">
+                            <div className="relative group">
+                                <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full blur-md opacity-40 group-hover:opacity-75 transition-opacity"></div>
+                                <Avatar className="relative h-24 w-24 border-2 border-white/40 shadow-md">
+                                    <AvatarFallback className="bg-white/20 dark:bg-white/10 backdrop-blur-md">
+                                        <img
+                                            src={avatarSrc}
+                                            alt={toTitleCase(profile?.studentName || "")}
+                                            className="h-full w-full rounded-full object-cover"
+                                        />
+                                    </AvatarFallback>
+                                </Avatar>
+                            </div>
                         </div>
-                        <CardTitle className="text-xl">{toTitleCase(profile?.studentName || "")}</CardTitle>
-                        <CardDescription>{profile?.registerNo || ""}</CardDescription>
+                        <CardTitle className="text-lg font-bold truncate">{toTitleCase(profile?.studentName || "")}</CardTitle>
+                        <CardDescription className="font-mono text-xs font-semibold text-primary">{profile?.registerNo || ""}</CardDescription>
                     </CardHeader>
-                    <CardContent className="text-center">
-                        <p className="text-muted-foreground">{trimText(profile?.program, 20)}</p>
+                    <CardContent className="text-center pt-0">
+                        <div className="inline-block px-3 py-1 rounded-full bg-white/20 dark:bg-white/5 border border-white/10 text-xs font-medium text-muted-foreground">
+                            {trimText(profile?.program, 28)}
+                        </div>
                     </CardContent>
                 </Card>
 
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Student Details</CardTitle>
-                        <CardDescription>Your Academic Information</CardDescription>
+                <Card className="md:col-span-2 glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg">
+                    <CardHeader className="p-4 sm:p-5 border-b border-white/10">
+                        <CardTitle className="text-lg font-bold">Academic Particulars</CardTitle>
+                        <CardDescription className="text-xs">Directly synced from SRM AP University database</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-4 sm:p-5">
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">Institution</h4>
-                                    <p>{profile?.institution}</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Institution</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.institution}</p>
                                 </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">Department</h4>
-                                    <p>{profile?.program}</p>
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Department / Major</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.program}</p>
                                 </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">Semester</h4>
-                                    <p>{profile?.semester}</p>
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Semester</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.semester}</p>
                                 </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">Section</h4>
-                                    <p>{profile?.section}</p>
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Section</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.section}</p>
                                 </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">DOB</h4>
-                                    <p>{profile?.dob}</p>
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date of Birth</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.dob}</p>
                                 </div>
-                                <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground">Gender</h4>
-                                    <p>{profile?.gender}</p>
+                                <div className="glass-panel p-3 rounded-xl border border-white/15">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Gender</h4>
+                                    <p className="text-sm font-bold text-foreground mt-0.5">{profile?.gender}</p>
                                 </div>
                             </div>
-                            <div className="pt-4 border-t">
-                                <h4 className="font-medium">Note:</h4>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    The Data Displayed Is Sourced From Srmap Student Portal.
+                            <div className="pt-2">
+                                <p className="text-xs text-muted-foreground italic text-center sm:text-left">
+                                    Note: Sourced securely from the official SRMAP Student Portal API.
                                 </p>
                             </div>
                         </div>

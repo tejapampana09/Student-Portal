@@ -4,104 +4,393 @@
 
 @layer base {
   html {
-    background-color: hsl(var(--background));
+    background-color: transparent;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground antialiased;
     min-height: 100vh;
+    background-color: transparent;
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 
   * {
     @apply border-border;
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
-  }
-
-  body {
-    @apply bg-background text-foreground;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background-color: hsl(var(--muted));
-    border-radius: 10px;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--primary) / 0.5);
-    border-radius: 10px;
-    border: 2px solid hsl(var(--muted));
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 9999px;
+    backdrop-filter: blur(8px);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--primary));
+    background: rgba(255, 255, 255, 0.4);
   }
 
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 210 100% 20%;
+    --background: 215 35% 96% / 0.1;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100% / 0.25;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100% / 0.4;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
+    --secondary: 210 40% 96.1% / 0.3;
     --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1% / 0.25;
+    --muted-foreground: 215.4 16.3% 40%;
+    --accent: 217 91% 60% / 0.15;
+    --accent-foreground: 217 91% 45%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-    --sidebar-background: 210 100% 20%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 60% 60%;
+    --border: 214.3 31.8% 91.4% / 0.3;
+    --input: 214.3 31.8% 91.4% / 0.35;
+    --ring: 217 91% 60%;
+    --radius: 1rem;
+    --sidebar-background: 210 40% 98% / 0.3;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 100% 25%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 100% 25%;
-    --sidebar-ring: 210 60% 60%;
+    --sidebar-accent: 217 91% 60% / 0.15;
+    --sidebar-accent-foreground: 217 91% 45%;
+    --sidebar-border: 214.3 31.8% 91.4% / 0.25;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 224 71% 4% / 0.1;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 224 71% 7% / 0.25;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 224 71% 8% / 0.45;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
+    --primary: 217 91% 60%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 17.5% / 0.3;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 17.5% / 0.25;
+    --muted-foreground: 215 20.2% 75%;
+    --accent: 217 91% 60% / 0.2;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 220 80% 8%;
+    --border: 217.2 32.6% 25% / 0.3;
+    --input: 217.2 32.6% 25% / 0.35;
+    --ring: 217 91% 60%;
+    --sidebar-background: 224 71% 6% / 0.3;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 60% 60%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 100% 25%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 100% 25%;
-    --sidebar-ring: 210 60% 60%;
+    --sidebar-accent: 217 91% 60% / 0.2;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 25% / 0.2;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dracula {
+    --background: 250 35% 8% / 0.1;
+    --foreground: 60 30% 96%;
+    --card: 250 35% 12% / 0.25;
+    --card-foreground: 60 30% 96%;
+    --popover: 250 35% 14% / 0.45;
+    --popover-foreground: 60 30% 96%;
+    --primary: 326 100% 74%;
+    --primary-foreground: 250 35% 8%;
+    --secondary: 250 30% 20% / 0.3;
+    --secondary-foreground: 60 30% 96%;
+    --muted: 250 30% 20% / 0.25;
+    --muted-foreground: 245 20% 75%;
+    --accent: 135 94% 65% / 0.2;
+    --accent-foreground: 135 94% 75%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 250 35% 8%;
+    --border: 250 30% 30% / 0.3;
+    --input: 250 30% 30% / 0.35;
+    --ring: 326 100% 74%;
+    --sidebar-background: 250 35% 10% / 0.3;
+    --sidebar-foreground: 60 30% 96%;
+    --sidebar-primary: 326 100% 74%;
+    --sidebar-primary-foreground: 250 35% 8%;
+    --sidebar-accent: 326 100% 74% / 0.2;
+    --sidebar-accent-foreground: 60 30% 96%;
+    --sidebar-border: 250 30% 30% / 0.2;
+    --sidebar-ring: 326 100% 74%;
+  }
+}
+
+/* ==========================================================================
+   Hyper-Sleek Glassmorphic Core Design System
+   ========================================================================== */
+
+@layer components {
+  /* 🖼️ Custom Wallpaper Class */
+  .app-custom-wallpaper {
+    background-image: url('/wallpaper.jpg'), url('/wallpaper.png'), url('/bg.jpg'), radial-gradient(circle at 50% 20%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* 💎 Ultra-Transparent Crystal Glass Panels */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass-panel {
+    background: rgba(10, 14, 26, 0.35);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .dracula .glass-panel {
+    background: rgba(25, 15, 38, 0.35);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(255, 121, 198, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 121, 198, 0.18);
+  }
+
+  /* 💎 Ultra-Transparent Crystal Glass Cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 20, 32, 0.3);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dracula .glass-card {
+    background: rgba(30, 18, 45, 0.3);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 121, 198, 0.18);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 121, 198, 0.14);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .glass-card:hover {
+    background: rgba(20, 26, 42, 0.45);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .dracula .glass-card:hover {
+    background: rgba(40, 24, 60, 0.45);
+    border-color: rgba(255, 121, 198, 0.3);
+    box-shadow: 0 8px 30px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 121, 198, 0.25);
+  }
+
+  /* 🚀 Ultra-Transparent Floating Top Docks */
+  .glass-dock {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .dark .glass-dock {
+    background: rgba(12, 16, 28, 0.4);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .dracula .glass-dock {
+    background: rgba(28, 16, 42, 0.4);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 121, 198, 0.22);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 121, 198, 0.2);
+  }
+
+  /* 🔲 Ultra-Transparent Input Fields */
+  .glass-input {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+
+  .dark .glass-input {
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .dracula .glass-input {
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 121, 198, 0.2);
+    box-shadow: inset 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(59, 130, 246, 0.8);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  }
+
+  .dark .glass-input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: rgba(96, 165, 250, 0.8);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  }
+
+  .dracula .glass-input:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: rgba(255, 121, 198, 0.8);
+    box-shadow: 0 0 0 3px rgba(255, 121, 198, 0.3);
+  }
+
+  /* 🔘 Ultra-Transparent Buttons */
+  .glass-btn {
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+    transition: all 0.15s ease;
+  }
+
+  .dark .glass-btn {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .dracula .glass-btn {
+    background: rgba(255, 121, 198, 0.12);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 121, 198, 0.25);
+    box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 121, 198, 0.2);
+  }
+
+  .glass-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .glass-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .dracula .glass-btn:hover {
+    background: rgba(255, 121, 198, 0.22);
+    border-color: rgba(255, 121, 198, 0.4);
+  }
+}
+
+@keyframes progress-loading-beam {
+  0% {
+    left: -45%;
+    width: 40%;
+  }
+  50% {
+    left: 30%;
+    width: 65%;
+  }
+  100% {
+    left: 105%;
+    width: 40%;
+  }
+}
+
+.animate-smooth-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-smooth-progress::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent, #3b82f6 30%, #60a5fa 70%, #93c5fd, transparent);
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.9), 0 0 4px #93c5fd;
+  animation: progress-loading-beam 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes aurora-drift-1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(12vw, 15vh) scale(1.15);
+  }
+  100% {
+    transform: translate(-8vw, 8vh) scale(0.9);
+  }
+}
+
+@keyframes aurora-drift-2 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-15vw, -12vh) scale(1.1);
+  }
+  100% {
+    transform: translate(10vw, -18vh) scale(0.95);
+  }
+}
+
+@keyframes aurora-drift-3 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-10vw, 15vh) scale(1.2);
+  }
+  100% {
+    transform: translate(15vw, -10vh) scale(0.85);
   }
 }

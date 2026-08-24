@@ -60,27 +60,31 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="rounded-lg border overflow-hidden">
+      <div className="glass-card rounded-2xl border border-white/10 dark:border-white/[0.07] overflow-hidden shadow-md">
         <button
           onClick={() => setWarningsOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-3 py-2.5 bg-card hover:bg-muted/50 active:bg-muted/70 transition-colors text-left touch-manipulation"
+          className="w-full flex items-center justify-between px-4 py-3.5 bg-white/10 dark:bg-white/[0.02] hover:bg-white/20 dark:hover:bg-white/5 active:bg-white/30 transition-colors text-left touch-manipulation backdrop-blur-md"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {lowAttendanceSubjects.length > 0 ? (
               <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
             ) : (
-              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
             )}
-            <span className="text-sm font-medium">Attendance Warnings</span>
-            {lowAttendanceSubjects.length > 0 && (
-              <Badge variant="destructive" className="text-xs h-5 px-1.5">
-                {lowAttendanceSubjects.length}
+            <span className="text-sm font-semibold text-foreground">Attendance Health</span>
+            {lowAttendanceSubjects.length > 0 ? (
+              <Badge variant="destructive" className="text-xs h-5 px-2 rounded-full">
+                {lowAttendanceSubjects.length} Low
+              </Badge>
+            ) : (
+              <Badge variant="glass-success" className="text-xs h-5 px-2 rounded-full">
+                All Good
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {lowAttendanceSubjects.length === 0 && (
-              <span className="text-xs text-green-600 dark:text-green-400 font-medium">All good!</span>
+              <span className="text-xs text-emerald-500 font-medium hidden sm:inline">Above 75%</span>
             )}
             {warningsOpen ? (
               <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -90,39 +94,39 @@ const Dashboard = () => {
           </div>
         </button>
         {warningsOpen && (
-          <div className="border-t">
+          <div className="border-t border-white/10 dark:border-white/[0.06] bg-white/5 dark:bg-white/[0.02] backdrop-blur-md">
             {lowAttendanceSubjects.length > 0 ? (
-              <div className="divide-y max-h-48 overflow-y-auto">
+              <div className="divide-y divide-white/10 dark:divide-white/[0.06] max-h-56 overflow-y-auto p-1">
                 {lowAttendanceSubjects.map((subject) => {
                   const pct = parseFloat(subject.attendance_percentage);
                   return (
-                    <div key={subject.subject_code} className="flex items-center justify-between px-3 py-2.5 bg-card gap-2">
+                    <div key={subject.subject_code} className="flex items-center justify-between px-3.5 py-3 gap-3 rounded-xl hover:bg-white/10 transition-colors">
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate leading-tight">{subject.subject_name}</div>
+                        <div className="text-sm font-semibold text-foreground truncate leading-tight">{subject.subject_name}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">{subject.subject_code}</div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full bg-destructive" style={{ width: `${Math.min(pct, 100)}%` }} />
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="w-16 h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden">
+                          <div className="h-full rounded-full bg-red-500" style={{ width: `${Math.min(pct, 100)}%` }} />
                         </div>
-                        <span className="text-sm font-semibold text-destructive tabular-nums w-12 text-right">
+                        <span className="text-sm font-bold text-red-500 tabular-nums w-12 text-right">
                           {pct.toFixed(1)}%
                         </span>
                       </div>
                     </div>
                   );
                 })}
-                <div className="px-3 py-2.5 bg-muted/30">
-                  <Button size="sm" variant="outline" onClick={() => router.push("/attendance")} className="text-xs h-8 w-full touch-manipulation">
-                    View Full Attendance
+                <div className="p-2">
+                  <Button size="sm" variant="glass" onClick={() => router.push("/attendance")} className="text-xs h-9 w-full touch-manipulation">
+                    View Full Attendance Breakdown
                   </Button>
                 </div>
               </div>
             ) : (
-              <div className="px-4 py-5 text-center bg-card">
-                <p className="text-sm text-muted-foreground">All subjects above 75% — keep it up!</p>
-                <Button size="sm" variant="outline" onClick={() => router.push("/attendance")} className="mt-3 text-xs h-8 touch-manipulation">
-                  View Attendance
+              <div className="px-4 py-6 text-center">
+                <p className="text-sm text-muted-foreground">All subjects are comfortably above 75% attendance!</p>
+                <Button size="sm" variant="glass" onClick={() => router.push("/attendance")} className="mt-3 text-xs h-8 touch-manipulation">
+                  View Full Report
                 </Button>
               </div>
             )}
@@ -137,28 +141,28 @@ const Dashboard = () => {
         attendance={selectedSubjectAttendance}
       />
 
-      <Card>
-        <CardHeader className="pb-2 px-3 pt-3">
+      <Card className="glass-card rounded-2xl border border-white/10 dark:border-white/[0.07] shadow-md">
+        <CardHeader className="pb-3 px-4 pt-4 border-b border-white/10 dark:border-white/[0.06]">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Clock className="h-4 w-4 shrink-0" />
-              {isWeekend ? "Weekend" : `Today — ${currentDay}`}
+            <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary shrink-0" />
+              {isWeekend ? "Weekend Vibes" : `Today's Schedule — ${currentDay}`}
               {!isWeekend && todayClasses.length > 0 && (
-                <span className="text-xs text-muted-foreground font-normal">({todayClasses.length} classes)</span>
+                <span className="text-xs text-muted-foreground font-normal">({todayClasses.length} slots)</span>
               )}
             </CardTitle>
-            <Button size="sm" variant="ghost" onClick={() => router.push("/timetable")} className="text-xs h-7 text-muted-foreground hover:text-foreground px-2 touch-manipulation">
-              Full →
+            <Button size="sm" variant="ghost" onClick={() => router.push("/timetable")} className="text-xs h-7 text-primary hover:text-primary hover:bg-primary/10 px-2.5 rounded-lg touch-manipulation">
+              Full Timetable →
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pt-0 px-3 pb-3">
+        <CardContent className="p-3 sm:p-4">
           {isWeekend ? (
-            <div className="text-center py-4"><p className="text-muted-foreground text-sm">Enjoy your weekend!</p></div>
+            <div className="text-center py-6"><p className="text-muted-foreground text-sm">Enjoy your weekend recharge!</p></div>
           ) : todayClasses.length === 0 ? (
-            <div className="text-center py-4"><p className="text-muted-foreground text-sm">No classes today.</p></div>
+            <div className="text-center py-6"><p className="text-muted-foreground text-sm">No scheduled classes today.</p></div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {(todayClasses as any[]).map(({ code, venue, timeSlot, slotIdx }) => {
                 const isOngoing = ongoingClass?.code === code && ongoingClass?.timeSlot === timeSlot;
                 const isNext = upcomingClass?.code === code && upcomingClass?.timeSlot === timeSlot;
@@ -166,31 +170,35 @@ const Dashboard = () => {
                   <div
                     key={slotIdx}
                     onClick={() => handleSubjectClick(code, venue, currentDay, timeSlot)}
-                    className={`flex items-center gap-2 px-2.5 py-2 rounded-md transition-colors cursor-pointer ${
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${
                       isOngoing
-                        ? "bg-green-50 dark:bg-green-900/25 border border-green-200/60 dark:border-green-800/40"
+                        ? "bg-emerald-500/10 dark:bg-emerald-500/15 border border-emerald-500/30 shadow-sm"
                         : isNext
-                        ? "bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200/40 dark:border-blue-800/30"
-                        : "bg-muted/40 hover:bg-muted/70"
+                        ? "bg-blue-500/10 dark:bg-blue-500/15 border border-blue-500/30 shadow-sm"
+                        : "bg-white/10 dark:bg-white/[0.03] hover:bg-white/20 dark:hover:bg-white/5 border border-white/10 dark:border-white/[0.06]"
                     }`}
                   >
-                    <div className="text-[10px] text-muted-foreground font-mono w-10 shrink-0 leading-tight">
+                    <div className="text-xs font-semibold text-muted-foreground font-mono w-12 shrink-0 leading-tight">
                       {timeSlot.split("-")[0]}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate leading-snug">{subjectCodeToName[code] || code}</div>
+                      <div className="text-sm font-semibold text-foreground truncate leading-snug">{subjectCodeToName[code] || code}</div>
                       {venue && (
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
-                          <MapPin className="h-2.5 w-2.5 shrink-0" />
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground/80 mt-0.5">
+                          <MapPin className="h-3 w-3 shrink-0 text-primary/70" />
                           <span className="truncate">{venue}</span>
                         </div>
                       )}
                     </div>
                     {isOngoing && (
-                      <Badge className="text-[10px] h-5 px-1.5 bg-green-600 text-white shrink-0">Now</Badge>
+                      <Badge variant="glass-success" className="text-xs h-6 px-2.5 rounded-full shrink-0 font-bold animate-pulse">
+                        Ongoing
+                      </Badge>
                     )}
                     {isNext && !isOngoing && (
-                      <Badge variant="secondary" className="text-[10px] h-5 px-1.5 shrink-0">Next</Badge>
+                      <Badge variant="glass-info" className="text-xs h-6 px-2.5 rounded-full shrink-0 font-semibold">
+                        Next Up
+                      </Badge>
                     )}
                   </div>
                 );
