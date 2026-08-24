@@ -128,10 +128,10 @@ const SemesterResultsPage: React.FC = () => {
       </div>
 
       {!sessionValid && (
-        <Card>
+        <Card className="glass-card rounded-3xl border border-white/10 shadow-lg p-3">
           <CardHeader>
-            <CardTitle>Session Required</CardTitle>
-            <CardDescription>Initiate a session to view semester results</CardDescription>
+            <CardTitle className="text-lg font-bold">Session Required</CardTitle>
+            <CardDescription className="text-xs">Initiate a session to view official semester grade ledger</CardDescription>
           </CardHeader>
           <CardContent>
             <SessionCard />
@@ -140,21 +140,22 @@ const SemesterResultsPage: React.FC = () => {
       )}
 
       {error && sessionValid && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6 flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-4 w-4" />
+        <Card className="glass-card rounded-3xl border border-red-500/20 bg-red-500/10 shadow-lg">
+          <CardContent className="p-4 flex items-center gap-2 text-red-400 text-xs font-semibold">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </CardContent>
         </Card>
       )}
 
       {sessionValid && !isLoading && !error && (
-        <Card>
-          <CardContent className="space-y-4 mt-4">
+        <Card className="glass-card rounded-3xl border border-white/10 shadow-lg">
+          <CardContent className="space-y-4 p-5 sm:p-6">
             <div className="flex flex-wrap gap-2">
               <Button
-                variant={selectedSemester === "all" ? "default" : "outline"}
+                variant={selectedSemester === "all" ? "glass-primary" : "glass"}
                 size="sm"
+                className="rounded-xl text-xs h-8 px-3"
                 onClick={() => setSelectedSemester("all")}
               >
                 All Semesters
@@ -162,8 +163,9 @@ const SemesterResultsPage: React.FC = () => {
               {semesters.map((semester) => (
                 <Button
                   key={semester}
-                  variant={selectedSemester === semester ? "default" : "outline"}
+                  variant={selectedSemester === semester ? "glass-primary" : "glass"}
                   size="sm"
+                  className="rounded-xl text-xs h-8 px-3"
                   onClick={() => setSelectedSemester(semester)}
                 >
                   Sem {semester}
@@ -171,16 +173,16 @@ const SemesterResultsPage: React.FC = () => {
               ))}
             </div>
 
-            <div className="rounded-lg border bg-muted/10 p-3 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {selectedSemester === "all" ? "Calculated CGPA" : `Calculated Semester ${selectedSemester} CGPA`}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {selectedSemester === "all" ? "Calculated CGPA" : `Calculated Semester ${selectedSemester} SGPA`}
               </span>
-              <span className="text-xl font-bold text-primary">{calculatedCgpa || "-"}</span>
+              <span className="text-2xl font-bold font-mono text-foreground">{calculatedCgpa || "-"}</span>
             </div>
 
             {selectedSemester === "all" && cgpa && (
               <p className="text-xs text-muted-foreground">
-                Official portal CGPA: <b>{cgpa}</b>
+                Official portal CGPA: <b className="font-mono text-foreground">{cgpa}</b>
               </p>
             )}
 

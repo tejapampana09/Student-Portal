@@ -39,16 +39,26 @@ const Timetable = () => {
   }, [ongoingClass, upcomingClass]);
 
   return (
-    <div className="h-full flex flex-col gap-3 pb-4">
-      <div className="flex justify-end">
-        <div className="flex items-center space-x-1 rounded-2xl glass-dock p-1 border border-white/20">
+    <div className="h-full flex flex-col gap-4 pb-6 max-w-7xl mx-auto w-full">
+      {/* 🍏 Top Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Academic Timetable
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            Weekly class schedule & classroom locations
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-1 rounded-2xl glass-dock p-1 border border-white/10 self-end sm:self-auto">
           {(["old", "new"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => updateSettings({ timeTableViewMode: mode })}
               className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 ${
                 viewMode === mode
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  ? "bg-white/20 dark:bg-white/15 text-foreground shadow-sm border border-white/15"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/10"
               }`}
             >
@@ -58,24 +68,28 @@ const Timetable = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-shrink-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-shrink-0">
         {(ongoingClass || upcomingClass) ? (
           <>
-            <Card className={`glass-card p-4 rounded-2xl border shadow-lg ${ongoingClass ? "border-emerald-500/40 bg-emerald-500/10 shadow-emerald-500/10" : "border-white/20 dark:border-white/10"}`}>
+            <Card className={`glass-card p-5 rounded-3xl border shadow-lg ${ongoingClass ? "border-emerald-500/30 bg-emerald-500/10" : "border-white/10"}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 mb-2">
-                  <Play className={`w-4 h-4 md:w-5 md:h-5 ${ongoingClass ? "text-emerald-500 animate-pulse" : "text-muted-foreground"}`} />
-                  <span className="text-sm md:text-base font-bold text-foreground">Ongoing Class</span>
+                  <span className={`h-2 w-2 rounded-full ${ongoingClass ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground"}`} />
+                  <span className="text-sm font-bold text-foreground">Ongoing Class</span>
                 </div>
                 {ongoingClass && countdown !== null && (
-                  <Badge variant="glass-success" className="text-xs px-2.5 py-0.5 rounded-full font-mono">{formatCountdown(countdown)}</Badge>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-bold">
+                    {formatCountdown(countdown)}
+                  </span>
                 )}
               </div>
               {ongoingClass ? (
-                <div className="space-y-1.5">
-                  <div className="font-bold text-base line-clamp-1">{ongoingClass.name}</div>
+                <div className="space-y-2 mt-1">
+                  <div className="font-bold text-lg leading-snug text-foreground">{ongoingClass.name}</div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <Badge variant="glass" className="font-mono text-xs">{ongoingClass.code}</Badge>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-muted-foreground">
+                      {ongoingClass.code}
+                    </span>
                     <span className="text-muted-foreground font-semibold">{ongoingClass.timeSlot}</span>
                   </div>
                   {ongoingClass.venue && (
@@ -85,25 +99,29 @@ const Timetable = () => {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-2"><Badge variant="outline" className="text-xs">Free Period</Badge></div>
+                <div className="text-center py-3 text-xs text-muted-foreground">Free Period</div>
               )}
             </Card>
 
-            <Card className={`glass-card p-4 rounded-2xl border shadow-lg ${upcomingClass ? "border-primary/40 bg-primary/10 shadow-primary/10" : "border-white/20 dark:border-white/10"}`}>
+            <Card className={`glass-card p-5 rounded-3xl border shadow-lg ${upcomingClass ? "border-blue-500/30 bg-blue-500/10" : "border-white/10"}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 mb-2">
-                  <Calendar className={`w-4 h-4 md:w-5 md:h-5 ${upcomingClass ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className="text-sm md:text-base font-bold text-foreground">Next Up</span>
+                  <span className={`h-2 w-2 rounded-full ${upcomingClass ? "bg-blue-400" : "bg-muted-foreground"}`} />
+                  <span className="text-sm font-bold text-foreground">Next Up</span>
                 </div>
                 {upcomingClass && upcomingCountdown !== null && (
-                  <Badge variant="glass-info" className="text-xs px-2.5 py-0.5 rounded-full font-mono">{formatCountdown(upcomingCountdown)}</Badge>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-blue-500/15 text-blue-400 border border-blue-500/25 font-bold">
+                    {formatCountdown(upcomingCountdown)}
+                  </span>
                 )}
               </div>
               {upcomingClass ? (
-                <div className="space-y-1.5">
-                  <div className="font-bold text-base line-clamp-1">{upcomingClass.name}</div>
+                <div className="space-y-2 mt-1">
+                  <div className="font-bold text-lg leading-snug text-foreground">{upcomingClass.name}</div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <Badge variant="glass" className="font-mono text-xs">{upcomingClass.code}</Badge>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-white/10 border border-white/10 text-muted-foreground">
+                      {upcomingClass.code}
+                    </span>
                     <span className="text-muted-foreground font-semibold">{upcomingClass.timeSlot}</span>
                   </div>
                   {upcomingClass.venue && (
@@ -113,13 +131,13 @@ const Timetable = () => {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-2"><Badge variant="outline" className="text-xs">Free Period</Badge></div>
+                <div className="text-center py-3 text-xs text-muted-foreground">Free Period</div>
               )}
             </Card>
           </>
         ) : (
-          <Card className="col-span-1 glass-card p-6 rounded-2xl border border-white/20 dark:border-white/10 shadow-lg md:col-span-2 text-center">
-            <Calendar className="w-6 h-6 text-primary/60 mx-auto mb-2" />
+          <Card className="col-span-1 glass-card p-6 rounded-3xl border border-white/10 shadow-lg md:col-span-2 text-center">
+            <Calendar className="w-6 h-6 text-muted-foreground/60 mx-auto mb-2" />
             <div className="text-base font-semibold text-foreground">No More Classes Today</div>
             <p className="text-xs text-muted-foreground mt-1">You're all done for the day!</p>
           </Card>
@@ -133,10 +151,10 @@ const Timetable = () => {
         attendance={selectedSubjectAttendance}
       />
 
-      <Card className="glass-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/25 dark:border-white/10 shadow-xl">
-        <CardHeader className="flex-shrink-0 border-b border-white/10 px-4 py-3.5">
-          <CardTitle className="flex items-center gap-2 text-base md:text-lg font-bold">
-            <Clock className="w-4 h-4 md:w-5 md:h-5 text-primary" />
+      <Card className="glass-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/10 shadow-xl">
+        <CardHeader className="flex-shrink-0 border-b border-white/10 px-5 py-4">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg font-bold tracking-tight">
+            <Clock className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
             Weekly Schedule Matrix
           </CardTitle>
         </CardHeader>

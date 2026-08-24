@@ -85,34 +85,34 @@ const AttendanceCard = ({ subject }: { subject: Subject }) => {
 
   return (
     <>
-      <Card className="glass-card mb-4 rounded-2xl border border-white/10 dark:border-white/[0.07] shadow-md overflow-hidden transition-all duration-200">
-        <CardHeader className="pb-3 px-4 pt-4 border-b border-white/10 dark:border-white/[0.06]">
-          <div className="flex justify-between items-start gap-2">
+      <Card className="glass-card mb-4 rounded-3xl border border-white/10 shadow-lg overflow-hidden transition-all duration-300 hover:border-white/20">
+        <CardHeader className="pb-3 px-5 pt-5 border-b border-white/10">
+          <div className="flex justify-between items-start gap-3">
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-base font-bold text-foreground truncate leading-snug">{subject.subject_name}</CardTitle>
-              <p className="text-muted-foreground text-xs font-mono mt-0.5">{subject.subject_code}</p>
+              <CardTitle className="text-base font-bold text-foreground truncate leading-snug tracking-tight">
+                {subject.subject_name}
+              </CardTitle>
+              <p className="text-muted-foreground text-xs font-mono mt-0.5 opacity-80">{subject.subject_code}</p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <div className="glass-panel px-2.5 py-1 rounded-xl border border-white/15 shadow-sm">
-                <span
-                  className={`text-sm font-bold tabular-nums ${
-                    simulatedPercentage < 75
-                      ? "text-red-500"
-                      : simulatedPercentage <= 80
-                      ? "text-amber-500"
-                      : "text-emerald-500"
-                  }`}
-                >
-                  {simulatedPercentage.toFixed(2)}%
-                </span>
-              </div>
+              <span
+                className={`text-xs font-bold px-2.5 py-1 rounded-full font-mono border backdrop-blur-md ${
+                  simulatedPercentage < 75
+                    ? "bg-red-500/10 text-red-400 border-red-500/20"
+                    : simulatedPercentage <= 80
+                    ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                }`}
+              >
+                {simulatedPercentage.toFixed(1)}%
+              </span>
               <AttendanceDialog subject={subject} />
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 p-4">
+        <CardContent className="space-y-3.5 p-5">
           <div>
-            <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-white/10 dark:bg-white/[0.08] rounded-full h-2 overflow-hidden">
               <div
                 className={`h-2 rounded-full transition-all duration-500 ${
                   simulatedPercentage < 75
@@ -124,38 +124,42 @@ const AttendanceCard = ({ subject }: { subject: Subject }) => {
                 style={{ width: `${Math.min(simulatedPercentage, 100)}%` }}
               />
             </div>
-            <div className="flex justify-between mt-1.5 text-xs text-muted-foreground">
-              <span>Target: 75%</span>
-              <span className="font-semibold text-foreground">Current: {simulatedPercentage.toFixed(2)}%</span>
+            <div className="flex justify-between mt-1.5 text-[11px] text-muted-foreground">
+              <span>Required: 75%</span>
+              <span className="font-semibold text-foreground">Current: {simulatedPercentage.toFixed(1)}%</span>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
-              <p className="text-[11px] font-medium text-muted-foreground">Present</p>
-              <p className="text-lg font-bold text-emerald-500 mt-0.5">{displayedAttended}</p>
+            <div className="bg-white/5 border border-white/5 p-2.5 rounded-2xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Attended</p>
+              <p className="text-base font-bold text-foreground mt-0.5">{displayedAttended}</p>
             </div>
-            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+            <div className="bg-white/5 border border-white/5 p-2.5 rounded-2xl">
               <p className="text-[11px] font-medium text-muted-foreground">Absent</p>
-              <p className="text-lg font-bold text-red-500 mt-0.5">{absentClasses}</p>
+              <p className="text-base font-bold text-muted-foreground mt-0.5">{absentClasses}</p>
             </div>
-            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
+            <div className="bg-white/5 border border-white/5 p-2.5 rounded-2xl">
               <p className="text-[11px] font-medium text-muted-foreground">Total Classes</p>
-              <p className="text-lg font-bold text-foreground mt-0.5">{displayedTotal}</p>
+              <p className="text-base font-bold text-foreground mt-0.5">{displayedTotal}</p>
             </div>
-            <div className="bg-white/10 dark:bg-white/[0.03] border border-white/10 dark:border-white/[0.06] p-2.5 rounded-xl">
-              <p className="text-[11px] font-medium text-muted-foreground">Can Bunk</p>
-              <p className="text-lg font-bold text-blue-500 mt-0.5">{remainingBunks}</p>
+            <div className="bg-white/5 border border-white/5 p-2.5 rounded-2xl">
+              <p className="text-[11px] font-medium text-muted-foreground">Safe Bunks</p>
+              <p className={`text-base font-bold mt-0.5 ${remainingBunks > 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
+                {remainingBunks}
+              </p>
             </div>
             {simulatedPercentage < 75 && (
-              <div className="bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl col-span-2">
-                <p className="text-[11px] text-red-500 font-medium">Classes Needed for 75%</p>
-                <p className="text-lg font-bold text-red-500 mt-0.5">{classesNeeded}</p>
+              <div className="bg-red-500/10 border border-red-500/20 p-2.5 rounded-2xl col-span-2">
+                <p className="text-[11px] text-red-400 font-medium">Classes Needed for 75%</p>
+                <p className="text-base font-bold text-red-400 mt-0.5">{classesNeeded} classes</p>
               </div>
             )}
           </div>
-          <div className="glass-panel p-3 rounded-xl border border-white/15 shadow-sm">
+
+          <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
             <div className="flex justify-between items-center mb-2">
-              <p className="text-xs font-semibold text-muted-foreground">Simulators & Predictions</p>
+              <p className="text-xs font-semibold text-muted-foreground">Bunk Simulator</p>
               {hasSimulations && (
                 <Button
                   onClick={handleRevertChanges}
@@ -180,7 +184,7 @@ const AttendanceCard = ({ subject }: { subject: Subject }) => {
                 variant="glass-primary"
                 className="flex-1 text-xs h-8 rounded-xl font-medium"
               >
-                Future Target
+                Target %
               </Button>
             </div>
           </div>

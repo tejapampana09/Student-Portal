@@ -162,57 +162,53 @@ const CGPACalculator = () => {
     };
 
     return (
-        <div className="space-y-4 pb-6">
-            <Card className="glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg">
-                <CardHeader className="p-4 sm:p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                            <CardTitle className="text-xl font-bold">
-                                {isManualMode ? "Manual Subjects Mode" : "Auto-Filled Subjects Mode"}
-                            </CardTitle>
-                            <CardDescription className="text-xs sm:text-sm mt-0.5">
-                                {isManualMode
-                                    ? "Add your customized subjects, credit weightages, and expected grades"
-                                    : "Subjects pre-populated from your semester registration — assign grades to simulate CGPA"}
-                            </CardDescription>
-                        </div>
-                        <Button
-                            variant={isManualMode ? "glass-primary" : "glass"}
-                            onClick={() => setIsManualMode(!isManualMode)}
-                            className="rounded-xl shrink-0 text-xs font-semibold h-9"
-                        >
-                            {isManualMode ? "Switch to Auto Mode" : "Switch to Manual Mode"}
-                        </Button>
-                    </div>
-                </CardHeader>
-            </Card>
+        <div className="space-y-6 pb-8 max-w-7xl mx-auto w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                        CGPA & SGPA Simulator
+                    </h1>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                        Grade point estimations & academic projection calculator
+                    </p>
+                </div>
+                <Button
+                    variant={isManualMode ? "glass-primary" : "glass"}
+                    onClick={() => setIsManualMode(!isManualMode)}
+                    className="rounded-2xl shrink-0 text-xs font-semibold h-9 px-4 self-start sm:self-auto"
+                >
+                    {isManualMode ? "Switch to Auto Mode" : "Switch to Manual Mode"}
+                </Button>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="glass-card rounded-2xl border border-white/20 dark:border-white/10 shadow-md">
-                    <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-sm font-semibold text-muted-foreground">Current Semester</CardTitle>
+                <Card className="glass-card rounded-3xl border border-white/10 shadow-lg p-2">
+                    <CardHeader className="p-4 pb-1">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Semester</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{profile?.semester || "Not available"}</p>
+                    <CardContent className="p-4 pt-1">
+                        <p className="text-2xl font-bold text-foreground">{profile?.semester || "N/A"}</p>
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card rounded-2xl border border-white/20 dark:border-white/10 shadow-md">
-                    <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-sm font-semibold text-muted-foreground">Current Baseline CGPA</CardTitle>
+                <Card className="glass-card rounded-3xl border border-white/10 shadow-lg p-2">
+                    <CardHeader className="p-4 pb-1">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Baseline CGPA</CardTitle>
                     </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                        <p className="text-2xl font-bold text-emerald-500 tabular-nums">{Number(currentCGPA).toFixed(2)}</p>
+                    <CardContent className="p-4 pt-1">
+                        <p className="text-2xl font-bold text-foreground tabular-nums">
+                            {Number(currentCGPA) > 0 ? Number(currentCGPA).toFixed(2) : "N/A"}
+                        </p>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="glass-card rounded-2xl border border-white/25 dark:border-white/10 shadow-lg">
-                <CardHeader className="p-4 sm:p-5 border-b border-white/10">
+            <Card className="glass-card rounded-3xl border border-white/10 shadow-lg">
+                <CardHeader className="p-5 sm:p-6 border-b border-white/10">
                     <div className="flex justify-between items-center">
                         <div>
-                            <CardTitle className="text-lg font-bold">Subjects & Grades</CardTitle>
-                            <CardDescription className="text-xs sm:text-sm">Select expected grade for each course</CardDescription>
+                            <CardTitle className="text-lg font-bold tracking-tight">Subjects & Grade Simulator</CardTitle>
+                            <CardDescription className="text-xs">Select expected grades to calculate projected SGPA & CGPA</CardDescription>
                         </div>
                         {isManualMode && (
                             <Button onClick={addNewSubject} size="sm" variant="glass-primary" className="rounded-xl text-xs h-8">

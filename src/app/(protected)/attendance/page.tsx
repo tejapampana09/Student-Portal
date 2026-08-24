@@ -203,16 +203,26 @@ const AttendanceDetails = () => {
   }, [sessionValid]);
 
   return (
-    <div className="relative">
-      <div className="flex mb-6 items-center justify-between">
-        <div className="flex items-center gap-2 ml-auto">
+    <div className="relative max-w-7xl mx-auto w-full pb-8">
+      {/* 🍏 Apple Liquid Glass Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Attendance & Course Analytics
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            {displayedSubjects.length} enrolled subjects · 75% minimum threshold
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {isPredicted && (
             <Button
-              variant="outline"
+              variant="glass"
               size="sm"
               onClick={handleReset}
               disabled={isResetting}
-              className="text-xs sm:text-sm px-2.5 sm:px-3 h-8 sm:h-9 gap-1.5 dark:bg-white dark:text-black shrink-0"
+              className="text-xs px-3 h-8.5 gap-1.5 rounded-xl font-medium shrink-0"
             >
               <RotateCcw className={`h-3.5 w-3.5 shrink-0 ${isResetting ? "animate-spin" : ""}`} />
               <span>Reset</span>
@@ -220,16 +230,16 @@ const AttendanceDetails = () => {
           )}
 
           <Button
-            variant="default"
+            variant="glass-primary"
             size="sm"
             onClick={handleCalculateToday}
             disabled={isCalculating}
-            className="text-xs sm:text-sm px-3 sm:px-4 h-8 sm:h-9 gap-1.5 shrink-0"
+            className="text-xs px-3.5 h-8.5 gap-1.5 rounded-xl font-semibold shrink-0 shadow-sm"
           >
             {isCalculating ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                <span>Calculating...</span>
+                <span>Syncing...</span>
               </>
             ) : (
               <span>Calculate Today</span>
@@ -239,31 +249,31 @@ const AttendanceDetails = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="outline"
+                variant="glass"
                 size="sm"
-                className="h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center shrink-0"
+                className="h-8.5 w-8.5 p-0 flex items-center justify-center rounded-xl shrink-0"
                 title="Options"
               >
                 <MoreVertical className="h-4 w-4" />
                 <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="glass-card border border-white/15 rounded-2xl p-1.5 shadow-2xl">
               <DropdownMenuItem
                 onClick={() => setHistoryDialogOpen(true)}
-                className="cursor-pointer gap-2"
+                className="cursor-pointer gap-2 rounded-xl text-xs py-2"
               >
-                <History className="h-4 w-4" />
+                <History className="h-3.5 w-3.5" />
                 <span>Attendance History</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <Button
-            variant={currentSort !== "default" ? "default" : "outline"}
+            variant="glass"
             size="sm"
             onClick={handleCycleSort}
-            className="h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center shrink-0"
+            className="h-8.5 w-8.5 p-0 flex items-center justify-center rounded-xl shrink-0"
             title={`Sort mode: ${currentSort}`}
           >
             {getSortIcon(currentSort)}
