@@ -99,7 +99,8 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
       const { sessionId: newSessionId, sessionTime: newSessionTime } = res.data;
 
       updateActiveAccount({ sessionId: newSessionId, sessionTime: newSessionTime, hasCachedData: false });
-      await fetchFreshData({ sessionId: newSessionId, sessionTime: newSessionTime });
+      // Non-blocking background data sync so the button activates instantly
+      void fetchFreshData({ sessionId: newSessionId, sessionTime: newSessionTime });
       return { sessionId: newSessionId, sessionTime: newSessionTime };
     } catch (err) {
       const errMsg = extractErrorMessage(err);
@@ -109,7 +110,7 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
       console.error("Session initiation failed:", err);
       return null;
     }
-  }, [lProfile.sessionId, lProfile.sessionTime, updateActiveAccount, fetchFreshData, lProfile.data]);
+  }, [updateActiveAccount, fetchFreshData]);
 
   const initializeStudentData = useCallback(async () => {
     try {
