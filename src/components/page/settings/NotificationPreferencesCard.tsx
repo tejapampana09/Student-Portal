@@ -98,6 +98,8 @@ export default function NotificationPreferencesCard() {
     }
   };
 
+  const DEFAULT_VAPID_KEY = "BE6XJ1s9K-5thzTzD5-R0GLEZGE-xEYodghIdH4Vj7bQpf12p1AOwBfjZI8N45WsiJy7OxRpw9tAsakehbDbliA";
+
   // Handle Push Toggle
   const handleTogglePush = async (checked: boolean) => {
     if (!pushSupported) {
@@ -110,8 +112,8 @@ export default function NotificationPreferencesCard() {
 
       if (!checked) {
         // Unsubscribe
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
+        const reg = await navigator.serviceWorker.getRegistration("/sw.js") || await navigator.serviceWorker.ready;
+        const sub = await reg?.pushManager?.getSubscription();
         if (sub) await sub.unsubscribe();
         await API.post("/notifications/push", { action: "unsubscribe" });
         setPushEnabled(false);
@@ -126,8 +128,14 @@ export default function NotificationPreferencesCard() {
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
-      const key = vapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+      // Ensure service worker is registered
+      let reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      if (!reg) {
+        reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      }
+      await navigator.serviceWorker.ready;
+
+      const key = vapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_KEY;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(key),
@@ -148,8 +156,14 @@ export default function NotificationPreferencesCard() {
   const handleTestPush = async () => {
     try {
       setPushLoading(true);
-      await API.post("/notifications/push", { action: "test" });
-      toast({ title: "Push Triggered!", description: "Notification sent to your device." });
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js") || await navigator.serviceWorker.ready;
+      const sub = await reg?.pushManager?.getSubscription();
+      
+      await API.post("/notifications/push", {
+        action: "test",
+        subscription: sub ? sub.toJSON() : undefined,
+      });
+      toast({ title: "Push Triggered! 🔔", description: "Check your device notification bar." });
     } catch (err: any) {
       toast({ title: "Test Error", description: err.message || "Failed to trigger push notification.", variant: "destructive" });
     } finally {
