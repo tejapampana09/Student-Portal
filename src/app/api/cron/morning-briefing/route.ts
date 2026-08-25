@@ -7,6 +7,8 @@ import academicCalendar from "@/static/academic_calendar.json";
 import { DateTime } from "luxon";
 
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.ACCESS_SECRET || "srmap_cron_secret";
   const isLocalhost = req.headers.get("host")?.includes("localhost") || req.headers.get("host")?.includes("127.0.0.1");
   const isAuthorized = authHeader === `Bearer ${cronSecret}` || req.headers.get("x-local-cron") || isLocalhost;
 

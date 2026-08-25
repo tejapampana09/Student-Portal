@@ -1,5 +1,3 @@
-import axios from "axios";
-
 export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -32,51 +30,60 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
       },
     };
 
-    const resText = await axios.post(url, textPayload, {
+    const resText = await fetch(url, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      timeout: 10000,
+      body: JSON.stringify(textPayload),
+      signal: AbortSignal.timeout(10000),
     });
 
-    if (resText.status === 200 || resText.status === 201) {
+    const dataText = await resText.json();
+
+    if (resText.ok) {
       return { success: true };
     }
-  } catch (textErr: any) {
+
+    console.warn("Direct WhatsApp text failed, trying template fallback...", dataText);
+
     // 2. If text fails (e.g. 24h window closed), send approved hello_world template
-    try {
-      const templatePayload = {
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: cleanPhone,
-        type: "template",
-        template: {
-          name: "hello_world",
-          language: { code: "en_US" },
-        },
-      };
+    const templatePayload = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: cleanPhone,
+      type: "template",
+      template: {
+        name: "hello_world",
+        language: { code: "en_US" },
+      },
+    };
 
-      const resTemplate = await axios.post(url, templatePayload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 10000,
-      });
+    const resTemplate = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(templatePayload),
+      signal: AbortSignal.timeout(10000),
+    });
 
-      if (resTemplate.status === 200 || resTemplate.status === 201) {
-        return { success: true };
-      }
-    } catch (templateErr: any) {
-      const errData = textErr?.response?.data?.error || templateErr?.response?.data?.error;
-      const errMsg = errData?.message || textErr?.message || "WhatsApp dispatch failed";
-      console.error("WhatsApp Meta Cloud API error:", errData || textErr?.message);
-      return { success: false, error: errMsg };
+    const dataTemplate = await resTemplate.json();
+
+    if (resTemplate.ok) {
+      return { success: true };
     }
-  }
 
-  return { success: true };
+    const errData = dataText?.error || dataTemplate?.error;
+    const errMsg = errData?.message || "WhatsApp dispatch failed";
+    console.error("WhatsApp Meta Cloud API error:", errData);
+    return { success: false, error: errMsg };
+  } catch (err: any) {
+    console.error("WhatsApp dispatch network error:", err.message);
+    return { success: false, error: err.message || "Network timeout" };
+  }
 }
 
 export function buildDailyBriefingMessage(
