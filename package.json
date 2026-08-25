@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "PORT=3000 next start",
-    "lint": "next lint",
+    "lint": "next lint --dir src",
     "faculty": "cd scripts/faculty && node convertFacultyExcelToJson.js"
   },
   "dependencies": {
@@ -75,7 +75,6 @@
   },
   "overrides": {
     "postcss": "$postcss",
-    "sharp": "^0.35.0",
-    "brace-expansion": "^5.0.8"
+    "sharp": "^0.35.0"
   }
 }

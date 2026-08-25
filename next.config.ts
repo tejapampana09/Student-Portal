@@ -16,12 +16,6 @@ const config = {
       },
     ],
   },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   serverExternalPackages: ["sharp", "tfjs-tflite-node", "@tensorflow/tfjs"],
 };
 

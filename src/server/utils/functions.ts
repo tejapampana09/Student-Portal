@@ -9,12 +9,14 @@ import { userBlockedResponse } from "@/server/utils/responses";
 import { httpAgent, httpsAgent } from "@/server/utils/httpAgents";
 
 function getAccessSecret(): string {
-    const value = process.env.ACCESS_SECRET || "srmap_default_access_secret_jwt_key_2026_secure";
+    const value = process.env.ACCESS_SECRET;
+    if (!value || value.length < 32) throw new Error("ACCESS_SECRET must be configured and at least 32 characters long");
     return value;
 }
 
 function getEncryptionSecret(): string {
-    const value = process.env.DB_ENCRYPTION_KEY || process.env.ACCESS_SECRET || "srmap_default_db_encryption_key_32bytes_min";
+    const value = process.env.DB_ENCRYPTION_KEY;
+    if (!value || value.length < 32) throw new Error("DB_ENCRYPTION_KEY must be configured and at least 32 characters long");
     return value;
 }
 

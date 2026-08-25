@@ -100,41 +100,28 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
       const data = lProfile.data;
       const sessionId = lProfile.sessionId;
       const sessionTime = lProfile.sessionTime;
-      const accessToken = lProfile.accessToken;
 
-      if (!sessionTime) return;
-      if (accessToken && !sessionTime) return logout();
-
-      const shouldRefresh = needsRefresh(sessionTime);
-
-      if (shouldRefresh && !lProfile.hasCachedData) {
-        return await initiateSession();
+      if (data) {
+        loadDataToState(data);
       }
-      
-      if (lProfile.hasCachedData) {
-        if (data) {
-          loadDataToState(data);
-          setLoadCachedDataPrompt(false);
-        } else {
+
+      if (!sessionTime || needsRefresh(sessionTime)) {
+        if (!lProfile.hasCachedData) {
+          return await initiateSession();
+        }
+      }
+
+      if (!hasFetchedOnLoadRef.current) {
+        hasFetchedOnLoadRef.current = true;
+        if (!data) {
           return await fetchFreshData();
         }
-      } else if (isSessionValid(sessionTime) && sessionId) {
-        if (!hasFetchedOnLoadRef.current) {
-          hasFetchedOnLoadRef.current = true;
-          return await fetchFreshData();
-        } else if (data) {
-          loadDataToState(data);
-        } else {
-          return await fetchFreshData();
-        }
-      } else {
-        if (data) loadDataToState(data);
       }
     } catch (error) {
       console.error("Initialization error:", error);
       setError(error);
     }
-  }, [logout, lProfile.data, lProfile.sessionId, lProfile.sessionTime, lProfile.accessToken, lProfile.hasCachedData, fetchFreshData, initiateSession]);
+  }, [lProfile.data, lProfile.sessionId, lProfile.sessionTime, lProfile.hasCachedData, fetchFreshData, initiateSession]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
