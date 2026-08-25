@@ -39,8 +39,20 @@ async function attemptLogin(username: string, password: string): Promise<LoginRe
   });
 
   const html = await loginRes.text();
-  const nameMatch = html.match(/<h2>(.*?)<\/h2>/);
-  if (!nameMatch) throw new Error("Invalid credentials");
+
+  const alertMatch = html.match(/alert\(['"](.*?)['"]\)/i);
+  if (alertMatch) {
+    const alertMsg = alertMatch[1]?.trim();
+    if (/captcha/i.test(alertMsg)) {
+      throw new Error(`Captcha Error: ${alertMsg}`);
+    }
+    throw new Error(alertMsg || "Invalid credentials");
+  }
+
+  const nameMatch = html.match(/<h2>(.*?)<\/h2>/i);
+  if (!nameMatch && !html.includes("logout") && !html.includes("Logout") && !html.includes("HRDSystem")) {
+    throw new Error("Invalid credentials");
+  }
 
   return { success: true, sessionId: jsessionId };
 }
