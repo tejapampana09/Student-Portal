@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
         );
 
         const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
-        if (sent) dispatched++;
+        if (sent.success) dispatched++;
       } catch (userErr) {
         console.error(`Error processing morning briefing for ${u.username}:`, userErr);
       }

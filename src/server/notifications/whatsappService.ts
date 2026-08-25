@@ -1,34 +1,47 @@
 import axios from "axios";
 
-export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<boolean> {
+export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
-    console.error("WhatsApp credentials missing in environment variables.");
-    return false;
+    return { success: false, error: "WhatsApp credentials missing in environment variables." };
   }
 
   // Sanitize phone number (strip +, spaces, hyphens)
   let cleanPhone = recipientPhone.replace(/\D/g, "");
   if (cleanPhone.length === 10) {
-    cleanPhone = "91" + cleanPhone; // default India code if 10 digits
+    cleanPhone = "91" + cleanPhone;
   }
 
+  const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+
+  // First try sending template message (for 24h window compliance)
   try {
-    const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
-    const payload = {
+    const templatePayload = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
       to: cleanPhone,
-      type: "text",
-      text: {
-        preview_url: true,
-        body: message,
+      type: "template",
+      template: {
+        name: process.env.WHATSAPP_TEMPLATE_NAME || "email_alert",
+        language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "en" },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: "SRMAP Student Portal" },
+              { type: "text", text: "Daily Academic Briefing" },
+              { type: "text", text: "Academics" },
+              { type: "text", text: "High" },
+              { type: "text", text: message.length > 300 ? message.substring(0, 297) + "..." : message },
+            ],
+          },
+        ],
       },
     };
 
-    const res = await axios.post(url, payload, {
+    const res = await axios.post(url, templatePayload, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -36,11 +49,43 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
       timeout: 10000,
     });
 
-    return res.status === 200 || res.status === 201;
-  } catch (error: any) {
-    console.error("Error sending WhatsApp message via Meta Cloud API:", error?.response?.data || error?.message);
-    return false;
+    if (res.status === 200 || res.status === 201) {
+      return { success: true };
+    }
+  } catch (templateErr: any) {
+    // If template fails, attempt direct text message
+    try {
+      const textPayload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: message,
+        },
+      };
+
+      const resText = await axios.post(url, textPayload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 10000,
+      });
+
+      if (resText.status === 200 || resText.status === 201) {
+        return { success: true };
+      }
+    } catch (textErr: any) {
+      const errData = templateErr?.response?.data?.error || textErr?.response?.data?.error;
+      const errMsg = errData?.message || textErr?.message || "WhatsApp dispatch failed";
+      console.error("WhatsApp Meta Cloud API error:", errData || textErr?.message);
+      return { success: false, error: errMsg };
+    }
   }
+
+  return { success: true };
 }
 
 export function buildDailyBriefingMessage(

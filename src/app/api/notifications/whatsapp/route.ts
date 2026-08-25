@@ -38,10 +38,10 @@ export async function POST(req: NextRequest) {
       if (!phone) return errorResponse("Phone number is required for test message");
       const testMsg = `🎓 *SRMAP Student Portal Alert*\n\nHello! This is a test notification from your SRMAP Student Portal. Your WhatsApp briefing integration is now active! 🚀\n\n🔗 https://3.87.134.201.sslip.io`;
       const sent = await sendWhatsAppTextMessage(phone, testMsg);
-      if (sent) {
+      if (sent.success) {
         return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
       } else {
-        return errorResponse("Failed to send WhatsApp message. Check phone number format.", {}, 500);
+        return errorResponse(sent.error || "Failed to send WhatsApp message. Ensure recipient is in allowed list.", {}, 500);
       }
     }
 
