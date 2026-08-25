@@ -118,7 +118,7 @@ export const CustomizeDashboardModal: React.FC<Props> = ({ config, onChange }) =
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-md w-[92vw] sm:w-full glass-card border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl">
+      <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl">
         <DialogHeader className="text-left space-y-1 pb-2 border-b border-white/10">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
