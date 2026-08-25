@@ -6,9 +6,11 @@ export interface SmartTask {
   category: "class" | "attendance" | "coursera" | "coding" | "custom";
   priority: "high" | "medium" | "low";
   timeEstimate?: string;
+  timeBlock?: "Morning" | "Afternoon" | "Evening" | "Night";
   completed: boolean;
   dueDate?: string;
   context?: string;
+  subtasks?: Array<{ id: string; title: string; completed: boolean }>;
 }
 
 export async function generateSmartDayPlan(data: {
@@ -17,6 +19,7 @@ export async function generateSmartDayPlan(data: {
   todayClasses: Array<{ name: string; timeSlot: string; venue?: string }>;
   lowAttendance: Array<{ subject_name?: string; subject_code?: string; attendance_percentage?: string | number }>;
   courseraCourses: Array<{ title: string; totalModules: number; completedModules: number; deadline: string }>;
+  striverPotd?: { title: string; difficulty: string; step: string; keyIdea: string };
   leetcodeStreak?: number;
   customTasks?: Array<{ id: string; title: string; completed: boolean }>;
 }): Promise<SmartTask[]> {
@@ -26,29 +29,34 @@ export async function generateSmartDayPlan(data: {
     try {
       const ai = new GoogleGenAI({ apiKey });
       const prompt = `
-You are an intelligent academic AI assistant for an SRM University student named ${data.studentName}.
-Generate a structured, prioritized list of 4-7 actionable tasks for today (${data.currentDay}).
+You are an intelligent academic AI mentor for an SRM University student named ${data.studentName}.
+Generate a structured, realistic, and prioritized daily academic time-block schedule for today (${data.currentDay}).
 
 Context:
-- Today's Classes: ${JSON.stringify(data.todayClasses)}
-- Low Attendance (<75%): ${JSON.stringify(data.lowAttendance)}
-- Active Coursera/Certifications: ${JSON.stringify(data.courseraCourses)}
+- Today's Classes & Venues: ${JSON.stringify(data.todayClasses)}
+- Low Attendance Alerts (<75%): ${JSON.stringify(data.lowAttendance)}
+- Active Coursera Certifications: ${JSON.stringify(data.courseraCourses)}
+- Striver A2Z DSA Problem of the Day: ${JSON.stringify(data.striverPotd || "Arrays / Hashing")}
 - LeetCode Streak: ${data.leetcodeStreak || 0} days
-- Existing To-Dos: ${JSON.stringify(data.customTasks || [])}
+- Student's Custom To-Dos: ${JSON.stringify(data.customTasks || [])}
 
-Return a valid JSON array of objects with the exact schema:
+Return a valid JSON array of 5-7 tasks with schema:
 [
   {
-    "id": "unique-string",
-    "title": "Clear actionable title with emoji",
+    "id": "unique-task-id",
+    "title": "Actionable task with emoji",
     "category": "class" | "attendance" | "coursera" | "coding" | "custom",
     "priority": "high" | "medium" | "low",
-    "timeEstimate": "e.g. 45 mins / 1:00 PM",
+    "timeBlock": "Morning" | "Afternoon" | "Evening" | "Night",
+    "timeEstimate": "e.g. 45 mins / 10:00 AM",
     "completed": false,
-    "context": "Brief helpful tip or room number"
+    "context": "Short helpful tip, room venue, or key insight",
+    "subtasks": [
+      { "id": "sub-1", "title": "Micro step", "completed": false }
+    ]
   }
 ]
-Output ONLY raw JSON. No markdown backticks, no markdown formatting.
+Output ONLY raw JSON.
 `;
 
       const response = await ai.models.generateContent({
@@ -65,9 +73,11 @@ Output ONLY raw JSON. No markdown backticks, no markdown formatting.
           title: t.title || "Academic task",
           category: t.category || "custom",
           priority: t.priority || "medium",
+          timeBlock: t.timeBlock || "Morning",
           timeEstimate: t.timeEstimate || "30 mins",
           completed: Boolean(t.completed),
           context: t.context || "",
+          subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
         }));
       }
     } catch (err) {
@@ -85,9 +95,10 @@ Output ONLY raw JSON. No markdown backticks, no markdown formatting.
       title: `🚨 Must Attend ${sub.subject_name || sub.subject_code} (${sub.attendance_percentage}%)`,
       category: "attendance",
       priority: "high",
+      timeBlock: "Morning",
       timeEstimate: "Mandatory",
       completed: false,
-      context: "Attendance is currently below the 75% university threshold.",
+      context: "Attendance is currently below 75%. Bunking this class will risk debarment.",
     });
   });
 
@@ -95,16 +106,31 @@ Output ONLY raw JSON. No markdown backticks, no markdown formatting.
   data.todayClasses.slice(0, 3).forEach((cls, idx) => {
     tasks.push({
       id: `class-${idx}`,
-      title: `📚 Attend ${cls.name} (${cls.timeSlot.split("-")[0]})`,
+      title: `📚 Attend ${cls.name} (${cls.timeSlot})`,
       category: "class",
       priority: "medium",
+      timeBlock: idx === 0 ? "Morning" : "Afternoon",
       timeEstimate: cls.timeSlot,
       completed: false,
-      context: cls.venue ? `Room: ${cls.venue}` : "Lecture session",
+      context: cls.venue ? `Room: ${cls.venue}` : "Scheduled lecture session",
     });
   });
 
-  // 3. Coursera module pace
+  // 3. Striver A2Z POTD
+  if (data.striverPotd) {
+    tasks.push({
+      id: "striver-potd-task",
+      title: `🔥 Solve Striver A2Z POTD: '${data.striverPotd.title}' (${data.striverPotd.difficulty})`,
+      category: "coding",
+      priority: "high",
+      timeBlock: "Evening",
+      timeEstimate: "45 mins",
+      completed: false,
+      context: `💡 ${data.striverPotd.keyIdea}`,
+    });
+  }
+
+  // 4. Coursera module pace
   data.courseraCourses.forEach((c, idx) => {
     const remaining = c.totalModules - c.completedModules;
     if (remaining > 0) {
@@ -114,25 +140,49 @@ Output ONLY raw JSON. No markdown backticks, no markdown formatting.
         title: `🎓 Coursera: Module ${c.completedModules + 1} of '${c.title}'`,
         category: "coursera",
         priority: daysLeft <= 3 ? "high" : "medium",
+        timeBlock: "Night",
         timeEstimate: "45 mins",
         completed: false,
-        context: `Due in ${daysLeft} days. Complete reading & graded quiz.`,
+        context: `Due in ${daysLeft} days. Finish video lectures & graded assessment.`,
       });
     }
   });
 
-  // 4. Coding streak
-  tasks.push({
-    id: "leetcode-daily",
-    title: `🔥 Solve 1 Daily LeetCode Problem (Keep ${data.leetcodeStreak || 0}-Day Streak)`,
-    category: "coding",
-    priority: "medium",
-    timeEstimate: "30 mins",
-    completed: false,
-    context: "Consistent daily problem solving boosts campus placement readiness.",
-  });
-
   return tasks;
+}
+
+export async function generateTaskSubsteps(taskTitle: string): Promise<Array<{ id: string; title: string; completed: boolean }>> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_KEY;
+
+  if (apiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `
+Break down the task "${taskTitle}" for an SRM University engineering student into 3 concise, highly actionable 15-minute micro-subtasks.
+
+Return a raw JSON array:
+[
+  { "id": "sub-1", "title": "Subtask title with emoji", "completed": false }
+]
+Output ONLY raw JSON.
+`;
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+
+      const raw = response.text || "";
+      const cleaned = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+
+  return [
+    { id: `sub-${Date.now()}-1`, title: "Review instructions & setup environment", completed: false },
+    { id: `sub-${Date.now()}-2`, title: "Execute core implementation / study concept", completed: false },
+    { id: `sub-${Date.now()}-3`, title: "Review output & mark completed", completed: false },
+  ];
 }
 
 export async function generateCourseraModuleTasks(courseTitle: string, totalModules: number): Promise<Array<{ moduleNum: number; tasks: string[] }>> {
@@ -155,7 +205,7 @@ Return a raw JSON array of objects with the exact schema:
     ]
   }
 ]
-Output ONLY raw JSON. No markdown backticks.
+Output ONLY raw JSON.
 `;
 
       const response = await ai.models.generateContent({
@@ -174,7 +224,6 @@ Output ONLY raw JSON. No markdown backticks.
     }
   }
 
-  // Fallback module template
   const list = [];
   for (let i = 1; i <= totalModules; i++) {
     list.push({

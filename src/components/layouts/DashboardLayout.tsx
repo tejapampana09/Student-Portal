@@ -15,8 +15,8 @@ import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { motion, AnimatePresence } from "framer-motion";
 import { BookOpenText, Lock, ChevronDown, Library, Folder, MessageSquare, ChevronRight, MessageCircle, ChevronUp, Sun, Moon, LogOut, RotateCcw, Home, List, AppWindow, Calendar, Calculator, User, Users, Settings, ListChecks, CalendarDays, Shield, Edit, X, FileSpreadsheet, Building, MoreVertical, Check, Loader2, Clapperboard, CheckCircle2, AlertCircle, Info, Briefcase } from "lucide-react";
+import { FloatingVoiceAssistant } from "@/components/common/FloatingVoiceAssistant";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -1048,6 +1048,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
           <div className={`flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 sm:p-6 ${isMobile && usesMobileSideNav ? "pl-14" : ""}`}>
             {children}
           </div>
+          <FloatingVoiceAssistant />
           <footer className={`flex-shrink-0 p-6 pt-4 border-t border-border bg-background/80 backdrop-blur-sm ${isMobile && !usesMiniMobileNav && !usesMobileSideNav ? 'pb-28' : ''}`}>
             <div className={`pt-4 ${isMobile ? 'text-center -mt-4' : 'flex items-center justify-between'}`}>
               <p className={`text-sm text-muted-foreground ${isMobile ? 'mb-2' : ''}`}>

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { useMongo } from "@/lib/database/useMongo";
 import { errorResponse, requireAuthResponse } from "@/server/utils/functions";
-import { generateSmartDayPlan } from "@/server/ai/smartTaskService";
+import { generateSmartDayPlan, generateTaskSubsteps } from "@/server/ai/smartTaskService";
 import { decryptData } from "@/server/utils/functions";
 import { parseSubject, TIME_SLOTS } from "@/shared/utils/timetable";
+import { getStriverProblemOfTheDay } from "@/server/career/striverA2ZData";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     const initDb = await useMongo();
     const user = await initDb.db("college_db").collection<any>("users").findOne(
       { username: auth.payload.username },
-      { projection: { data: 1, courseraCourses: 1, codingProfiles: 1, smartTasks: 1 } }
+      { projection: { data: 1, courseraCourses: 1, codingProfiles: 1, smartTasks: 1, solvedDsaProblems: 1 } }
     );
 
     if (user?.smartTasks && Array.isArray(user.smartTasks) && user.smartTasks.length > 0) {
@@ -50,12 +51,15 @@ export async function GET(req: NextRequest) {
       return pct < 75;
     });
 
+    const potd = getStriverProblemOfTheDay(user?.solvedDsaProblems || []);
+
     const tasks = await generateSmartDayPlan({
       studentName: studentData?.profile?.studentName || auth.payload.username,
       currentDay,
       todayClasses,
       lowAttendance,
       courseraCourses: user?.courseraCourses || [],
+      striverPotd: potd,
       leetcodeStreak: 3,
     });
 
@@ -76,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { action, tasks, task } = body;
+    const { action, tasks, task, taskTitle } = body;
     const initDb = await useMongo();
     const usersCollection = initDb.db("college_db").collection("users");
 
@@ -98,6 +102,11 @@ export async function POST(req: NextRequest) {
         { $set: { smartTasks: updated } }
       );
       return NextResponse.json({ success: true, tasks: updated });
+    }
+
+    if (action === "split_subtasks") {
+      const subtasks = await generateTaskSubsteps(taskTitle || "Academic Study");
+      return NextResponse.json({ success: true, subtasks });
     }
 
     if (action === "regenerate") {
@@ -131,12 +140,15 @@ export async function POST(req: NextRequest) {
         return pct < 75;
       });
 
+      const potd = getStriverProblemOfTheDay(user?.solvedDsaProblems || []);
+
       const newTasks = await generateSmartDayPlan({
         studentName: studentData?.profile?.studentName || auth.payload.username,
         currentDay,
         todayClasses,
         lowAttendance,
         courseraCourses: user?.courseraCourses || [],
+        striverPotd: potd,
         leetcodeStreak: 3,
       });
 
