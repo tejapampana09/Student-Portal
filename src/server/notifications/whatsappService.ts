@@ -79,7 +79,8 @@ export function buildDailyBriefingMessage(
   todayClasses: any[],
   lowAttendanceSubjects: any[],
   nextHoliday: any,
-  recentEmails: any[]
+  recentEmails: any[],
+  courseraCourses?: any[]
 ): string {
   let text = `☀️ *Good Morning, ${studentName}!* 🎓\n`;
   text += `Here is your SRMAP Daily Academic Briefing for *${currentDay}*:\n\n`;
@@ -104,12 +105,29 @@ export function buildDailyBriefingMessage(
     text += `\n✅ *Attendance Status:* All subjects are above 75%!\n`;
   }
 
-  // 3. Next Holiday
+  // 3. Coursera / Certification Reminders
+  if (courseraCourses && courseraCourses.length > 0) {
+    const pendingCourses = courseraCourses.filter(
+      (c) => c.completedModules < c.totalModules
+    );
+    if (pendingCourses.length > 0) {
+      text += `\n🎓 *Coursera Tasks & Deadlines:*\n`;
+      pendingCourses.slice(0, 2).forEach((c) => {
+        const remaining = c.totalModules - c.completedModules;
+        const daysLeft = Math.ceil(
+          (new Date(c.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        text += `• *${c.title}*: ${remaining} modules left (${daysLeft > 0 ? `${daysLeft}d left` : "Due today!"})\n`;
+      });
+    }
+  }
+
+  // 4. Next Holiday
   if (nextHoliday) {
     text += `\n🏖️ *Next Holiday:* ${nextHoliday.occasion} on ${nextHoliday.date} (${nextHoliday.day})\n`;
   }
 
-  // 4. Urgent Circulars
+  // 5. Urgent Circulars
   if (recentEmails && recentEmails.length > 0) {
     const important = recentEmails.filter((e) => e.isImportant);
     if (important.length > 0) {

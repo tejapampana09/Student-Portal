@@ -89,7 +89,8 @@ export async function GET(req: NextRequest) {
           todayClasses,
           lowAttendance,
           nextHoliday,
-          recentEmails
+          recentEmails,
+          u.courseraCourses
         );
 
         const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);

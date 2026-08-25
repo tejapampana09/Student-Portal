@@ -1,0 +1,255 @@
+"use client";
+import React, { useState } from "react";
+import { BookOpen, Plus, Calendar, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/utils/useToast";
+import API from "@/lib/api/axiosClient";
+
+export interface CourseraCourse {
+  id: string;
+  title: string;
+  platform?: string;
+  totalModules: number;
+  completedModules: number;
+  deadline: string;
+  notes?: string;
+}
+
+interface CourseraTrackerCardProps {
+  courses: CourseraCourse[];
+  onRefresh: () => void;
+}
+
+export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ courses, onRefresh }) => {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [platform, setPlatform] = useState("Coursera");
+  const [totalModules, setTotalModules] = useState(4);
+  const [completedModules, setCompletedModules] = useState(0);
+  const [deadline, setDeadline] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleAddCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title || !deadline) {
+      toast({ title: "Missing Details", description: "Please provide course title and deadline.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await API.post("/career/coursera", {
+        action: "add",
+        course: { title, platform, totalModules, completedModules, deadline },
+      });
+      toast({ title: "Course Added! 🎓", description: "Your certification progress is now tracked." });
+      setOpen(false);
+      setTitle("");
+      setDeadline("");
+      onRefresh();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to add course", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleIncrement = async (course: CourseraCourse) => {
+    if (course.completedModules >= course.totalModules) return;
+    try {
+      await API.post("/career/coursera", {
+        action: "update",
+        course: { ...course, completedModules: course.completedModules + 1 },
+      });
+      onRefresh();
+    } catch {}
+  };
+
+  const handleDelete = async (courseId: string) => {
+    try {
+      await API.post("/career/coursera", {
+        action: "delete",
+        course: { id: courseId },
+      });
+      toast({ title: "Course Removed" });
+      onRefresh();
+    } catch {}
+  };
+
+  return (
+    <div className="glass-card rounded-3xl p-6 border border-white/10 shadow-lg relative overflow-hidden flex flex-col justify-between">
+      <div className="absolute -top-12 -right-12 w-36 h-36 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400">
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">Coursera & Certification Tasks</h3>
+              <p className="text-xs text-muted-foreground">Daily progress & deadline alerts</p>
+            </div>
+          </div>
+
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="h-8 px-3 rounded-full text-xs font-semibold gap-1">
+                <Plus className="h-3.5 w-3.5" />
+                Add Course
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl">
+              <DialogHeader className="text-left pb-2 border-b border-white/10">
+                <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Track New Course
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleAddCourse} className="space-y-4 pt-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Course Title</label>
+                  <Input
+                    placeholder="e.g. Deep Learning Specialization"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="rounded-xl border-white/10 bg-white/5"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Total Modules / Weeks</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={totalModules}
+                      onChange={(e) => setTotalModules(Number(e.target.value))}
+                      className="rounded-xl border-white/10 bg-white/5"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Completed Modules</label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={completedModules}
+                      onChange={(e) => setCompletedModules(Number(e.target.value))}
+                      className="rounded-xl border-white/10 bg-white/5"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Submission Deadline</label>
+                  <Input
+                    type="date"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="rounded-xl border-white/10 bg-white/5"
+                  />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full rounded-2xl mt-4 font-semibold">
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Course
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Courses list */}
+        <div className="mt-5 space-y-4">
+          {courses.length === 0 ? (
+            <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-2">
+              <p className="text-xs text-muted-foreground">No active Coursera or certification courses added yet.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(true)}
+                className="h-8 text-xs rounded-full border-white/10"
+              >
+                + Add Your First Course
+              </Button>
+            </div>
+          ) : (
+            courses.map((course) => {
+              const remaining = course.totalModules - course.completedModules;
+              const percent = Math.round((course.completedModules / course.totalModules) * 100);
+              const daysLeft = Math.ceil((new Date(course.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              const isUrgent = daysLeft <= 3 && remaining > 0;
+
+              return (
+                <div
+                  key={course.id}
+                  className="p-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] space-y-3 relative group"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-foreground leading-snug">{course.title}</h4>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1 font-mono">
+                          <Calendar className="h-3 w-3" /> Due: {new Date(course.deadline).toLocaleDateString()}
+                        </span>
+                        <span>•</span>
+                        <span className={`font-bold ${isUrgent ? "text-red-400 animate-pulse" : "text-sky-400"}`}>
+                          {daysLeft > 0 ? `${daysLeft} days left` : daysLeft === 0 ? "Due Today! 🚨" : "Overdue ⚠️"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(course.id)}
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground font-semibold">
+                        Modules: {course.completedModules} / {course.totalModules}
+                      </span>
+                      <span className="font-bold text-foreground font-mono">{percent}%</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-300"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[11px] text-muted-foreground">
+                      {remaining > 0
+                        ? `Pacing: Complete ~1 module every ${Math.max(1, Math.floor(Math.max(1, daysLeft) / remaining))} days`
+                        : "Completed! 🎉"}
+                    </p>
+                    {remaining > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleIncrement(course)}
+                        className="h-7 px-2.5 text-xs rounded-full border-sky-500/30 text-sky-400 hover:bg-sky-500/10 gap-1"
+                      >
+                        + 1 Module Done
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
