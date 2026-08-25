@@ -49,8 +49,69 @@ export async function POST(req: NextRequest) {
     const initDb = await useMongo();
     const user = await initDb.db("college_db").collection<any>("users").findOne(
       { username: auth.payload.username },
-      { projection: { data: 1, username: 1, session_time: 1 } }
+      { projection: { data: 1, username: 1, session_time: 1, sessionId: 1 } }
     );
+
+    // ⚡ Direct Attendance Marking via AI
+    const codeMatch = query.match(/\b([A-Za-z]\d{6})\b/);
+    const isMarkIntent = /mark|attendance|code|submit|present/i.test(query);
+
+    if (codeMatch && isMarkIntent) {
+      const code = codeMatch[1].toUpperCase();
+      if (!user?.sessionId) {
+        return NextResponse.json({
+          success: true,
+          answer: `I found attendance code ${code}, but you don't have an active session yet. Please tap Initiate Session on your dashboard first, and I will mark it for you!`,
+        });
+      }
+
+      try {
+        const SUBMIT_URL = "https://student.srmap.edu.in/srmapstudentcorner/students/transaction/studentattendanceresources.jsp";
+        const payload = new URLSearchParams({
+          acode: code,
+          dynamiclatdata: "0",
+          dynamiclonxdata: "0",
+          ids: "1",
+        }).toString();
+
+        const markRes = await fetch(SUBMIT_URL, {
+          method: "POST",
+          body: payload,
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "Mozilla/5.0",
+            Cookie: `JSESSIONID=${user.sessionId}`,
+          },
+        });
+
+        const text = await markRes.text();
+        let resData: any = {};
+        try {
+          resData = JSON.parse(text.trim());
+        } catch {
+          resData = JSON.parse(text.replace(/<[^>]+>/g, "").trim());
+        }
+
+        if (resData.resultstatus === "1") {
+          return NextResponse.json({
+            success: true,
+            answer: `✅ Success! Attendance marked successfully with code ${code}.`,
+          });
+        } else if (typeof resData.result === "string" && resData.result.includes("already")) {
+          return NextResponse.json({
+            success: true,
+            answer: `ℹ️ Attendance for code ${code} was already marked!`,
+          });
+        } else {
+          return NextResponse.json({
+            success: true,
+            answer: `❌ Could not mark attendance: ${resData.result || "Incorrect or expired code"}.`,
+          });
+        }
+      } catch (err: any) {
+        console.error("AI attendance marking failed:", err);
+      }
+    }
 
     let studentData: any = null;
     if (user?.data) {

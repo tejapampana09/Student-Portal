@@ -1,18 +1,27 @@
+import axios from "axios";
 import { useMongo } from "@/lib/database/useMongo";
 import { NextRequest, NextResponse } from "next/server";
 import { UNAUTHORIZED } from "@/shared/utils/messages";
+import { httpsAgent } from "@/server/utils/httpAgents";
 import { requireAuthResponse, errorResponse } from "@/server/utils/functions";
 
-export async function POST(req: NextRequest) {
-    const body = await req.json();
-    let { sessionid, code } = body;
+const httpMarkClient = axios.create({
+    httpsAgent,
+    timeout: 10000,
+    validateStatus: () => true,
+});
 
-    if (!sessionid || !code) {
-        return errorResponse("Required Parameters Not Matched!");
-    }
+export async function POST(req: NextRequest) {
+    let body: any = {};
+    try { body = await req.json(); } catch { }
+    let { sessionid, code } = body;
 
     const auth = await requireAuthResponse(req);
     if (auth instanceof NextResponse) return auth;
+
+    if (!code) {
+        return errorResponse("Attendance Code is required!");
+    }
 
     try {
         const initDb = await useMongo();
@@ -23,25 +32,29 @@ export async function POST(req: NextRequest) {
             return errorResponse(UNAUTHORIZED);
         }
 
+        const activeSessionId = sessionid || user.sessionId;
+        if (!activeSessionId) {
+            return errorResponse("Active SRM session required. Please initiate session first.", {}, 400);
+        }
+
         const SUBMIT_URL = "https://student.srmap.edu.in/srmapstudentcorner/students/transaction/studentattendanceresources.jsp";
         const payload = new URLSearchParams({
-            acode: code,
+            acode: code.trim().toUpperCase(),
             dynamiclatdata: "0",
             dynamiclonxdata: "0",
             ids: "1"
-        });
+        }).toString();
 
-        const response = await fetch(SUBMIT_URL, {
-            method: "POST",
-            body: payload,
+        const response = await httpMarkClient.post(SUBMIT_URL, payload, {
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
                 "User-Agent": "Mozilla/5.0",
-                "Cookie": `JSESSIONID=${sessionid}`,
-            }
+                "Cookie": `JSESSIONID=${activeSessionId}`,
+            },
+            responseType: "text"
         });
 
-        const text = await response.text();
+        const text = String(response.data || "");
         let responseData;
         try {
             responseData = JSON.parse(text.trim());
