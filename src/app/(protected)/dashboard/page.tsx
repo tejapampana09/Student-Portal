@@ -13,6 +13,7 @@ import { TIME_SLOTS, ALL_DAYS, parseSubject } from "@/shared/utils/timetable";
 import { MapPin, ArrowUpRight, GraduationCap, Calendar, Clock, BookOpen, PartyPopper } from "lucide-react";
 import UpcomingHolidaysCard from "@/components/page/dashboard/UpcomingHolidaysCard";
 import StudentEmailCard from "@/components/page/dashboard/StudentEmailCard";
+import { SmartAiTasksCard } from "@/components/page/dashboard/SmartAiTasksCard";
 import {
   CustomizeDashboardModal,
   DashboardWidgetsConfig,
@@ -220,6 +221,11 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* 🤖 AI Smart Tasks Card */}
+      {widgetsConfig.smartTasks && (
+        <SmartAiTasksCard />
+      )}
 
       {/* 🍏 Top Grid: Attendance Summary & Upcoming Class */}
       {(widgetsConfig.attendanceRing || widgetsConfig.upcomingClass) && (

@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 export interface DashboardWidgetsConfig {
   attendanceRing: boolean;
   upcomingClass: boolean;
+  smartTasks: boolean;
   cgpaCard: boolean;
   timetable: boolean;
   courseBreakdown: boolean;
@@ -26,6 +27,7 @@ export interface DashboardWidgetsConfig {
 export const DEFAULT_WIDGETS_CONFIG: DashboardWidgetsConfig = {
   attendanceRing: true,
   upcomingClass: true,
+  smartTasks: true,
   cgpaCard: true,
   timetable: true,
   courseBreakdown: true,
@@ -44,6 +46,12 @@ const WIDGET_DEFINITIONS: Array<{
   description: string;
   icon: string;
 }> = [
+  {
+    key: "smartTasks",
+    title: "AI Smart Tasks & Priorities",
+    description: "Daily synthesized academic checklist, Coursera & class tasks",
+    icon: "✨",
+  },
   {
     key: "attendanceRing",
     title: "Attendance Overview Ring",
@@ -113,7 +121,7 @@ export const CustomizeDashboardModal: React.FC<Props> = ({ config, onChange }) =
           <SlidersHorizontal className="h-3.5 w-3.5 text-primary shrink-0" />
           <span>Customize</span>
           <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
-            {activeCount}/7
+            {activeCount}/8
           </span>
         </Button>
       </DialogTrigger>

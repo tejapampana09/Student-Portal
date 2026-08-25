@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { BookOpen, Plus, Calendar, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { BookOpen, Plus, Calendar, Trash2, Sparkles, Loader2, ChevronDown, ChevronUp, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ export interface CourseraCourse {
   completedModules: number;
   deadline: string;
   notes?: string;
+  breakdown?: Array<{ moduleNum: number; tasks: string[] }>;
+  completedTasks?: string[];
 }
 
 interface CourseraTrackerCardProps {
@@ -31,6 +33,8 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
   const [completedModules, setCompletedModules] = useState(0);
   const [deadline, setDeadline] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
+  const [breakdownLoading, setBreakdownLoading] = useState<string | null>(null);
 
   const handleAddCourse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +83,45 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
     } catch {}
   };
 
+  const handleGenerateBreakdown = async (course: CourseraCourse) => {
+    try {
+      setBreakdownLoading(course.id);
+      const res = await API.post("/ai/coursera-breakdown", {
+        title: course.title,
+        totalModules: course.totalModules,
+      });
+
+      if (res.data?.breakdown) {
+        await API.post("/career/coursera", {
+          action: "update",
+          course: { ...course, breakdown: res.data.breakdown },
+        });
+        toast({ title: "Tasks Generated! ✨", description: "AI generated micro-tasks for " + course.title });
+        onRefresh();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: "Failed to generate breakdown", variant: "destructive" });
+    } finally {
+      setBreakdownLoading(null);
+    }
+  };
+
+  const handleToggleSubTask = async (course: CourseraCourse, taskStr: string) => {
+    const currentCompleted = course.completedTasks || [];
+    const isDone = currentCompleted.includes(taskStr);
+    const updated = isDone
+      ? currentCompleted.filter((t) => t !== taskStr)
+      : [...currentCompleted, taskStr];
+
+    try {
+      await API.post("/career/coursera", {
+        action: "update",
+        course: { ...course, completedTasks: updated },
+      });
+      onRefresh();
+    } catch {}
+  };
+
   return (
     <div className="glass-card rounded-3xl p-6 border border-white/10 shadow-lg relative overflow-hidden flex flex-col justify-between">
       <div className="absolute -top-12 -right-12 w-36 h-36 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -92,7 +135,7 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground">Coursera & Certification Tasks</h3>
-              <p className="text-xs text-muted-foreground">Daily progress & deadline alerts</p>
+              <p className="text-xs text-muted-foreground">Daily progress & AI task breakdown</p>
             </div>
           </div>
 
@@ -180,6 +223,7 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
               const percent = Math.round((course.completedModules / course.totalModules) * 100);
               const daysLeft = Math.ceil((new Date(course.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
               const isUrgent = daysLeft <= 3 && remaining > 0;
+              const isExpanded = expandedCourse === course.id;
 
               return (
                 <div
@@ -226,24 +270,92 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Action Pacing */}
                   <div className="flex items-center justify-between pt-1">
                     <p className="text-[11px] text-muted-foreground">
                       {remaining > 0
                         ? `Pacing: Complete ~1 module every ${Math.max(1, Math.floor(Math.max(1, daysLeft) / remaining))} days`
                         : "Completed! 🎉"}
                     </p>
-                    {remaining > 0 && (
+                    <div className="flex items-center gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => handleIncrement(course)}
-                        className="h-7 px-2.5 text-xs rounded-full border-sky-500/30 text-sky-400 hover:bg-sky-500/10 gap-1"
+                        variant="ghost"
+                        onClick={() => setExpandedCourse(isExpanded ? null : course.id)}
+                        className="h-7 px-2 text-xs rounded-full text-muted-foreground hover:text-foreground gap-1"
                       >
-                        + 1 Module Done
+                        Tasks {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                       </Button>
-                    )}
+
+                      {remaining > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleIncrement(course)}
+                          className="h-7 px-2.5 text-xs rounded-full border-sky-500/30 text-sky-400 hover:bg-sky-500/10 gap-1"
+                        >
+                          + 1 Module Done
+                        </Button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Expandable Module Tasks & AI Breakdown */}
+                  {isExpanded && (
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          Module Tasks & Assignments
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={breakdownLoading === course.id}
+                          onClick={() => handleGenerateBreakdown(course)}
+                          className="h-6 px-2 text-[10px] rounded-full border-white/10 text-primary gap-1"
+                        >
+                          {breakdownLoading === course.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
+                          AI Auto-Generate
+                        </Button>
+                      </div>
+
+                      {course.breakdown && course.breakdown.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {course.breakdown.map((mod) => (
+                            <div key={mod.moduleNum} className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                              <p className="text-[11px] font-bold text-sky-400">Module {mod.moduleNum}</p>
+                              <div className="space-y-1">
+                                {mod.tasks.map((taskStr, tIdx) => {
+                                  const isDone = (course.completedTasks || []).includes(taskStr);
+                                  return (
+                                    <div
+                                      key={tIdx}
+                                      onClick={() => handleToggleSubTask(course, taskStr)}
+                                      className="flex items-center gap-2 text-xs cursor-pointer hover:text-primary transition-colors"
+                                    >
+                                      {isDone ? (
+                                        <CheckSquare className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                      ) : (
+                                        <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      )}
+                                      <span className={`text-[11px] ${isDone ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                        {taskStr}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-xl border border-dashed border-white/5">
+                          Tap <strong>"AI Auto-Generate"</strong> to build a personalized task checklist for this course!
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })
