@@ -14,6 +14,8 @@ import SplashScreen from "@/components/client/loading/SplashScreen";
 import { LocalStorageProvider } from "@/context/LocalStorageContext";
 import GoogleAnalytics from "@/components/client/analytics/GoogleAnalytics";
 import AuroraBackground from "@/components/ui/AuroraBackground";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
+import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 
 export const metadata: Metadata = {
   referrer: "origin-when-cross-origin",
@@ -142,16 +144,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
         <link rel="shortcut icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(sitelinksJsonLd) }}
         />
       </head>
       <body className="relative min-h-screen overflow-x-hidden">
+        <ServiceWorkerRegister />
+        <PwaInstallPrompt />
         <AuroraBackground />
         <GoogleAnalytics />
         <LocalStorageProvider>
