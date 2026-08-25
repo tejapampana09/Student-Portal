@@ -239,7 +239,7 @@ export default function StudentAiAssistant() {
                       : "bg-white/40 dark:bg-white/10 border border-white/20 dark:border-white/10 text-foreground rounded-bl-none backdrop-blur-md whitespace-pre-wrap leading-relaxed"
                   }`}
                 >
-                  <div className="text-[13px]">{m.content}</div>
+                  <div className="text-[13px]">{m.content.replace(/\*\*(.*?)\*\*/g, "$1").replace(/^#+\s+/gm, "").replace(/---/g, "").trim()}</div>
                   <span
                     className={`block text-[9px] mt-1.5 ${
                       m.role === "user" ? "text-blue-100 text-right" : "text-muted-foreground text-left"
