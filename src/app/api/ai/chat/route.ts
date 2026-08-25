@@ -3,15 +3,16 @@ import { GoogleGenAI } from "@google/genai";
 import { useMongo } from "@/lib/database/useMongo";
 import facultyData from "@/static/faculty.json";
 import academicCalendar from "@/static/academic_calendar.json";
-import { decryptData, errorResponse, requireAuthResponse, enforceRateLimit } from "@/server/utils/functions";
+import { decryptData, errorResponse, requireAuthResponse, enforceRateLimit, isAdmin } from "@/server/utils/functions";
 import { DateTime } from "luxon";
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
-  // Rate limiting: 15 AI questions per minute per student
-  const rate = await enforceRateLimit(`ai:user:${auth.payload.username}`, 15, 60 * 1000);
+  // Generous AI Rate Limit: 60 questions/min for students, 120/min for admins
+  const maxAllowed = isAdmin(auth.payload.username) ? 120 : 60;
+  const rate = await enforceRateLimit(`ai:user:${auth.payload.username}`, maxAllowed, 60 * 1000);
   if (!rate.allowed) {
     return NextResponse.json(
       {
