@@ -27,16 +27,25 @@ export async function POST(req: NextRequest) {
             const result = await fetchFromWebsite(sessionId);
             if (!result) return errorResponse(INVALID_CREDENTIALS);
 
-            await db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } });
-
             const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
             const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
+
+            const updateOps: Promise<any>[] = [
+                db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } })
+            ];
+
             if (!hasTodayEntry && result.attendance) {
-                await db.updateOne({ username: auth.payload.username }, {
-                    $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
-                });
+                updateOps.push(
+                    db.updateOne({ username: auth.payload.username }, {
+                        $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
+                    })
+                );
             }
 
+            // Run database cache saves concurrently
+            void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
+
+            // Background timetable indexer
             (async () => {
                 try {
                     const settingsDb = initDb.db("college_db").collection("settings");
