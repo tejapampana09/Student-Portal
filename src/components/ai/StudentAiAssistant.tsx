@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Bot, User, Trash2, ArrowDown, Mic, MicOff, Compass, BookOpen, Calendar, HelpCircle } from "lucide-react";
+import { Sparkles, X, Send, Bot, User, Trash2, ArrowDown, Mic, MicOff, Compass, BookOpen, Calendar, HelpCircle, Volume2, VolumeX, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/utils/useToast";
 import API from "@/lib/api/axiosClient";
@@ -14,15 +14,16 @@ interface Message {
 }
 
 const QUICK_PROMPTS = [
-  { text: "Can I bunk any class tomorrow?", icon: Compass },
   { text: "Where is my next class?", icon: Calendar },
-  { text: "Show my attendance analysis", icon: BookOpen },
-  { text: "Find faculty cabin location", icon: HelpCircle },
+  { text: "Show my attendance & safe bunks", icon: BookOpen },
+  { text: "What are my smart tasks today?", icon: Compass },
+  { text: "Can I bunk any class tomorrow?", icon: HelpCircle },
 ];
 
 export default function StudentAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [voiceSpeechEnabled, setVoiceSpeechEnabled] = useState(true);
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -34,7 +35,7 @@ export default function StudentAiAssistant() {
       {
         id: "welcome",
         role: "assistant",
-        content: "Hi! I am your **SRMAP AI Academic Copilot** 🎓. I can check your live attendance, calculate bunk safe limits, find your classrooms & faculty cabins, or answer questions about your timetable. How can I help you today?",
+        content: "Hi! I am your **SRMAP AI Copilot & Voice Assistant** 🎓.\n\nAsk me anything by typing or tapping the 🎙️ **Microphone** below (e.g. *'Where is my next class?'*, *'How much attendance do I have?'*, or *'What are my tasks today?'*).",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ];
@@ -57,6 +58,24 @@ export default function StudentAiAssistant() {
     }
   }, [messages, isOpen]);
 
+  const speak = (text: string) => {
+    if (!voiceSpeechEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    // Clean markdown symbols for natural speech
+    const clean = text
+      .replace(/\*\*/g, "")
+      .replace(/\*/g, "")
+      .replace(/#/g, "")
+      .replace(/`/g, "")
+      .replace(/\[.*?\]\(.*?\)/g, "")
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
   // Voice Input Speech Recognition setup
   useEffect(() => {
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
@@ -70,6 +89,8 @@ export default function StudentAiAssistant() {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
+        // Auto-send query on voice capture
+        handleSend(transcript, true);
       };
 
       recognitionRef.current.onerror = () => {
@@ -80,7 +101,7 @@ export default function StudentAiAssistant() {
         setIsListening(false);
       };
     }
-  }, []);
+  }, [messages, voiceSpeechEnabled]);
 
   const toggleVoice = () => {
     if (!recognitionRef.current) {
@@ -92,12 +113,17 @@ export default function StudentAiAssistant() {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      recognitionRef.current.start();
-      setIsListening(true);
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        toast({ title: "Listening... 🎙️", description: "Speak your question clearly" });
+      } catch {
+        setIsListening(false);
+      }
     }
   };
 
-  const handleSend = async (queryText?: string) => {
+  const handleSend = async (queryText?: string, fromVoice = false) => {
     const text = (queryText || input).trim();
     if (!text || loading) return;
 
@@ -131,6 +157,9 @@ export default function StudentAiAssistant() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
         setMessages((prev) => [...prev, aiMsg]);
+        if (fromVoice || voiceSpeechEnabled) {
+          speak(res.data.answer);
+        }
       } else {
         toast({ title: "AI Assistant", description: res.data?.message || "Failed to fetch response" });
       }
@@ -155,7 +184,7 @@ export default function StudentAiAssistant() {
     const welcome: Message = {
       id: "welcome",
       role: "assistant",
-      content: "Chat history cleared. How can I assist you with your academic schedule or attendance?",
+      content: "Chat history cleared. How can I assist you with your academic schedule, attendance, or tasks?",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages([welcome]);
@@ -163,24 +192,27 @@ export default function StudentAiAssistant() {
 
   return (
     <>
-      {/* 🔮 Floating Glow Orb Trigger Button */}
+      {/* 🔮 Unified Floating AI Copilot & Voice Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 sm:bottom-6 right-5 z-40 group flex items-center gap-2 p-3.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 border border-white/30 backdrop-blur-xl"
-          aria-label="Open SRMAP AI Copilot"
+          className="fixed bottom-20 sm:bottom-6 right-5 z-40 group flex items-center gap-2.5 p-3.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 border border-white/30 backdrop-blur-xl"
+          aria-label="Open SRMAP AI Copilot & Voice Assistant"
         >
-          <div className="relative">
+          <div className="relative flex items-center">
             <Sparkles className="h-5 w-5 animate-pulse text-amber-300" />
             <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
           </div>
-          <span className="hidden sm:inline font-semibold text-sm tracking-wide">AI Copilot</span>
+          <span className="hidden sm:inline font-bold text-sm tracking-wide">AI Copilot</span>
+          <div className="hidden sm:flex items-center pl-1 border-l border-white/20 text-xs font-semibold text-purple-200">
+            <Mic className="h-3.5 w-3.5" />
+          </div>
         </button>
       )}
 
-      {/* 🪟 Apple Liquid Glass AI Chat Window */}
+      {/* 🪟 AI Copilot & Voice Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col rounded-3xl border border-white/25 dark:border-white/15 bg-white/80 dark:bg-slate-950/85 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col rounded-3xl border border-white/25 dark:border-white/15 bg-white/85 dark:bg-slate-950/90 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/15 bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-purple-600/15">
             <div className="flex items-center gap-2.5">
@@ -189,12 +221,12 @@ export default function StudentAiAssistant() {
               </div>
               <div>
                 <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  SRMAP Copilot
+                  SRMAP Copilot & Voice
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-500 font-semibold">
                     Gemini 2.5
                   </span>
                 </h3>
-                <p className="text-[11px] text-muted-foreground">Live Academic & Attendance Assistant</p>
+                <p className="text-[11px] text-muted-foreground">Ask attendance, timetable & tasks</p>
               </div>
             </div>
 
@@ -202,55 +234,68 @@ export default function StudentAiAssistant() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={clearChat}
-                title="Clear Chat"
-                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={() => setVoiceSpeechEnabled(!voiceSpeechEnabled)}
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                title={voiceSpeechEnabled ? "Voice Speech Enabled (Mute)" : "Voice Speech Muted (Unmute)"}
               >
-                <Trash2 className="h-4 w-4" />
+                {voiceSpeechEnabled ? <Volume2 className="h-3.5 w-3.5 text-purple-400" /> : <VolumeX className="h-3.5 w-3.5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearChat}
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                title="Clear Chat"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           </div>
 
-          {/* Messages Feed */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar text-sm">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {m.role === "assistant" && (
-                  <div className="h-7 w-7 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0 text-blue-500 mt-0.5">
+                  <div className="h-7 w-7 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">
                     <Bot className="h-4 w-4" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[82%] rounded-2xl p-3 shadow-sm ${
+                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed space-y-1 ${
                     m.role === "user"
-                      ? "bg-blue-600 text-white rounded-br-none"
-                      : "bg-white/40 dark:bg-white/10 border border-white/20 dark:border-white/10 text-foreground rounded-bl-none backdrop-blur-md whitespace-pre-wrap leading-relaxed"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md"
+                      : "bg-white/60 dark:bg-white/10 text-foreground border border-white/20 dark:border-white/10 rounded-bl-none shadow-sm backdrop-blur-md"
                   }`}
                 >
-                  <div className="text-[13px]">{m.content.replace(/\*\*(.*?)\*\*/g, "$1").replace(/^#+\s+/gm, "").replace(/---/g, "").trim()}</div>
-                  <span
-                    className={`block text-[9px] mt-1.5 ${
-                      m.role === "user" ? "text-blue-100 text-right" : "text-muted-foreground text-left"
-                    }`}
-                  >
-                    {m.timestamp}
-                  </span>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <div className="flex items-center justify-between gap-2 pt-0.5 opacity-60 text-[9px]">
+                    <span>{m.timestamp}</span>
+                    {m.role === "assistant" && (
+                      <button
+                        onClick={() => speak(m.content)}
+                        className="hover:opacity-100 flex items-center gap-0.5 text-[9px] font-semibold"
+                      >
+                        <Play className="h-2 w-2 fill-current" /> Speak
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {m.role === "user" && (
-                  <div className="h-7 w-7 rounded-xl bg-slate-700/20 flex items-center justify-center shrink-0 text-foreground mt-0.5">
+                  <div className="h-7 w-7 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
                     <User className="h-4 w-4" />
                   </div>
                 )}
@@ -258,15 +303,9 @@ export default function StudentAiAssistant() {
             ))}
 
             {loading && (
-              <div className="flex gap-2.5 items-center">
-                <div className="h-7 w-7 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">
-                  <Bot className="h-4 w-4" />
-                </div>
-                <div className="bg-white/40 dark:bg-white/10 rounded-2xl p-3 border border-white/20 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-bounce" />
-                  <span className="h-2 w-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
-                  <span className="h-2 w-2 rounded-full bg-purple-500 animate-bounce [animation-delay:0.4s]" />
-                </div>
+              <div className="flex gap-2.5 items-center text-xs text-muted-foreground bg-white/40 dark:bg-white/5 p-3 rounded-2xl w-fit border border-white/10">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                <span>Thinking & analyzing your academic record...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -287,14 +326,14 @@ export default function StudentAiAssistant() {
             ))}
           </div>
 
-          {/* Input Footer */}
+          {/* Input Footer with Microphone */}
           <div className="p-3 border-t border-white/15 bg-background/50 flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask attendance, timetable, cabins..."
+              placeholder={isListening ? "Listening... Speak now 🎙️" : "Ask attendance, next class, tasks..."}
               className="flex-1 bg-white/50 dark:bg-black/40 border border-white/20 dark:border-white/10 rounded-2xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
 
@@ -302,19 +341,19 @@ export default function StudentAiAssistant() {
               size="icon"
               variant="ghost"
               onClick={toggleVoice}
-              className={`h-8 w-8 rounded-xl ${
-                isListening ? "bg-red-500/20 text-red-500 animate-pulse" : "text-muted-foreground hover:text-foreground"
+              className={`h-9 w-9 rounded-2xl transition-all ${
+                isListening ? "bg-red-500 text-white animate-pulse shadow-red-500/50 scale-105" : "text-muted-foreground hover:text-foreground hover:bg-white/10"
               }`}
-              title="Voice Input"
+              title="Speak with Voice"
             >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-purple-400" />}
             </Button>
 
             <Button
               size="icon"
               onClick={() => handleSend()}
               disabled={!input.trim() || loading}
-              className="h-8 w-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-md disabled:opacity-50"
+              className="h-9 w-9 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md disabled:opacity-50"
             >
               <Send className="h-3.5 w-3.5" />
             </Button>
