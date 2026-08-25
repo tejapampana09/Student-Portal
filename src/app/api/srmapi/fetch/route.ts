@@ -45,6 +45,25 @@ export async function POST(req: NextRequest) {
             // Run database cache saves concurrently
             void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
 
+            // 🔔 Real-time Web Push Alert for Low Attendance
+            if (user.pushSubscription && Array.isArray(result.attendance)) {
+                const lowSubjects = result.attendance.filter((a: any) => parseFloat(a.attendance_percentage || "0") < 75);
+                if (lowSubjects.length > 0) {
+                    void (async () => {
+                        try {
+                            const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
+                            await sendWebPushNotification(user.pushSubscription, {
+                                title: `⚠️ Attendance Alert: ${lowSubjects.length} Subject(s) Below 75%`,
+                                body: `${lowSubjects.map((s: any) => `${s.subject_code || s.subject_name}: ${s.attendance_percentage}%`).join(", ")}. Tap to calculate safe bunks.`,
+                                url: "/attendance",
+                            });
+                        } catch (pushErr) {
+                            console.error("Failed to dispatch low attendance push alert:", pushErr);
+                        }
+                    })();
+                }
+            }
+
             // Background timetable indexer
             (async () => {
                 try {
