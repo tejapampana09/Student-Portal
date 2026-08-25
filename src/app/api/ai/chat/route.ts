@@ -130,14 +130,27 @@ ${JSON.stringify(academicCalendar || [])}
       });
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        systemInstruction: contextPrompt,
-        temperature: 0.4,
-      },
-    });
+    let response;
+    try {
+      response = await ai.models.generateContent({
+        model: "gemini-3.6-flash",
+        contents,
+        config: {
+          systemInstruction: contextPrompt,
+          temperature: 0.4,
+        },
+      });
+    } catch (e: any) {
+      console.warn("gemini-3.6-flash failed, trying gemini-2.5-flash fallback:", e?.message);
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents,
+        config: {
+          systemInstruction: contextPrompt,
+          temperature: 0.4,
+        },
+      });
+    }
 
     const text = response.text || "I couldn't generate a response. Please try again.";
 
