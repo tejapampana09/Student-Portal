@@ -16,32 +16,20 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-  // First try sending template message (for 24h window compliance)
+  // 1. Try sending rich custom text message
   try {
-    const templatePayload = {
+    const textPayload = {
       messaging_product: "whatsapp",
       recipient_type: "individual",
       to: cleanPhone,
-      type: "template",
-      template: {
-        name: process.env.WHATSAPP_TEMPLATE_NAME || "email_alert",
-        language: { code: process.env.WHATSAPP_TEMPLATE_LANG || "en" },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: "SRMAP Student Portal" },
-              { type: "text", text: "Daily Academic Briefing" },
-              { type: "text", text: "Academics" },
-              { type: "text", text: "High" },
-              { type: "text", text: message.length > 300 ? message.substring(0, 297) + "..." : message },
-            ],
-          },
-        ],
+      type: "text",
+      text: {
+        preview_url: false,
+        body: message,
       },
     };
 
-    const res = await axios.post(url, templatePayload, {
+    const resText = await axios.post(url, textPayload, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -49,24 +37,24 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
       timeout: 10000,
     });
 
-    if (res.status === 200 || res.status === 201) {
+    if (resText.status === 200 || resText.status === 201) {
       return { success: true };
     }
-  } catch (templateErr: any) {
-    // If template fails, attempt direct text message
+  } catch (textErr: any) {
+    // 2. If text fails (e.g. 24h window closed), send approved hello_world template
     try {
-      const textPayload = {
+      const templatePayload = {
         messaging_product: "whatsapp",
         recipient_type: "individual",
         to: cleanPhone,
-        type: "text",
-        text: {
-          preview_url: false,
-          body: message,
+        type: "template",
+        template: {
+          name: "hello_world",
+          language: { code: "en_US" },
         },
       };
 
-      const resText = await axios.post(url, textPayload, {
+      const resTemplate = await axios.post(url, templatePayload, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -74,11 +62,11 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
         timeout: 10000,
       });
 
-      if (resText.status === 200 || resText.status === 201) {
+      if (resTemplate.status === 200 || resTemplate.status === 201) {
         return { success: true };
       }
-    } catch (textErr: any) {
-      const errData = templateErr?.response?.data?.error || textErr?.response?.data?.error;
+    } catch (templateErr: any) {
+      const errData = textErr?.response?.data?.error || templateErr?.response?.data?.error;
       const errMsg = errData?.message || textErr?.message || "WhatsApp dispatch failed";
       console.error("WhatsApp Meta Cloud API error:", errData || textErr?.message);
       return { success: false, error: errMsg };
