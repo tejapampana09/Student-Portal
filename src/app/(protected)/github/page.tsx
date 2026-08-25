@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const REPOSITORY_URL = "https://github.com/StoreVia/Srmap-Api";
+const REPOSITORY_URL = "https://github.com/tejapampana09/Student-Portal";
 
 type RepositoryStats = {
   stargazers_count: number;
@@ -24,7 +24,7 @@ export default function GitHubPage() {
   const [stats, setStats] = useState<RepositoryStats | null>(null);
 
   useEffect(() => {
-    fetch("https://api.github.com/repos/StoreVia/Srmap-Api")
+    fetch("https://api.github.com/repos/tejapampana09/Student-Portal")
       .then((response) => response.ok ? response.json() : null)
       .then((data) => setStats(data))
       .catch(() => setStats(null));
