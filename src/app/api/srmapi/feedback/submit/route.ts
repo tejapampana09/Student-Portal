@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
                 return errorResponse(undefined, {}, 500);
             }
         } else {
-            return errorResponse("Something Went Wrong!", { action: "logout" });
+            return errorResponse("Something Went Wrong!", {});
         }
 
     } catch (err) {

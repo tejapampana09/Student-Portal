@@ -9,65 +9,32 @@ import { UNAUTHORIZED, INVALID_CREDENTIALS } from "@/shared/utils/messages";
 import { encryptData, decryptData, errorResponse, requireAuthResponse } from "@/server/utils/functions";
 
 export async function POST(req: NextRequest) {
-    const body = await req.json();
+    let body: any = {};
+    try { body = await req.json(); } catch { }
     const { sessionId } = body;
-
     const auth = await requireAuthResponse(req);
     if (auth instanceof NextResponse) return auth;
 
     try {
         const initDb = await useMongo();
         const db = initDb.db("college_db").collection<any>("users");
-
         const time = getTime();
         const user = await db.findOne({ username: auth.payload.username });
-
-        if (!user) {
-            return errorResponse(UNAUTHORIZED, { action: "logout" });
-        }
+        if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
 
         const validSession = isSessionValid(user.session_time);
-
         if (validSession && sessionId) {
             const result = await fetchFromWebsite(sessionId);
-            if (!result) {
-                return errorResponse(INVALID_CREDENTIALS, { action: "logout" });
-            }
+            if (!result) return errorResponse(INVALID_CREDENTIALS);
 
-            const encryptedData = encryptData(result, auth.payload.password);
-
-            await db.updateOne(
-                { username: auth.payload.username },
-                {
-                    $set: {
-                        data: encryptedData,
-                        session_time: time
-                    }
-                }
-            );
+            await db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } });
 
             const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
-
             const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
-
             if (!hasTodayEntry && result.attendance) {
-                const encryptedAttendance = encryptData(result.attendance, auth.payload.password);
-                await db.updateOne(
-                    { username: auth.payload.username },
-                    {
-                        $push: {
-                            attendanceHistory: {
-                                $each: [
-                                    {
-                                        date: today,
-                                        data: encryptedAttendance
-                                    }
-                                ],
-                                $slice: -10
-                            }
-                        } as any
-                    }
-                );
+                await db.updateOne({ username: auth.payload.username }, {
+                    $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
+                });
             }
 
             (async () => {
@@ -75,42 +42,29 @@ export async function POST(req: NextRequest) {
                     const settingsDb = initDb.db("college_db").collection("settings");
                     const appSettings = await settingsDb.findOne({ id: "app-settings" });
                     if (appSettings?.timetableCollection === false) return;
-
                     const emptyClassesDb = initDb.db("college_db").collection("empty_classes");
                     const emptyClassesData = fetchTimetable(result);
-                    const dataHash = crypto
-                        .createHash("sha256")
-                        .update(JSON.stringify(emptyClassesData))
-                        .digest("hex");
-
-                    const existingDoc = await emptyClassesDb.findOne({ hash: dataHash });
-                    if (!existingDoc) {
-                        await emptyClassesDb.insertOne({
-                            hash: dataHash,
-                            data: emptyClassesData
-                        });
-                    }
+                    const dataHash = crypto.createHash("sha256").update(JSON.stringify(emptyClassesData)).digest("hex");
+                    if (!(await emptyClassesDb.findOne({ hash: dataHash }))) await emptyClassesDb.insertOne({ hash: dataHash, data: emptyClassesData });
                 } catch { }
             })();
-
             return NextResponse.json({ success: true, message: "Success!", data: result, source: "Srmap Portal" });
-        } else if ((!validSession && user.data) || (validSession && !sessionId)) {
+        }
+
+        if ((!validSession && user.data) || (validSession && !sessionId)) {
             try {
-                const data = decryptData(user.data, auth.payload.password);
+                const data = decryptData(user.data);
                 return NextResponse.json({ success: true, message: "Success!", data, student: { id: user.username }, source: "Database" });
             } catch {
-                return errorResponse("Invalid session data!", { action: "logout" });
+                return errorResponse("Invalid session data!");
             }
-        } else if (validSession && !user.data && !sessionId) {
-            return errorResponse("Essential Data Missing!", { action: "logout" });
         }
 
-        return errorResponse(undefined, { action: "logout" });
+        if (validSession && !user.data && !sessionId) return errorResponse("Essential Data Missing!");
+        return errorResponse("SRM session is not available. Please refresh your data.", {}, 409);
     } catch (err: any) {
         console.log("Error From /api/srmapi/fetch:- ", err);
-        if (err?.message?.includes("SRM server is unreachable")) {
-            return errorResponse(err.message, {}, 503);
-        }
+        if (err?.message?.includes("SRM server is unreachable")) return errorResponse(err.message, {}, 503);
         return errorResponse(undefined, {}, 500);
     }
 }

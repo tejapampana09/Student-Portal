@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         const user = await db.findOne({ username: auth.payload.username });
 
         if (!user) {
-            return errorResponse(UNAUTHORIZED, { action: "logout" });
+            return errorResponse(UNAUTHORIZED, {});
         }
 
         const validSession = isSessionValid(user.session_time);
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         const result = await fetchAttendance(sessionId || user.session);
 
         if (!result?.attendance) {
-            return errorResponse(INVALID_CREDENTIALS, { action: "logout" });
+            return errorResponse(INVALID_CREDENTIALS, {});
         }
 
         return NextResponse.json({

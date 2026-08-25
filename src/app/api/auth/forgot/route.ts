@@ -6,10 +6,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidPassword } from "@/validators/auth/forgot";
 import { PARAMETERS } from "@/shared/utils/messages";
 import { userBlockedResponse } from "@/server/utils/responses";
-import { isBlocked, errorResponse } from "@/server/utils/functions";
+import { isBlocked, errorResponse, enforceRateLimit } from "@/server/utils/functions";
 import { solveCaptcha } from "@/lib/captcha";
 
 export async function POST(req: NextRequest) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const rate = await enforceRateLimit(`forgot:ip:${ip}`, 10, 15 * 60 * 1000);
+    if (!rate.allowed) return NextResponse.json({ success: false, message: "Too many password reset requests. Try again later." }, { status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) } });
+
     const body = await req.json();
     let { type, username } = body;
 

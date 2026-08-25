@@ -9,13 +9,13 @@ export async function GET(req: NextRequest) {
 
     try {
         const initDb = await useMongo();
-        const db = initDb.db('college_db').collection("users");
-        const user = await db.findOne({ username: auth.payload.username }, { projection: { _id: 0 } });
+        const db = initDb.db("college_db").collection("users");
+        const user = await db.findOne(
+            { username: auth.payload.username },
+            { projection: { _id: 0, username: 1, settings: 1, session_time: 1, createdAt: 1 } }
+        );
 
-        if (!user) {
-            return errorResponse(UNAUTHORIZED, { action: "logout" });
-        }
-
+        if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
         return NextResponse.json({ success: true, document: user });
     } catch (err) {
         console.log("Error From /api/tools/document:- ", err);

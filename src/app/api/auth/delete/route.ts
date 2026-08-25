@@ -8,6 +8,7 @@ import { PARAMETERS, UNAUTHORIZED } from "@/shared/utils/messages";
 import {
   requireAuthResponse,
   errorResponse,
+  revokeAllAuthSessions,
 } from "@/server/utils/functions";
 
 interface DiscordEmbed {
@@ -45,6 +46,7 @@ export async function DELETE(req: NextRequest) {
     if (!user) return errorResponse(UNAUTHORIZED);
 
     const deleteResult = await db.deleteOne({ username: auth.payload.username });
+    await revokeAllAuthSessions(auth.payload.username);
 
     if (deleteResult.deletedCount !== 1) return errorResponse("Failed To Delete Account!");
     

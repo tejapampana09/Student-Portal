@@ -78,12 +78,14 @@ export const useAuthActions = () => {
 
     const logout = useCallback((message?: string) => {
         const activeId = profile.activeAccountId;
-        if (activeId) {
-            removeAccount(activeId);
+        const token = profile.accessToken;
+        if (token) {
+            void API.post("/auth/logout").catch(() => {});
         }
+        if (activeId) removeAccount(activeId);
         setIsAuthenticated(false);
         setIsAdmin(false);
-    }, [setIsAuthenticated, profile.activeAccountId]);
+    }, [profile.activeAccountId, profile.accessToken, removeAccount]);
 
     const switchAccount = useCallback((accountId: string) => {
         setActiveAccount(accountId);
@@ -101,11 +103,9 @@ export const useAuthActions = () => {
             return;
         }
         try {
-            if (token) {
-                const decoded: any = jwtDecode(token);
-                if (decoded?.admin === true) setIsAdmin(true);
-                if (decoded.username && decoded.password) setIsAuthenticated(true);
-            }
+            const decoded: any = jwtDecode(token);
+            if (decoded?.admin === true) setIsAdmin(true);
+            if (decoded?.username && decoded?.sessionId) setIsAuthenticated(true);
         } finally {
             setIsLoading(false);
         }

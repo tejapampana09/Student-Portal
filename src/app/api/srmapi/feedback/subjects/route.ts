@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
         const user = await db.findOne({ username: auth.payload.username });
 
         if (!user) return errorResponse(UNAUTHORIZED);
-        if (!isSessionValid(user.session_time)) return errorResponse("Something Went Wrong!", { action: "logout" });
+        if (!isSessionValid(user.session_time)) return errorResponse("Something Went Wrong!", {});
 
         const { subjects } = await fetchFeedbackSubjects(sessionId);
 
