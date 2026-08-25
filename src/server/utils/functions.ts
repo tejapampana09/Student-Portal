@@ -14,7 +14,7 @@ const expire = process.env.ACCESS_EXPIRE || "30d";
 
 export function createClient(sessionId: string) {
     return axios.create({
-        timeout: 8000,
+        timeout: 25000,
         withCredentials: true,
         httpAgent,
         httpsAgent,

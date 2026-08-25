@@ -45,30 +45,40 @@ async function attemptLogin(username: string, password: string): Promise<LoginRe
   return { success: true, sessionId: jsessionId };
 }
 
-async function login(username: string, password: string): Promise<LoginResponse> {
-  try {
-    return await attemptLogin(username, password);
-  } catch (error: unknown) {
-    console.log("Error From /backendUtils/auth/login:- ", error);
-    let message = "Login Failed, Please Check Your Credentials!";
-    if (error instanceof Error) {
-      if (
-        error.message.includes("fetch failed") ||
-        error.message.includes("ECONNREFUSED") ||
-        error.message.includes("ENOTFOUND") ||
-        error.message.includes("network") ||
-        error.message.includes("timeout") ||
-        error.message.includes("ETIMEDOUT") ||
-        error.message.includes("socket") ||
-        error.message.includes("failed to fetch")
-      ) {
-        message = "SRM server is unreachable. Please try again later.";
-      } else {
-        message = error.message;
+async function login(username: string, password: string, maxRetries = 3): Promise<LoginResponse> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await attemptLogin(username, password);
+      if (res.success) return res;
+    } catch (error: unknown) {
+      lastError = error;
+      console.log(`Login attempt ${attempt}/${maxRetries} failed:`, error);
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
       }
     }
-    return { success: false, message };
   }
+
+  console.log("Error From /backendUtils/auth/login:- ", lastError);
+  let message = "Login Failed, Please Check Your Credentials!";
+  if (lastError instanceof Error) {
+    if (
+      lastError.message.includes("fetch failed") ||
+      lastError.message.includes("ECONNREFUSED") ||
+      lastError.message.includes("ENOTFOUND") ||
+      lastError.message.includes("network") ||
+      lastError.message.includes("timeout") ||
+      lastError.message.includes("ETIMEDOUT") ||
+      lastError.message.includes("socket") ||
+      lastError.message.includes("failed to fetch")
+    ) {
+      message = "SRM server is unreachable. Please try again later.";
+    } else {
+      message = lastError.message;
+    }
+  }
+  return { success: false, message };
 }
 
 export { login };
