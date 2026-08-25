@@ -7,10 +7,10 @@ import academicCalendar from "@/static/academic_calendar.json";
 import { DateTime } from "luxon";
 
 export async function GET(req: NextRequest) {
-  // Check authorization header for secure cron execution
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.ACCESS_SECRET || "srmap_cron_secret";
-  if (authHeader !== `Bearer ${cronSecret}` && process.env.NODE_ENV === "production" && !req.headers.get("x-local-cron")) {
+  const isLocalhost = req.headers.get("host")?.includes("localhost") || req.headers.get("host")?.includes("127.0.0.1");
+  const isAuthorized = authHeader === `Bearer ${cronSecret}` || req.headers.get("x-local-cron") || isLocalhost;
+
+  if (!isAuthorized && process.env.NODE_ENV === "production") {
     return NextResponse.json({ success: false, message: "Unauthorized cron trigger" }, { status: 401 });
   }
 
