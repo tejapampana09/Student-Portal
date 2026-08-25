@@ -33,6 +33,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.11",
+    "@types/web-push": "^3.6.4",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
     "axios-cookiejar-support": "^6.0.4",
@@ -64,7 +65,8 @@
     "tfjs-tflite-node": "^0.0.2",
     "tough-cookie": "^5.1.2",
     "typescript": "^5.9.2",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -18,7 +18,8 @@ import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import { useIsMobile } from "@/hooks/utils/useMobile";
 import { handleRegNumberChange } from "@/shared/utils/functions";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sun, Moon, Database, Lock, User, Calendar, Clock, Hash, Expand, Shrink, ChevronDown, ChevronUp, RefreshCw, Trash2, Flag, LayoutDashboard, Fingerprint, CalendarDays, CheckSquare, Sunrise, Check } from "lucide-react";
+import { Sun, Moon, Database, Lock, User, Calendar, Clock, Hash, Expand, Shrink, ChevronDown, ChevronUp, RefreshCw, Trash2, Flag, LayoutDashboard, Fingerprint, CalendarDays, CheckSquare, Sunrise, Check, Bell } from "lucide-react";
+import NotificationPreferencesCard from "@/components/page/settings/NotificationPreferencesCard";
 
 const FIELD_META: Record<string, { label: string; icon: React.ReactNode; sensitive?: boolean }> = {
   username: { label: "Username", icon: <User className="h-3.5 w-3.5" /> },
@@ -575,6 +576,9 @@ const Settings = () => {
           </AccordionRow>
         )}
       </SettingsCard>
+
+      {/* 🔔 Smart Alerts & Daily Morning Briefing Hub */}
+      <NotificationPreferencesCard />
 
       <SettingsCard label="Data Control">
         <ActionRow
