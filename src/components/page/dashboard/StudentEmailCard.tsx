@@ -17,7 +17,7 @@ interface EmailItem {
 }
 
 export default function StudentEmailCard() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
   const [userEmail, setUserEmail] = useState("");
