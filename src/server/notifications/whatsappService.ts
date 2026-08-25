@@ -10,6 +10,9 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
 
   // Sanitize phone number (strip +, spaces, hyphens)
   let cleanPhone = recipientPhone.replace(/\D/g, "");
+  if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+    cleanPhone = cleanPhone.slice(1);
+  }
   if (cleanPhone.length === 10) {
     cleanPhone = "91" + cleanPhone;
   }

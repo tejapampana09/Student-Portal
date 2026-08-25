@@ -198,14 +198,26 @@ export default function NotificationPreferencesCard() {
 
           <div className="flex items-center gap-2 pt-1">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-2 text-xs font-mono text-muted-foreground">+91</span>
+              <span className="absolute left-3 top-2 text-xs font-mono text-muted-foreground font-semibold">+91</span>
               <Input
                 type="tel"
-                placeholder="9876543210"
-                value={waPhone.replace(/^91/, "")}
-                onChange={(e) => setWaPhone(e.target.value)}
-                className="pl-11 h-8 text-xs bg-white/5 border-white/10 font-mono rounded-xl"
-                maxLength={10}
+                placeholder="95426 96946"
+                value={
+                  waPhone.length > 5
+                    ? `${waPhone.slice(0, 5)} ${waPhone.slice(5, 10)}`
+                    : waPhone
+                }
+                onChange={(e) => {
+                  let digits = e.target.value.replace(/\D/g, "");
+                  if (digits.startsWith("91") && digits.length > 10) {
+                    digits = digits.slice(2);
+                  } else if (digits.startsWith("0") && digits.length > 10) {
+                    digits = digits.slice(1);
+                  }
+                  setWaPhone(digits.slice(0, 10));
+                }}
+                className="pl-11 h-8 text-xs bg-white/5 border-white/10 font-mono rounded-xl tracking-wider"
+                maxLength={12}
               />
             </div>
             <Button
