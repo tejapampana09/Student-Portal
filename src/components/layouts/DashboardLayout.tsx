@@ -13,7 +13,7 @@ import { whatsapp } from "@/shared/utils/functions";
 import Logo_White from "../../../public/icons/round_corner_logo.png";
 import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpenText, Lock, ChevronDown, Library, Folder, MessageSquare, ChevronRight, MessageCircle, ChevronUp, Sun, Moon, LogOut, RotateCcw, Home, List, AppWindow, Calendar, Calculator, User, Users, Settings, ListChecks, CalendarDays, Shield, Edit, X, FileSpreadsheet, Building, MoreVertical, Check, Loader2, Clapperboard, CheckCircle2, AlertCircle, Info, Briefcase } from "lucide-react";
 import { FloatingVoiceAssistant } from "@/components/common/FloatingVoiceAssistant";
