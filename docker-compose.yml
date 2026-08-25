@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   student-portal:
+    image: ghcr.io/tejapampana09/student-portal:latest
     build:
       context: .
       dockerfile: Dockerfile
