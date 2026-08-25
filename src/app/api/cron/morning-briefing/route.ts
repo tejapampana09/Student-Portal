@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { useMongo } from "@/lib/database/useMongo";
 import { decryptData } from "@/server/utils/functions";
 import { buildDailyBriefingMessage, sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
@@ -6,13 +7,27 @@ import { ALL_DAYS, parseSubject } from "@/shared/utils/timetable";
 import academicCalendar from "@/static/academic_calendar.json";
 import { DateTime } from "luxon";
 
+function safeCompare(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.ACCESS_SECRET || "srmap_cron_secret";
-  const isLocalhost = req.headers.get("host")?.includes("localhost") || req.headers.get("host")?.includes("127.0.0.1");
-  const isAuthorized = authHeader === `Bearer ${cronSecret}` || req.headers.get("x-local-cron") || isLocalhost;
+  const headerSecret = req.headers.get("x-cron-secret");
+  const cronSecret = process.env.CRON_SECRET || process.env.ACCESS_SECRET;
 
-  if (!isAuthorized && process.env.NODE_ENV === "production") {
+  if (!cronSecret) {
+    return NextResponse.json({ success: false, message: "CRON_SECRET is not configured on server" }, { status: 500 });
+  }
+
+  const expectedBearer = `Bearer ${cronSecret}`;
+  const isAuthorized = safeCompare(authHeader, expectedBearer) || safeCompare(headerSecret, cronSecret);
+
+  if (!isAuthorized) {
     return NextResponse.json({ success: false, message: "Unauthorized cron trigger" }, { status: 401 });
   }
 
