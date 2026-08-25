@@ -12,6 +12,7 @@ import { useSubjectDialog } from "@/hooks/timetable/useSubjectDialog";
 import { TIME_SLOTS, ALL_DAYS, parseSubject } from "@/shared/utils/timetable";
 import { MapPin, ArrowUpRight, GraduationCap, Calendar, Clock, BookOpen, PartyPopper } from "lucide-react";
 import UpcomingHolidaysCard from "@/components/page/dashboard/UpcomingHolidaysCard";
+import StudentEmailCard from "@/components/page/dashboard/StudentEmailCard";
 
 // 🍏 Clean Apple-style Circular Progress Ring
 const CircularProgress = ({
@@ -275,10 +276,10 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* 🍏 Bottom Grid: CGPA, Daily Timetable, Course Attendance Breakdown, Upcoming Holidays */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 🍏 Row 1: CGPA, Daily Timetable, Course Attendance */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* 3. Current CGPA Widget */}
-        <div className="glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
+        <div className="md:col-span-4 glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -327,7 +328,7 @@ const Dashboard = () => {
         </div>
 
         {/* 4. Daily Timetable Widget */}
-        <div className="glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
+        <div className="md:col-span-4 glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -388,7 +389,7 @@ const Dashboard = () => {
         </div>
 
         {/* 5. Course Attendance Breakdown Widget */}
-        <div className="glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
+        <div className="md:col-span-4 glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -452,9 +453,15 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+      </div>
 
+      {/* 🍏 Row 2: Upcoming Holidays & Student Email / Circulars */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
         {/* 6. Upcoming Holidays & Long Weekends Widget */}
         <UpcomingHolidaysCard />
+
+        {/* 7. Student Email & Placement Notices Widget */}
+        <StudentEmailCard />
       </div>
 
       <SubjectDialog

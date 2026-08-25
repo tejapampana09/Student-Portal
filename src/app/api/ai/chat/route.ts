@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const initDb = await useMongo();
     const user = await initDb.db("college_db").collection<any>("users").findOne(
       { username: auth.payload.username },
-      { projection: { data: 1, username: 1, session_time: 1, sessionId: 1 } }
+      { projection: { data: 1, username: 1, session_time: 1, sessionId: 1, gmail: 1 } }
     );
 
     // ⚡ Direct Attendance Marking via AI
@@ -122,6 +122,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Optional: Fetch recent student emails if Gmail is connected
+    let recentEmailsSummary = "No Gmail connected. Advise student to connect Gmail on the dashboard to scan placement/circular emails.";
+    if (user?.gmail?.refreshToken) {
+      try {
+        const { fetchStudentEmails } = await import("@/server/gmail/gmailService");
+        const decrypted = decryptData(String(user.gmail.refreshToken));
+        const refreshToken = typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted);
+        const emails = await fetchStudentEmails(refreshToken, 6);
+        if (emails.length > 0) {
+          recentEmailsSummary = emails
+            .map((e) => `• [${e.date}] From: ${e.from} | Subject: ${e.subject} | Snippet: ${e.snippet}`)
+            .join("\n");
+        } else {
+          recentEmailsSummary = "No unread circulars or placement emails in the last 7 days.";
+        }
+      } catch (err) {
+        console.error("Error retrieving emails for AI:", err);
+      }
+    }
+
     const nowIST = DateTime.now().setZone("Asia/Kolkata");
     const currentDayOfWeek = nowIST.toFormat("cccc");
     const currentTimeStr = nowIST.toFormat("hh:mm a, dd-MMMM-yyyy");
@@ -173,6 +193,9 @@ ${JSON.stringify(facultyData?.slice(0, 40) || [])}
 
 --- ACADEMIC CALENDAR & UPCOMING EVENTS ---
 ${JSON.stringify(academicCalendar || [])}
+
+--- RECENT STUDENT EMAILS & PLACEMENT CIRCULARS (GMAIL) ---
+${recentEmailsSummary}
 
 --- RULES & GUIDELINES ---
 1. ATTENDANCE & BUNK CALCULATION:
