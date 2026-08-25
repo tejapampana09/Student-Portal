@@ -10,6 +10,7 @@
     "faculty": "cd scripts/faculty && node convertFacultyExcelToJson.js"
   },
   "dependencies": {
+    "@google/genai": "^2.18.0",
     "@iconify/react": "^6.0.2",
     "@radix-ui/react-avatar": "^1.1.0",
     "@radix-ui/react-checkbox": "^1.1.1",

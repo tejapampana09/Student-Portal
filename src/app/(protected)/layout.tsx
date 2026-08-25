@@ -7,6 +7,7 @@ import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import FetchClient from "@/components/client/loading/FetchLoading";
 import SplashScreen from "@/components/client/loading/SplashScreen";
+import StudentAiAssistant from "@/components/ai/StudentAiAssistant";
 
 function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -41,7 +42,12 @@ function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNo
   if (isAuthenticated && !initialized) return <FetchClient />;
   if (isPublicRoute && !isAuthenticated) return <>{children}</>;
   
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      {children}
+      <StudentAiAssistant />
+    </DashboardLayout>
+  );
 }
 
 export default function ProtectedDashboardLayout({ children }: { children: React.ReactNode }) {
