@@ -13,28 +13,44 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
   const { logout, isAuthenticated } = useAuth();
   const { updateActiveAccount, profile: lProfile } = useLocalStorageContext();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [cgpa, setCgpa] = useState<string | CGPA | null>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
+  const initialData = React.useMemo(() => {
+    if (!lProfile?.data) return null;
+    try {
+      return typeof lProfile.data === "string" ? JSON.parse(lProfile.data) : lProfile.data;
+    } catch {
+      return null;
+    }
+  }, [lProfile?.data]);
+
+  const [profile, setProfile] = useState<Profile | null>(() => initialData?.profile || null);
+  const [cgpa, setCgpa] = useState<string | CGPA | null>(() => {
+    if (!initialData) return null;
+    return typeof initialData.cgpa === "object" && initialData.cgpa?.cgpa ? initialData.cgpa.cgpa : initialData.cgpa || null;
+  });
+  const [subjects, setSubjects] = useState<Subject[]>(() => initialData?.subjects || []);
+  const [attendance, setAttendance] = useState<Attendance[]>(() => initialData?.attendance || []);
+  const [timetable, setTimetable] = useState<TimetableEntry[]>(() => initialData?.timetable || []);
   const [loading, setLoading] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const [initialized, setInitialized] = useState<boolean>(() => Boolean(initialData));
   const [error, setError] = useState<any>(null);
   const [loadCachedDataPrompt, setLoadCachedDataPrompt] = useState(false);
 
   const hasFetchedOnLoadRef = React.useRef(false);
 
-  const loadDataToState = async (data: any) => {
+  const loadDataToState = (data: any) => {
     if (!data) return;
-    const parsed = typeof data === "string" ? JSON.parse(data) : data;
-    setProfile(parsed.profile || null);
-    const resolvedCgpa = typeof parsed.cgpa === "object" && parsed.cgpa?.cgpa ? parsed.cgpa.cgpa : parsed.cgpa;
-    setCgpa(resolvedCgpa || null);
-    setSubjects(parsed.subjects || []);
-    setAttendance(parsed.attendance || []);
-    setTimetable(parsed.timetable || []);
-    setInitialized(true);
+    try {
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      setProfile(parsed.profile || null);
+      const resolvedCgpa = typeof parsed.cgpa === "object" && parsed.cgpa?.cgpa ? parsed.cgpa.cgpa : parsed.cgpa;
+      setCgpa(resolvedCgpa || null);
+      setSubjects(parsed.subjects || []);
+      setAttendance(parsed.attendance || []);
+      setTimetable(parsed.timetable || []);
+      setInitialized(true);
+    } catch (e) {
+      console.error("Error loading data to state:", e);
+    }
   };
 
   const fetchFreshData = useCallback(async (override?: { sessionId?: string; sessionTime?: string }) => {
