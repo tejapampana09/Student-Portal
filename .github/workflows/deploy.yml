@@ -34,7 +34,7 @@ jobs:
           echo "IMAGE_TAG=ghcr.io/${OWNER_LOWER}/student-portal:latest" >> $GITHUB_ENV
 
       - name: Build and push Docker image with GitHub cache
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu

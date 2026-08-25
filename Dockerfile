@@ -3,8 +3,8 @@
 # Stage 1: Fast Cached Dependencies
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci --prefer-offline --no-audit
+COPY package.json ./
+RUN npm install --legacy-peer-deps
 
 # Stage 2: Fast Builder
 FROM node:20-bookworm-slim AS builder
