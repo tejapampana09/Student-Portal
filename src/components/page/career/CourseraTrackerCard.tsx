@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { BookOpen, Plus, Calendar, Trash2, Sparkles, Loader2, ChevronDown, ChevronUp, CheckSquare, Square } from "lucide-react";
+import { BookOpen, Plus, Calendar, Trash2, Sparkles, Loader2, ChevronDown, ChevronUp, CheckSquare, Square, Link as LinkIcon, Zap, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ export interface CourseraCourse {
   totalModules: number;
   completedModules: number;
   deadline: string;
+  url?: string;
   notes?: string;
   breakdown?: Array<{ moduleNum: number; tasks: string[] }>;
   completedTasks?: string[];
@@ -26,6 +27,10 @@ interface CourseraTrackerCardProps {
 
 export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ courses, onRefresh }) => {
   const { toast } = useToast();
+  const [quickUrl, setQuickUrl] = useState("");
+  const [autoFetching, setAutoFetching] = useState(false);
+
+  // Manual Dialog state
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState("Coursera");
@@ -33,10 +38,43 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
   const [completedModules, setCompletedModules] = useState(0);
   const [deadline, setDeadline] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [expandedCourse, setExpandedCourse] = useState<string | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState<string | null>(null);
 
-  const handleAddCourse = async (e: React.FormEvent) => {
+  // 1-Second Auto Fetch from URL
+  const handleAutoFetch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickUrl.trim()) {
+      toast({ title: "Paste URL", description: "Please paste a Coursera course link.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setAutoFetching(true);
+      const res = await API.post("/career/coursera/auto-import", {
+        url: quickUrl.trim(),
+      });
+
+      if (res.data?.success) {
+        toast({
+          title: "Course & Tasks Auto-Imported! ⚡",
+          description: `Auto-fetched: ${res.data.course.title} (${res.data.course.totalModules} Modules)`,
+        });
+        setQuickUrl("");
+        onRefresh();
+        if (res.data.course?.id) {
+          setExpandedCourse(res.data.course.id);
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Import Error", description: err.message || "Failed to auto-fetch course", variant: "destructive" });
+    } finally {
+      setAutoFetching(false);
+    }
+  };
+
+  const handleAddManualCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !deadline) {
       toast({ title: "Missing Details", description: "Please provide course title and deadline.", variant: "destructive" });
@@ -128,32 +166,32 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
 
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-sky-500/15 border border-sky-500/30 text-sky-400">
               <BookOpen className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-foreground">Coursera & Certification Tasks</h3>
-              <p className="text-xs text-muted-foreground">Daily progress & AI task breakdown</p>
+              <h3 className="text-base font-bold text-foreground">Coursera & Certification Hub</h3>
+              <p className="text-xs text-muted-foreground">Paste URL to auto-fetch course & syllabus tasks in 1 second</p>
             </div>
           </div>
 
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="h-8 px-3 rounded-full text-xs font-semibold gap-1">
+              <Button size="sm" variant="ghost" className="h-8 px-3 rounded-full text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground">
                 <Plus className="h-3.5 w-3.5" />
-                Add Course
+                Manual Form
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl">
               <DialogHeader className="text-left pb-2 border-b border-white/10">
                 <DialogTitle className="text-lg font-bold flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" />
-                  Track New Course
+                  Add Course Manually
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleAddCourse} className="space-y-4 pt-3">
+              <form onSubmit={handleAddManualCourse} className="space-y-4 pt-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-muted-foreground">Course Title</label>
                   <Input
@@ -203,19 +241,42 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
           </Dialog>
         </div>
 
+        {/* ⚡ 1-Second Auto Fetch URL Bar */}
+        <form onSubmit={handleAutoFetch} className="mt-4 p-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex flex-col sm:flex-row items-center gap-2">
+          <div className="relative flex-1 w-full">
+            <LinkIcon className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-sky-400" />
+            <Input
+              placeholder="Paste Coursera URL (e.g. https://www.coursera.org/learn/deep-neural-network)..."
+              value={quickUrl}
+              onChange={(e) => setQuickUrl(e.target.value)}
+              className="pl-9 h-9 rounded-xl border-white/10 bg-black/30 text-xs text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={autoFetching}
+            className="h-9 px-4 rounded-xl text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white gap-1.5 shrink-0 shadow-md w-full sm:w-auto"
+          >
+            {autoFetching ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Auto-Fetching...
+              </>
+            ) : (
+              <>
+                <Zap className="h-3.5 w-3.5 fill-current" />
+                1-Sec Auto Fetch
+              </>
+            )}
+          </Button>
+        </form>
+
         {/* Courses list */}
         <div className="mt-5 space-y-4">
           {courses.length === 0 ? (
             <div className="p-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center space-y-2">
-              <p className="text-xs text-muted-foreground">No active Coursera or certification courses added yet.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setOpen(true)}
-                className="h-8 text-xs rounded-full border-white/10"
-              >
-                + Add Your First Course
-              </Button>
+              <p className="text-xs text-muted-foreground">No active Coursera courses tracked yet. Paste any Coursera link above!</p>
             </div>
           ) : (
             courses.map((course) => {
@@ -232,7 +293,19 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h4 className="text-sm font-bold text-foreground leading-snug">{course.title}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-foreground leading-snug">{course.title}</h4>
+                        {course.url && (
+                          <a
+                            href={course.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sky-400 hover:text-sky-300"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1 font-mono">
                           <Calendar className="h-3 w-3" /> Due: {new Date(course.deadline).toLocaleDateString()}
@@ -316,7 +389,7 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
                           className="h-6 px-2 text-[10px] rounded-full border-white/10 text-primary gap-1"
                         >
                           {breakdownLoading === course.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />}
-                          AI Auto-Generate
+                          AI Re-Generate Tasks
                         </Button>
                       </div>
 
@@ -351,7 +424,7 @@ export const CourseraTrackerCard: React.FC<CourseraTrackerCardProps> = ({ course
                         </div>
                       ) : (
                         <div className="p-3 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-xl border border-dashed border-white/5">
-                          Tap <strong>"AI Auto-Generate"</strong> to build a personalized task checklist for this course!
+                          Tap <strong>"AI Re-Generate Tasks"</strong> to build a personalized task checklist for this course!
                         </div>
                       )}
                     </div>
