@@ -17,72 +17,59 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-  // 1. Try sending rich custom text message
   try {
-    const textPayload = {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: cleanPhone,
-      type: "text",
-      text: {
-        preview_url: false,
-        body: message,
-      },
-    };
-
-    const resText = await fetch(url, {
+    // 1. Send approved hello_world template (guaranteed delivery outside 24h window)
+    const templateRes = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(textPayload),
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: cleanPhone,
+        type: "template",
+        template: {
+          name: "hello_world",
+          language: { code: "en_US" },
+        },
+      }),
       signal: AbortSignal.timeout(10000),
     });
 
-    const dataText = await resText.json();
+    const templateData = await templateRes.json();
 
-    if (resText.ok) {
-      return { success: true };
-    }
-
-    console.warn("Direct WhatsApp text failed, trying template fallback...", dataText);
-
-    // 2. If text fails (e.g. 24h window closed), send approved hello_world template
-    const templatePayload = {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
-      to: cleanPhone,
-      type: "template",
-      template: {
-        name: "hello_world",
-        language: { code: "en_US" },
-      },
-    };
-
-    const resTemplate = await fetch(url, {
+    // 2. Also send custom detailed text message
+    const textRes = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(templatePayload),
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: cleanPhone,
+        type: "text",
+        text: {
+          preview_url: false,
+          body: message,
+        },
+      }),
       signal: AbortSignal.timeout(10000),
     });
 
-    const dataTemplate = await resTemplate.json();
+    const textData = await textRes.json();
 
-    if (resTemplate.ok) {
+    if (templateRes.ok || textRes.ok) {
       return { success: true };
     }
 
-    const errData = dataText?.error || dataTemplate?.error;
-    const errMsg = errData?.message || "WhatsApp dispatch failed";
-    console.error("WhatsApp Meta Cloud API error:", errData);
-    return { success: false, error: errMsg };
+    const err = textData?.error?.message || templateData?.error?.message || "Failed to deliver WhatsApp message.";
+    console.error("WhatsApp delivery failed:", textData?.error || templateData?.error);
+    return { success: false, error: err };
   } catch (err: any) {
-    console.error("WhatsApp dispatch network error:", err.message);
-    return { success: false, error: err.message || "Network timeout" };
+    console.error("WhatsApp network exception:", err.message);
+    return { success: false, error: err.message || "Network exception" };
   }
 }
 
