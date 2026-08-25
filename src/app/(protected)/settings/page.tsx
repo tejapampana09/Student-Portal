@@ -20,7 +20,6 @@ import { handleRegNumberChange } from "@/shared/utils/functions";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sun, Moon, Database, Lock, User, Calendar, Clock, Hash, Expand, Shrink, ChevronDown, ChevronUp, RefreshCw, Trash2, Flag, LayoutDashboard, Fingerprint, CalendarDays, CheckSquare, Sunrise, Check, Bell } from "lucide-react";
 import NotificationPreferencesCard from "@/components/page/settings/NotificationPreferencesCard";
-import { VoiceAssistantSetupCard } from "@/components/page/settings/VoiceAssistantSetupCard";
 
 const FIELD_META: Record<string, { label: string; icon: React.ReactNode; sensitive?: boolean }> = {
   username: { label: "Username", icon: <User className="h-3.5 w-3.5" /> },
@@ -580,9 +579,6 @@ const Settings = () => {
 
       {/* 🔔 Smart Alerts & Daily Morning Briefing Hub */}
       <NotificationPreferencesCard />
-
-      {/* 🎙️ Siri & Google Assistant Voice Commands Setup */}
-      <VoiceAssistantSetupCard />
 
       <SettingsCard label="Data Control">
         <ActionRow
