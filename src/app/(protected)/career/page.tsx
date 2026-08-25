@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { CodingStreakCard } from "@/components/page/career/CodingStreakCard";
+import { StriverA2ZPracticeCard } from "@/components/page/career/StriverA2ZPracticeCard";
 import { PlacementEligibilityCard } from "@/components/page/career/PlacementEligibilityCard";
 import { CourseraTrackerCard, CourseraCourse } from "@/components/page/career/CourseraTrackerCard";
 import API from "@/lib/api/axiosClient";
@@ -56,6 +57,7 @@ export default function CareerHubPage() {
           {/* Column 1 & 2 */}
           <div className="lg:col-span-2 space-y-6">
             <CodingStreakCard handles={handles} stats={stats} onRefresh={fetchData} />
+            <StriverA2ZPracticeCard />
             <CourseraTrackerCard courses={courses} onRefresh={fetchData} />
           </div>
 
