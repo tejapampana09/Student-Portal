@@ -108,11 +108,11 @@ export const CustomizeDashboardModal: React.FC<Props> = ({ config, onChange }) =
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-3 rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-foreground backdrop-blur-md gap-1.5 shadow-sm transition-all hover:scale-105"
+          className="h-8 px-2.5 sm:px-3 rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-foreground backdrop-blur-md gap-1.5 shadow-sm transition-all hover:scale-105 shrink-0"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5 text-primary" />
-          <span>What to Show</span>
-          <span className="ml-0.5 text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-primary/20 text-primary font-bold">
+          <SlidersHorizontal className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span>Customize</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
             {activeCount}/7
           </span>
         </Button>

@@ -204,17 +204,17 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col gap-4 pb-8 max-w-7xl mx-auto w-full">
       {/* 🍏 Top Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground truncate">
             Welcome back, {toTitleCase(profile?.studentName || "Student")}!
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{formattedDate}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
           <CustomizeDashboardModal config={widgetsConfig} onChange={handleWidgetsChange} />
           {profile?.registerNo && (
-            <span className="text-xs font-mono px-3 py-1 rounded-full bg-white/10 dark:bg-white/[0.06] border border-white/10 text-muted-foreground backdrop-blur-md">
+            <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-white/10 dark:bg-white/[0.06] border border-white/10 text-muted-foreground backdrop-blur-md shrink-0">
               {profile.registerNo}
             </span>
           )}
