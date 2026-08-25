@@ -146,26 +146,30 @@ ${JSON.stringify(academicCalendar || [])}
       });
     }
 
-    let response;
-    try {
-      response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents,
-        config: {
-          systemInstruction: contextPrompt,
-          temperature: 0.4,
-        },
-      });
-    } catch (e: any) {
-      console.warn("gemini-3.6-flash failed, trying gemini-2.5-flash fallback:", e?.message);
-      response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents,
-        config: {
-          systemInstruction: contextPrompt,
-          temperature: 0.4,
-        },
-      });
+    // High Quota Model Chain: gemini-3.1-flash-lite (500 RPD) -> gemini-3.5-flash-lite (500 RPD) -> gemini-3.6-flash
+    const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
+    let response: any = null;
+    let lastErr: any = null;
+
+    for (const model of candidateModels) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            systemInstruction: contextPrompt,
+            temperature: 0.4,
+          },
+        });
+        if (response?.text) break;
+      } catch (e: any) {
+        lastErr = e;
+        console.warn(`Model ${model} failed, trying next candidate:`, e?.message);
+      }
+    }
+
+    if (!response && lastErr) {
+      throw lastErr;
     }
 
     const text = response.text || "I couldn't generate a response. Please try again.";
