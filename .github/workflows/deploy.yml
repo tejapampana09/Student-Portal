@@ -28,10 +28,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set lowercase image tag
+      - name: Set lowercase image tags
         run: |
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "IMAGE_TAG=ghcr.io/${OWNER_LOWER}/student-portal:latest" >> $GITHUB_ENV
+          echo "IMAGE_LATEST=ghcr.io/${OWNER_LOWER}/student-portal:latest" >> $GITHUB_ENV
+          echo "IMAGE_SHA=ghcr.io/${OWNER_LOWER}/student-portal:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Build and push Docker image with GitHub cache
         uses: docker/build-push-action@v6
@@ -39,7 +40,9 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.IMAGE_TAG }}
+          tags: |
+            ${{ env.IMAGE_LATEST }}
+            ${{ env.IMAGE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -67,11 +70,11 @@ jobs:
             echo "=== 2. Authenticating with GHCR ==="
             echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            echo "=== 3. Pulling pre-built Docker image ==="
-            sudo docker compose pull
+            echo "=== 3. Pulling pre-built Docker image (${{ github.sha }}) ==="
+            sudo IMAGE_TAG=${{ github.sha }} docker compose pull
 
             echo "=== 4. Starting new container instantly ==="
-            sudo docker compose up -d
+            sudo IMAGE_TAG=${{ github.sha }} docker compose up -d
 
             echo "=== 5. Cleaning old dangling images ==="
             sudo docker image prune -f

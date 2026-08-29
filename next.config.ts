@@ -45,9 +45,6 @@ const securityHeaders = [
 
 const config = {
   output: "standalone",
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   reactStrictMode: !isDev,
   trailingSlash: false,
   devIndicators: false,

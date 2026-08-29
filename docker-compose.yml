@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   student-portal:
-    image: ghcr.io/tejapampana09/student-portal:latest
+    image: ghcr.io/tejapampana09/student-portal:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: Dockerfile
     container_name: srmap-student-portal
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -17,7 +15,7 @@ services:
       - FORUMS_MONGO_URI=${FORUMS_MONGO_URI}
       - ACCESS_SECRET=${ACCESS_SECRET}
       - ACCESS_EXPIRE=${ACCESS_EXPIRE:-30d}
-      - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY:-${ACCESS_SECRET}}
-      - CRON_SECRET=${CRON_SECRET:-${ACCESS_SECRET}}
+      - DB_ENCRYPTION_KEY=${DB_ENCRYPTION_KEY}
+      - CRON_SECRET=${CRON_SECRET}
     env_file:
       - .env
