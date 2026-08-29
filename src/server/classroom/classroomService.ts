@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import crypto from "crypto";
 
 export function getGoogleOAuth2Client(redirectUri?: string) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -11,6 +12,9 @@ export function getGoogleOAuth2Client(redirectUri?: string) {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
+/**
+ * Generates Google Classroom OAuth URL requesting strictly Classroom scopes.
+ */
 export function getGoogleAuthUrl(redirectUri: string, state: string) {
   const oauth2Client = getGoogleOAuth2Client(redirectUri);
   return oauth2Client.generateAuthUrl({
@@ -23,7 +27,6 @@ export function getGoogleAuthUrl(redirectUri: string, state: string) {
       "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
       "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
       "https://www.googleapis.com/auth/classroom.announcements.readonly",
-      "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
     ],
@@ -84,7 +87,7 @@ export interface ClassroomCourseItem {
   materials: ClassroomMaterialAttachment[];
 }
 
-// In-Memory 5-Minute Cache to prevent Google API Quota Exhaustion (Item 11)
+// In-Memory 5-Minute Cache with SHA-256 Hashed Keys
 interface CacheEntry {
   data: {
     courses: ClassroomCourseItem[];
@@ -154,7 +157,8 @@ export async function fetchFullGoogleClassroomData(
   allAnnouncements: ClassroomAnnouncement[];
   allMaterials: ClassroomMaterialAttachment[];
 }> {
-  const cacheKey = `cdata:${refreshToken.slice(-16)}`;
+  // Use SHA-256 hash of token to prevent exposing token substrings in cache keys
+  const cacheKey = `cdata:${crypto.createHash("sha256").update(refreshToken).digest("hex")}`;
   const now = Date.now();
 
   if (!bypassCache) {
@@ -177,7 +181,7 @@ export async function fetchFullGoogleClassroomData(
   const rawCourses = coursesRes.data.courses || [];
   const nowDate = new Date();
 
-  // Parallelize fetch across courses with Promise.allSettled (Item 11)
+  // Parallelize fetch across courses with Promise.allSettled
   const coursePromises = rawCourses.map(async (c): Promise<ClassroomCourseItem | null> => {
     if (!c.id || !c.name) return null;
 
@@ -185,7 +189,6 @@ export async function fetchFullGoogleClassroomData(
     const courseAnnouncements: ClassroomAnnouncement[] = [];
     const courseMaterials: ClassroomMaterialAttachment[] = [];
 
-    // Parallel fetch materials, coursework, announcements for course
     const [matResSettled, cwResSettled, annResSettled] = await Promise.allSettled([
       classroom.courses.courseWorkMaterials.list({
         courseId: c.id,
@@ -204,7 +207,7 @@ export async function fetchFullGoogleClassroomData(
       }),
     ]);
 
-    // 1. Process Materials
+    // 1. Materials
     if (matResSettled.status === "fulfilled") {
       for (const cwm of matResSettled.value.data.courseWorkMaterial || []) {
         const parsed = parseMaterialsList(cwm.materials || [], c.id, c.name, cwm.creationTime || nowDate.toISOString());
@@ -218,7 +221,7 @@ export async function fetchFullGoogleClassroomData(
       }
     }
 
-    // 2. Process CourseWork
+    // 2. CourseWork
     if (cwResSettled.status === "fulfilled") {
       const cwList = cwResSettled.value.data.courseWork || [];
       for (const cw of cwList) {
@@ -266,7 +269,7 @@ export async function fetchFullGoogleClassroomData(
       }
     }
 
-    // 3. Process Announcements
+    // 3. Announcements
     if (annResSettled.status === "fulfilled") {
       for (const ann of annResSettled.value.data.announcements || []) {
         if (!ann.id || !ann.text) continue;
@@ -315,7 +318,6 @@ export async function fetchFullGoogleClassroomData(
 
   const payload = { courses, allAssignments, allAnnouncements, allMaterials };
 
-  // Set 5-Minute Cache
   classroomCache.set(cacheKey, {
     data: payload,
     expiresAt: now + 5 * 60 * 1000,

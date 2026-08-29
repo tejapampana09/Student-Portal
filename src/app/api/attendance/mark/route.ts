@@ -23,11 +23,16 @@ export async function POST(req: NextRequest) {
     const initDb = await useMongo();
     const user = await initDb.db("college_db").collection<any>("users").findOne(
       { username: auth.payload.username },
-      { projection: { sessionId: 1 } }
+      { projection: { sessionId: 1, session_time: 1 } }
     );
 
     if (!user?.sessionId) {
       return errorResponse("No active portal session found. Please initiate a session on your dashboard first.", {}, 400);
+    }
+
+    // Defense-in-depth: Validate session timestamp freshness
+    if (!user.session_time) {
+      return errorResponse("Portal session expired. Please refresh your session on the dashboard.", {}, 400);
     }
 
     const SUBMIT_URL = "https://student.srmap.edu.in/srmapstudentcorner/students/transaction/studentattendanceresources.jsp";
