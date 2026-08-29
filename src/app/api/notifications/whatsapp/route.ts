@@ -6,6 +6,7 @@ import {
   sendWhatsAppTextMessage,
   validateAndFormatPhone,
 } from "@/server/notifications/whatsappService";
+import { checkAndConsumeRateLimit, refundRateLimit } from "@/server/utils/rateLimiter";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
@@ -36,37 +37,27 @@ export async function POST(req: NextRequest) {
     const { action, phone, enabled } = body;
 
     const initDb = await useMongo();
-    const usersCollection = initDb.db("college_db").collection<any>("users");
-    const user = await usersCollection.findOne(
-      { username: auth.payload.username },
-      { projection: { whatsapp: 1 } }
-    );
+    const collegeDb = initDb.db("college_db");
+    const usersCollection = collegeDb.collection<any>("users");
 
     if (action === "test") {
       if (!phone) return errorResponse("Phone number is required for test message", {}, 400);
 
-      // Server-side strict phone validation
+      // 1. Strict E.164 phone validation
       const validation = validateAndFormatPhone(phone);
       if (!validation.valid || !validation.phone) {
         return errorResponse(validation.error || "Invalid phone number format", {}, 400);
       }
 
-      // Rate Limiting: 60-second cooldown & max 5 tests per hour
-      const now = Date.now();
-      const lastTest = user?.whatsapp?.lastTestSentAt ? new Date(user.whatsapp.lastTestSentAt).getTime() : 0;
-      const cooldownMs = 60 * 1000;
+      // 2. Atomic Rate Limiting (60s cooldown, max 5/hr) via Compare-And-Swap
+      const rateLimitKey = `wa_test:${auth.payload.username}`;
+      const rateCheck = await checkAndConsumeRateLimit(collegeDb, rateLimitKey, 60, 5);
 
-      if (now - lastTest < cooldownMs) {
-        const waitSec = Math.ceil((cooldownMs - (now - lastTest)) / 1000);
-        return errorResponse(`Please wait ${waitSec}s before sending another test message.`, {}, 429);
+      if (!rateCheck.allowed) {
+        return errorResponse(rateCheck.error || "Rate limit exceeded. Please try again later.", {}, 429);
       }
 
-      const oneHourAgo = now - 60 * 60 * 1000;
-      const recentTests = (user?.whatsapp?.testHistory || []).filter((t: number) => t > oneHourAgo);
-      if (recentTests.length >= 5) {
-        return errorResponse("Hourly test limit reached (max 5 test messages/hour). Please try again later.", {}, 429);
-      }
-
+      // 3. Dispatch WhatsApp test message
       const sent = await sendWhatsAppDailyBriefingTemplate(
         validation.phone,
         auth.payload.username || "Student",
@@ -76,27 +67,21 @@ export async function POST(req: NextRequest) {
         null
       );
 
-      // Record rate limit metadata
-      recentTests.push(now);
-      await usersCollection.updateOne(
-        { username: auth.payload.username },
-        {
-          $set: {
-            "whatsapp.lastTestSentAt": new Date(now).toISOString(),
-            "whatsapp.testHistory": recentTests,
-          },
-        }
-      );
-
       if (sent.success) {
         return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
-      } else {
-        const fallback = await sendWhatsAppTextMessage(validation.phone, "🎓 *SRMAP Student Portal Alert*\n\nHello! This is a test notification from your SRMAP Student Portal.");
-        if (fallback.success) {
-          return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
-        }
-        return errorResponse(sent.error || fallback.error || "Failed to send WhatsApp message.", {}, 500);
       }
+
+      const fallback = await sendWhatsAppTextMessage(validation.phone, "🎓 *SRMAP Student Portal Alert*\n\nHello! This is a test notification from your SRMAP Student Portal.");
+      if (fallback.success) {
+        return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
+      }
+
+      // If upstream failed on 5xx server error, refund rate limit quota
+      if (sent.statusCode && sent.statusCode >= 500) {
+        await refundRateLimit(collegeDb, rateLimitKey);
+      }
+
+      return errorResponse(sent.error || fallback.error || "Failed to send WhatsApp message.", {}, 500);
     }
 
     // Validate phone number if enabling WhatsApp

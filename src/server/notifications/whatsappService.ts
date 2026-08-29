@@ -125,7 +125,7 @@ export async function sendWhatsAppDailyBriefingTemplate(
   todayClasses: any[],
   lowAttendanceSubjects: any[],
   nextHoliday: any
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; statusCode?: number }> {
   const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "srmap_daily_briefing";
 
   const classesParam = todayClasses.length === 0
@@ -151,14 +151,14 @@ export async function sendWhatsAppDailyBriefingTemplate(
   // 1. Try custom approved template first
   const customRes = await sendWhatsAppTemplateMessage(recipientPhone, templateName, parameters);
   if (customRes.success) {
-    return { success: true };
+    return { success: true, statusCode: customRes.statusCode };
   }
 
   // 2. Fallback to pre-approved hello_world if custom template is in review or failed
   return await sendWhatsAppTemplateMessage(recipientPhone, "hello_world");
 }
 
-export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string }> {
+export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string; statusCode?: number }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
@@ -197,7 +197,7 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
     const textData = await textRes.json().catch(() => ({}));
     if (textRes.ok) {
       console.log(`[WhatsApp] Text message delivered to ${maskedPhone}`);
-      return { success: true };
+      return { success: true, statusCode: textRes.status };
     }
 
     // If outside 24h customer window (Meta code 131047), fallback to template
@@ -205,16 +205,16 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
       console.log(`[WhatsApp] 24h window closed for ${maskedPhone}, attempting template fallback`);
       const templateFallback = await sendWhatsAppTemplateMessage(cleanPhone, "hello_world");
       if (templateFallback.success) {
-        return { success: true };
+        return { success: true, statusCode: templateFallback.statusCode };
       }
     }
 
     if (textRes.status === 429) {
-      return { success: false, error: "WhatsApp service rate limited by Meta. Please retry shortly." };
+      return { success: false, error: "WhatsApp service rate limited by Meta. Please retry shortly.", statusCode: 429 };
     }
 
     const err = textData?.error?.message || "Failed to deliver WhatsApp message.";
-    return { success: false, error: err };
+    return { success: false, error: err, statusCode: textRes.status };
   } catch (err: any) {
     return { success: false, error: "Network connection to WhatsApp Cloud API failed." };
   }
