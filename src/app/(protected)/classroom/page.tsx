@@ -19,6 +19,7 @@ import {
   Flame,
   Award,
   BookCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,7 @@ export default function ClassroomPage() {
   const [assignments, setAssignments] = useState<any[]>([]);
 
   // Navigation tab
-  const [activeTab, setActiveTab] = useState<"classrooms" | "assignments" | "ai_summarizer" | "announcements">("classrooms");
+  const [activeTab, setActiveTab] = useState<"classrooms" | "assignments" | "ai_summarizer">("classrooms");
 
   // AI Summarizer State
   const [summarizerSubject, setSummarizerSubject] = useState("");
@@ -61,7 +62,7 @@ export default function ClassroomPage() {
         setAssignments(res.data.assignments || []);
       }
     } catch {
-      toast({ title: "Note", description: "Loading active semester subjects..." });
+      toast({ title: "Note", description: "Loaded current semester subjects." });
     } finally {
       setLoading(false);
     }
@@ -71,7 +72,6 @@ export default function ClassroomPage() {
     fetchClassroomData();
   }, []);
 
-  // Pre-fill summarizer when student picks a course
   const handleQuickSummarizeCourse = (course: ClassroomCourse) => {
     setSummarizerSubject(course.courseCode || course.name);
     setSummarizerContent(`Module Syllabus & Lecture Notes for ${course.name}:\n\nKey Topics covered in class lectures, textbook derivations, and practice problem sets.`);
@@ -121,8 +121,6 @@ export default function ClassroomPage() {
     toast({ title: "Copied to Clipboard! 📋" });
   };
 
-  const pendingAssignments = assignments.filter((a) => a.state === "ASSIGNED");
-
   return (
     <div className="h-full flex flex-col gap-5 pb-8 max-w-7xl mx-auto w-full">
       {/* 🎓 Header */}
@@ -134,14 +132,14 @@ export default function ClassroomPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Google Classroom & AI Notes Hub
+                Classroom & AI Notes Hub
               </h1>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 This Semester Only
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Active semester classrooms • Upcoming assignments • AI Lecture Slide Summarizer
+              Active semester subjects • Live assignment tracker • AI Lecture Summarizer
             </p>
           </div>
         </div>
@@ -150,7 +148,7 @@ export default function ClassroomPage() {
           {isConnected ? (
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30 text-xs py-1 px-3 gap-1.5 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Connected: {userEmail}
+              Live Sync: {userEmail}
             </Badge>
           ) : (
             <Button
@@ -164,7 +162,7 @@ export default function ClassroomPage() {
               className="h-8 px-3 rounded-xl text-xs font-semibold border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Sync Google Classroom
+              Connect Google Classroom
             </Button>
           )}
         </div>
@@ -185,22 +183,22 @@ export default function ClassroomPage() {
         <div className="glass-card p-4 rounded-2xl border border-white/10 flex items-center justify-between">
           <div>
             <span className="text-xs text-muted-foreground font-semibold">Pending Tasks</span>
-            <p className="text-xl font-bold text-amber-400 mt-0.5">{pendingAssignments.length}</p>
+            <p className="text-xl font-bold text-emerald-400 mt-0.5">{assignments.length}</p>
           </div>
-          <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
-            <Clock className="h-5 w-5" />
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
         </div>
 
         <div className="glass-card p-4 rounded-2xl border border-white/10 flex items-center justify-between">
           <div>
-            <span className="text-xs text-muted-foreground font-semibold">Due This Week</span>
-            <p className="text-xl font-bold text-emerald-400 mt-0.5">
-              {assignments.filter((a) => (a.dueFormatted || "").includes("3 days") || (a.dueFormatted || "").includes("Monday")).length}
+            <span className="text-xs text-muted-foreground font-semibold">Classroom Status</span>
+            <p className="text-xs font-bold text-foreground mt-1">
+              {isConnected ? "Connected ✅" : "Local Sync ⚡"}
             </p>
           </div>
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
-            <Calendar className="h-5 w-5" />
+          <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+            <ShieldCheck className="h-5 w-5" />
           </div>
         </div>
 
@@ -248,7 +246,7 @@ export default function ClassroomPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Showing <strong>only current semester enrolled subjects</strong>. Old semester classrooms are filtered out.
+              Showing <strong>only current semester enrolled subjects</strong> ({courses.length} subjects).
             </p>
           </div>
 
@@ -258,7 +256,7 @@ export default function ClassroomPage() {
             </div>
           ) : courses.length === 0 ? (
             <div className="p-8 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
-              No current semester classrooms found.
+              No current semester subjects found.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -272,28 +270,21 @@ export default function ClassroomPage() {
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {course.courseCode || "Current Sem"}
                       </span>
-                      <span className="text-[10px] font-mono text-muted-foreground">{course.room || "Campus Room"}</span>
+                      <span className="text-[10px] font-mono text-muted-foreground">{course.room || "Campus Section"}</span>
                     </div>
 
                     <h3 className="text-sm font-bold text-foreground leading-snug line-clamp-2">
                       {course.name}
                     </h3>
                     <p className="text-[11px] text-muted-foreground line-clamp-1">
-                      {course.section || "Active Class Section"}
+                      {course.section || "Active Semester Enrolled"}
                     </p>
                   </div>
 
-                  {/* Tasks & Announcements preview */}
-                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1.5 text-xs">
+                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1 text-xs">
                     <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                      <span>Course Tasks:</span>
-                      <span className="font-bold text-foreground">{course.assignments.length} Assignments</span>
-                    </div>
-                    <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                      <span>Materials & Slides:</span>
-                      <span className="font-bold text-foreground">
-                        {course.announcements.reduce((acc, a) => acc + (a.materials?.length || 0), 0) || "Available"}
-                      </span>
+                      <span>Live Tasks:</span>
+                      <span className="font-bold text-foreground">{course.assignments?.length || 0} Due</span>
                     </div>
                   </div>
 
@@ -313,7 +304,7 @@ export default function ClassroomPage() {
                       rel="noopener noreferrer"
                       className="h-8 px-3 rounded-xl text-[11px] font-bold bg-white/10 hover:bg-white/15 text-foreground flex items-center gap-1 transition-all"
                     >
-                      Classroom
+                      Open
                       <ExternalLink className="h-3 w-3 opacity-60" />
                     </a>
                   </div>
@@ -327,19 +318,35 @@ export default function ClassroomPage() {
       {/* ⏳ Tab 2: Assignment Timeline */}
       {activeTab === "assignments" && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              All active coursework & homework deadlines across your current semester subjects.
-            </p>
-          </div>
-
-          <div className="space-y-2.5">
-            {assignments.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
-                🎉 No upcoming assignment deadlines found for this semester!
+          {assignments.length === 0 ? (
+            <div className="glass-card p-8 rounded-3xl border border-white/10 text-center space-y-3">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="h-6 w-6" />
               </div>
-            ) : (
-              assignments.map((asg) => (
+              <h3 className="text-base font-bold text-foreground">All Clear! No Pending Assignments Due 🎉</h3>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                You have no active pending homework or assignments due across your current semester subjects.
+              </p>
+              {!isConnected && (
+                <div className="pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      API.get("/gmail/connect").then((res) => {
+                        if (res.data?.authUrl) window.location.href = res.data.authUrl;
+                      });
+                    }}
+                    className="text-xs h-8 px-4 rounded-xl border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+                  >
+                    Sync Live with Google Classroom
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {assignments.map((asg) => (
                 <div
                   key={asg.id}
                   className="glass-card p-4 rounded-2xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/[0.04] transition-all"
@@ -374,9 +381,9 @@ export default function ClassroomPage() {
                     </a>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -395,7 +402,6 @@ export default function ClassroomPage() {
                 </p>
               </div>
 
-              {/* Target Exam Selector */}
               <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10 self-end sm:self-auto">
                 {(["End-Sem", "Mid-Sem", "CLA"] as const).map((ex) => (
                   <button
@@ -413,7 +419,6 @@ export default function ClassroomPage() {
               </div>
             </div>
 
-            {/* Subject Selector & Input */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Select Current Semester Subject:</label>
@@ -540,7 +545,6 @@ export default function ClassroomPage() {
 
               {/* 3. Predicted 2-Mark & 10-Mark Questions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 2-Mark Short Questions */}
                 <div className="glass-card p-5 rounded-3xl border border-white/10 space-y-3">
                   <h4 className="text-xs font-bold text-sky-400 uppercase tracking-wider">
                     📌 Predicted 2-Mark Questions (Short Answers)
@@ -558,7 +562,6 @@ export default function ClassroomPage() {
                   </div>
                 </div>
 
-                {/* 10-Mark Long Analytical Questions */}
                 <div className="glass-card p-5 rounded-3xl border border-white/10 space-y-3">
                   <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
                     📌 Predicted 10-Mark Questions (Detailed Steps)
