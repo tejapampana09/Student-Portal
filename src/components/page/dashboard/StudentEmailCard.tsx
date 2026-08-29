@@ -28,7 +28,7 @@ export default function StudentEmailCard() {
       setLoading(true);
       const res = await API.get("/gmail/emails");
       if (res.data?.success) {
-        setConnected(res.data.connected);
+        setConnected(!!(res.data.connected || res.data.isConnected));
         setUserEmail(res.data.email || "");
         setEmails(res.data.emails || []);
       }

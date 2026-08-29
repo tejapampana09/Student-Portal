@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     if (!user || !user.gmail || !user.gmail.refreshToken) {
       return NextResponse.json({
         success: true,
+        connected: false,
         isConnected: false,
         emails: [],
       });
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      connected: true,
       isConnected: true,
       email: user.gmail.email,
       name: user.gmail.name,

@@ -23,38 +23,38 @@ export interface ExecutionResult {
 }
 
 /**
- * Real Python Runner: Generates executable Python driver script that runs the user code
- * against every testcase and captures real stdout/return values.
+ * Universal Python Code Runner:
+ * Uses Base64-encoded testcase serialization for 100% crash-free Python test injection.
  */
 function runPythonCode(code: string, problemId: string, testCases: TestCase[]): ExecutionResult {
   const startTime = Date.now();
-  const problem = CODING_PROBLEMS.find((p) => p.id === problemId) || CODING_PROBLEMS[0];
-  const fnName = problem.slug === "two-sum" ? "twoSum" :
-                 problem.slug === "maximum-subarray" ? "maxSubArray" :
-                 problem.slug === "best-time-to-buy-and-sell-stock" ? "maxProfit" :
-                 problem.slug === "valid-parentheses" ? "isValid" :
-                 problem.slug === "search-in-rotated-sorted-array" ? "search" :
-                 problem.slug === "coin-change" ? "coinChange" : "solution";
-
   const testResults: any[] = [];
   let passedCount = 0;
 
-  // Create temporary driver script
   const tmpFile = path.join(os.tmpdir(), `srmap_py_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.py`);
+  const encodedTestCases = Buffer.from(JSON.stringify(testCases)).toString("base64");
 
   const driverScript = `
-import sys, json
+import sys, json, base64
 
 ${code}
 
 def run_tests():
-    sol = Solution()
-    fn = getattr(sol, "${fnName}", None)
-    if not fn:
-        print(json.dumps({"error": "Method '${fnName}' not found in class Solution."}))
+    try:
+        sol = Solution()
+    except Exception as e:
+        print("<<<SRMAP_OUTPUT>>>" + json.dumps({"globalError": f"Could not instantiate Solution class: {str(e)}"}))
         return
 
-    testcases = ${JSON.stringify(testCases)}
+    # Find the primary solution method dynamically
+    methods = [m for m in dir(sol) if not m.startswith("_") and callable(getattr(sol, m))]
+    if not methods:
+        print("<<<SRMAP_OUTPUT>>>" + json.dumps({"globalError": "No solution method found in class Solution."}))
+        return
+
+    fn = getattr(sol, methods[0])
+    raw_json = base64.b64decode("${encodedTestCases}").decode("utf-8")
+    testcases = json.loads(raw_json)
     results = []
 
     for tc in testcases:
@@ -70,13 +70,11 @@ def run_tests():
             res = fn(*args)
             if isinstance(res, tuple):
                 res = list(res)
-            elif isinstance(res, bool):
-                res = str(res).lower()
             results.append({"output": res, "error": None})
         except Exception as e:
             results.append({"output": None, "error": str(e)})
 
-    print("<<<SRMAP_OUTPUT>>>" + json.dumps(results))
+    print("<<<SRMAP_OUTPUT>>>" + json.dumps({"results": results}))
 
 if __name__ == "__main__":
     run_tests()
@@ -97,21 +95,40 @@ if __name__ == "__main__":
         passedTests: 0,
         totalTests: testCases.length,
         testResults: [],
-        errorMsg: stdout.trim() || "Python runner failed to return output.",
+        errorMsg: stdout.trim() || "Python runtime produced no response.",
       };
     }
 
-    const parsedOutputs: Array<{ output: any; error: string | null }> = JSON.parse(match[1]);
+    const payload = JSON.parse(match[1]);
+    if (payload.globalError) {
+      return {
+        status: "Compilation Error",
+        runtimeMs: Date.now() - startTime,
+        memoryKb: 0,
+        passedTests: 0,
+        totalTests: testCases.length,
+        testResults: [],
+        errorMsg: payload.globalError,
+      };
+    }
+
+    const parsedOutputs: Array<{ output: any; error: string | null }> = payload.results || [];
 
     for (let i = 0; i < testCases.length; i++) {
       const tc = testCases[i];
-      const item = parsedOutputs[i];
+      const item = parsedOutputs[i] || { output: null, error: "No output produced" };
 
-      let actualStr = item.output !== undefined && item.output !== null ? JSON.stringify(item.output) : "None";
-      if (typeof item.output === "boolean") actualStr = String(item.output);
+      let actualStr = "null";
+      if (item.output !== undefined && item.output !== null) {
+        if (typeof item.output === "boolean") {
+          actualStr = item.output ? "true" : "false";
+        } else {
+          actualStr = JSON.stringify(item.output);
+        }
+      }
 
       const expectedClean = tc.expectedOutput.replace(/\s+/g, "").toLowerCase();
-      const actualClean = (actualStr || "").replace(/\s+/g, "").toLowerCase();
+      const actualClean = actualStr.replace(/\s+/g, "").toLowerCase();
 
       const passed = !item.error && actualClean === expectedClean;
       if (passed) passedCount++;
@@ -151,7 +168,7 @@ if __name__ == "__main__":
 }
 
 /**
- * Real JavaScript Runner (Node.js vm sandbox)
+ * Universal JavaScript Runner (Node.js vm sandbox)
  */
 function runJavaScriptCode(code: string, problemId: string, testCases: TestCase[]): ExecutionResult {
   const startTime = Date.now();
@@ -172,23 +189,33 @@ function runJavaScriptCode(code: string, problemId: string, testCases: TestCase[
       const contextObj: any = { console, Math, Array, Object, Map, Set, String, Number };
       const script = new vm.Script(`
         ${code}
-        const fn = typeof twoSum === 'function' ? twoSum :
-                   typeof maxSubArray === 'function' ? maxSubArray :
-                   typeof maxProfit === 'function' ? maxProfit :
-                   typeof isValid === 'function' ? isValid :
-                   typeof search === 'function' ? search :
-                   typeof coinChange === 'function' ? coinChange : null;
-        if (!fn) throw new Error("Solution function not defined.");
-        fn(...parsedArgs);
+        const fns = [
+          typeof twoSum === 'function' ? twoSum : null,
+          typeof maxSubArray === 'function' ? maxSubArray : null,
+          typeof maxProfit === 'function' ? maxProfit : null,
+          typeof isValid === 'function' ? isValid : null,
+          typeof search === 'function' ? search : null,
+          typeof coinChange === 'function' ? coinChange : null,
+        ].filter(Boolean);
+
+        const targetFn = fns[0] || (typeof solution === 'function' ? solution : null);
+        if (!targetFn) throw new Error("Solution function not defined.");
+        targetFn(...parsedArgs);
       `);
 
       const context = vm.createContext({ ...contextObj, parsedArgs });
       const result = script.runInContext(context, { timeout: 1500 });
-      let actualStr = result !== undefined ? JSON.stringify(result) : "undefined";
-      if (typeof result === "boolean") actualStr = String(result);
+      let actualStr = "null";
+      if (result !== undefined && result !== null) {
+        if (typeof result === "boolean") {
+          actualStr = result ? "true" : "false";
+        } else {
+          actualStr = JSON.stringify(result);
+        }
+      }
 
       const expectedClean = tc.expectedOutput.replace(/\s+/g, "").toLowerCase();
-      const actualClean = (actualStr || "").replace(/\s+/g, "").toLowerCase();
+      const actualClean = actualStr.replace(/\s+/g, "").toLowerCase();
 
       const passed = actualClean === expectedClean;
       if (passed) passedCount++;
@@ -224,9 +251,6 @@ function runJavaScriptCode(code: string, problemId: string, testCases: TestCase[
   }
 }
 
-/**
- * Main dispatcher
- */
 export function executeCodeLocally(
   language: string,
   code: string,
@@ -242,6 +266,5 @@ export function executeCodeLocally(
     return runJavaScriptCode(code, problemId, testCasesToRun);
   }
 
-  // Python runner
   return runPythonCode(code, problemId, testCasesToRun);
 }
