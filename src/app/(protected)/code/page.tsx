@@ -71,7 +71,7 @@ export default function CodingArenaPage() {
   const [isLCConnected, setIsLCConnected] = useState(false);
   const [lcUsername, setLcUsername] = useState<string | null>(null);
   const [isLCModalOpen, setIsLCModalOpen] = useState(false);
-  const [lcConnectTab, setLcConnectTab] = useState<"credentials" | "cookie">("credentials");
+  const [lcConnectTab, setLcConnectTab] = useState<"credentials" | "cookie">("cookie");
 
   // In-Portal Credentials Login State
   const [lcLoginInput, setLcLoginInput] = useState("");
@@ -161,7 +161,7 @@ export default function CodingArenaPage() {
     } catch (err: any) {
       toast({
         title: "Login Failed",
-        description: err.response?.data?.message || "Invalid LeetCode username or password.",
+        description: err.response?.data?.message || "LeetCode Cloudflare protection blocked direct password login. Please use the Session Cookie tab for instant connection!",
         variant: "destructive",
       });
     } finally {
