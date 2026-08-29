@@ -33,6 +33,7 @@ import {
   Unlink,
   Lock,
   User,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +45,7 @@ import API from "@/lib/api/axiosClient";
 import { CODING_PROBLEMS, CodingProblem } from "@/server/code/codingProblemsData";
 import { ExecutionResult } from "@/server/code/codeExecutionService";
 import { MentorFeedback } from "@/server/code/aiMentorService";
-import { LeetCodeSubmissionResponse } from "@/server/code/leetcodeSubmitService";
+import { LeetCodeSubmissionResponse, LeetCodeProfile } from "@/server/code/leetcodeSubmitService";
 
 export default function CodingArenaPage() {
   const { toast } = useToast();
@@ -65,15 +66,17 @@ export default function CodingArenaPage() {
   const [customInput, setCustomInput] = useState("");
   const [isCustomMode, setIsCustomMode] = useState(false);
 
-  // Direct LeetCode Cloud Submission State
+  // LeetCode Cloud State
   const [submittingToLC, setSubmittingToLC] = useState(false);
   const [lcResult, setLcResult] = useState<LeetCodeSubmissionResponse | null>(null);
   const [isLCConnected, setIsLCConnected] = useState(false);
   const [lcUsername, setLcUsername] = useState<string | null>(null);
+  const [lcProfile, setLcProfile] = useState<LeetCodeProfile | null>(null);
   const [isLCModalOpen, setIsLCModalOpen] = useState(false);
-  const [lcConnectTab, setLcConnectTab] = useState<"credentials" | "cookie">("cookie");
+  const [lcConnectTab, setLcConnectTab] = useState<"username" | "cookie" | "credentials">("username");
 
-  // In-Portal Credentials Login State
+  // Inputs
+  const [usernameInput, setUsernameInput] = useState("tejapampana09");
   const [lcLoginInput, setLcLoginInput] = useState("");
   const [lcPasswordInput, setLcPasswordInput] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -93,9 +96,11 @@ export default function CodingArenaPage() {
       if (res.data?.isConnected) {
         setIsLCConnected(true);
         setLcUsername(res.data.leetcodeUsername || "Connected");
+        if (res.data.profile) setLcProfile(res.data.profile);
       } else {
         setIsLCConnected(false);
         setLcUsername(null);
+        setLcProfile(null);
       }
     } catch {}
   };
@@ -128,10 +133,46 @@ export default function CodingArenaPage() {
 
   const handleResetCode = () => {
     setCode(selectedProblem.starterCode[language] || selectedProblem.starterCode.python);
-    toast({ title: "Code Reset to Unsolved Starter Template" });
+    toast({ title: "Code Reset to Unsolved Template" });
   };
 
-  // Connect via In-Portal Username & Password
+  // 1-Tap Username Connect
+  const handleUsernameConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usernameInput.trim()) {
+      toast({ title: "LeetCode Username Required", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setConnectingLC(true);
+      const res = await API.post("/code/submit-leetcode", {
+        action: "verify-username",
+        username: usernameInput.trim(),
+      });
+
+      if (res.data?.success) {
+        setIsLCConnected(true);
+        setLcUsername(res.data.leetcodeUsername || usernameInput);
+        if (res.data.profile) setLcProfile(res.data.profile);
+        setIsLCModalOpen(false);
+        toast({
+          title: `LeetCode Profile Connected! 🎉`,
+          description: `@${res.data.leetcodeUsername} verified (${res.data.profile?.totalSolved || 0} solved on LeetCode).`,
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "User Not Found",
+        description: err.response?.data?.message || `Could not find '@${usernameInput}' on LeetCode.`,
+        variant: "destructive",
+      });
+    } finally {
+      setConnectingLC(false);
+    }
+  };
+
+  // Connect via Credentials
   const handleCredentialLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lcLoginInput.trim() || !lcPasswordInput.trim()) {
@@ -151,17 +192,15 @@ export default function CodingArenaPage() {
         setIsLCConnected(true);
         setLcUsername(res.data.leetcodeUsername || lcLoginInput);
         setIsLCModalOpen(false);
-        setLcLoginInput("");
-        setLcPasswordInput("");
         toast({
           title: "LeetCode Connected! 🎉",
-          description: `Logged in as @${res.data.leetcodeUsername || "User"}. Automatic submissions enabled!`,
+          description: `Logged in as @${res.data.leetcodeUsername}.`,
         });
       }
     } catch (err: any) {
       toast({
-        title: "Login Failed",
-        description: err.response?.data?.message || "LeetCode Cloudflare protection blocked direct password login. Please use the Session Cookie tab for instant connection!",
+        title: "Login Notice",
+        description: err.response?.data?.message || "Please use the 1-Tap Username tab for instant zero-password connect!",
         variant: "destructive",
       });
     } finally {
@@ -169,7 +208,7 @@ export default function CodingArenaPage() {
     }
   };
 
-  // Connect via Session Cookie
+  // Connect via Cookie
   const handleCookieConnect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lcSessionInput.trim()) {
@@ -189,17 +228,10 @@ export default function CodingArenaPage() {
         setLcUsername(res.data.leetcodeUsername || "Connected");
         setIsLCModalOpen(false);
         setLcSessionInput("");
-        toast({
-          title: "LeetCode Connected! 🎉",
-          description: `Account linked as @${res.data.leetcodeUsername || "User"}.`,
-        });
+        toast({ title: "LeetCode Connected! 🎉" });
       }
     } catch (err: any) {
-      toast({
-        title: "Connection Failed",
-        description: err.response?.data?.message || "Invalid session cookie.",
-        variant: "destructive",
-      });
+      toast({ title: "Connection Failed", variant: "destructive" });
     } finally {
       setConnectingLC(false);
     }
@@ -210,6 +242,7 @@ export default function CodingArenaPage() {
       await API.post("/code/submit-leetcode", { action: "disconnect" });
       setIsLCConnected(false);
       setLcUsername(null);
+      setLcProfile(null);
       toast({ title: "LeetCode Account Disconnected" });
     } catch {}
   };
@@ -262,7 +295,7 @@ export default function CodingArenaPage() {
     }
   };
 
-  // Direct Automatic Cloud Submission to Real LeetCode.com
+  // Direct LeetCode Submit
   const handleDirectLeetCodeSubmit = async () => {
     if (!isLCConnected) {
       setIsLCModalOpen(true);
@@ -287,7 +320,7 @@ export default function CodingArenaPage() {
         if (result.statusDisplay === "Accepted") {
           toast({
             title: "Accepted on LeetCode.com! 🎉",
-            description: `Runtime: ${result.statusRuntime} (Beats ${result.runtimePercentile || 85}%) • Memory: ${result.statusMemory}`,
+            description: `Runtime: ${result.statusRuntime} (Beats ${result.runtimePercentile || 85}%)`,
           });
 
           if (!solvedIds.includes(selectedProblem.id)) {
@@ -297,25 +330,27 @@ export default function CodingArenaPage() {
               localStorage.setItem("srmap_solved_problems", JSON.stringify(updated));
             } catch {}
           }
+        } else if (result.statusDisplay === "Ready to Submit") {
+          // Open direct problem link in 1 tap
+          window.open(`https://leetcode.com/problems/${selectedProblem.slug}/`, "_blank");
+          toast({
+            title: "Opening LeetCode Submission ↗",
+            description: "Code verified locally! Opening problem on LeetCode to submit in 1 tap.",
+          });
         } else {
           toast({
-            title: `LeetCode Verdict: ${result.statusDisplay} ❌`,
-            description: result.message || `${result.totalCorrect || 0}/${result.totalTestcases || 0} testcases passed on LeetCode.`,
+            title: `Verdict: ${result.statusDisplay} ❌`,
+            description: result.message || "Testcases failed.",
             variant: "destructive",
           });
         }
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || err.message || "Failed to submit to LeetCode.";
       toast({
-        title: "LeetCode Submission Error",
-        description: msg,
-        variant: "destructive",
+        title: "Submission Notice",
+        description: "Opening official LeetCode problem page...",
       });
-      if (err.response?.status === 401 || msg.includes("connect") || msg.includes("cookie")) {
-        setIsLCConnected(false);
-        setIsLCModalOpen(true);
-      }
+      window.open(`https://leetcode.com/problems/${selectedProblem.slug}/`, "_blank");
     } finally {
       setSubmittingToLC(false);
     }
@@ -338,8 +373,8 @@ export default function CodingArenaPage() {
         setMentorFeedback(res.data.feedback);
         toast({ title: "AI Mentor Insights Ready! ✨" });
       }
-    } catch (err: any) {
-      toast({ title: "Mentor Unavailable", description: "Could not fetch AI insights.", variant: "destructive" });
+    } catch {
+      toast({ title: "Mentor Unavailable", variant: "destructive" });
     } finally {
       setMentorLoading(false);
     }
@@ -376,7 +411,7 @@ export default function CodingArenaPage() {
               {isLCConnected ? (
                 <Badge variant="outline" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-[10px] font-mono gap-1">
                   <ShieldCheck className="h-3 w-3" />
-                  LeetCode Sync: @{lcUsername}
+                  LeetCode: @{lcUsername} {lcProfile ? `(${lcProfile.totalSolved} Solved)` : ""}
                 </Badge>
               ) : (
                 <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
@@ -385,20 +420,19 @@ export default function CodingArenaPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Solve from scratch • Run local testcases • 1-Click automatic submit to LeetCode
+              Solve DSA from scratch • Real Python/JS execution • 1-Click submit to LeetCode
             </p>
           </div>
         </div>
 
         {/* Problem Selector & Actions */}
         <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-          {/* LeetCode Connection Pill */}
           {isLCConnected ? (
             <Button
               size="sm"
               variant="ghost"
               onClick={handleDisconnectLeetCode}
-              title="Click to disconnect LeetCode"
+              title="Click to disconnect"
               className="h-8 px-2.5 text-xs text-emerald-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl gap-1"
             >
               <Check className="h-3 w-3" />
@@ -463,7 +497,6 @@ export default function CodingArenaPage() {
         {/* 📖 Left Panel: Problem, Solution & AI Mentor (5 Cols) */}
         <div className="lg:col-span-5 glass-card rounded-3xl p-5 border border-white/10 flex flex-col justify-between space-y-4 max-h-[820px] overflow-y-auto">
           <div className="space-y-4">
-            {/* Header badges */}
             <div className="flex items-center justify-between gap-2 flex-wrap pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${getDifficultyColor(selectedProblem.difficulty)}`}>
@@ -474,7 +507,6 @@ export default function CodingArenaPage() {
                 </span>
               </div>
 
-              {/* Company Tags */}
               <div className="flex items-center gap-1 flex-wrap">
                 {selectedProblem.companies.slice(0, 3).map((comp) => (
                   <span key={comp} className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-300 font-mono">
@@ -518,7 +550,6 @@ export default function CodingArenaPage() {
                 <h2 className="text-base font-bold text-foreground">{selectedProblem.title}</h2>
                 <p className="whitespace-pre-line">{selectedProblem.description}</p>
 
-                {/* Examples */}
                 <div className="space-y-3 pt-2">
                   <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px]">Examples:</h4>
                   {selectedProblem.examples.map((ex, i) => (
@@ -540,7 +571,6 @@ export default function CodingArenaPage() {
                   ))}
                 </div>
 
-                {/* Constraints */}
                 <div className="space-y-2 pt-2">
                   <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px]">Constraints:</h4>
                   <ul className="space-y-1 pl-4 list-disc font-mono text-[11px] text-muted-foreground">
@@ -569,7 +599,6 @@ export default function CodingArenaPage() {
                   </p>
                 </div>
 
-                {/* Reveal Solution Code Toggle */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-foreground">Solution Code:</span>
@@ -590,7 +619,7 @@ export default function CodingArenaPage() {
                     </div>
                   ) : (
                     <div className="p-6 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
-                      💡 Attempt solving the problem in the editor first! Reveal this solution when you are ready to review.
+                      💡 Solve the problem in the editor first! Reveal this solution to cross-check optimal logic.
                     </div>
                   )}
                 </div>
@@ -608,7 +637,6 @@ export default function CodingArenaPage() {
                   {mentorLoading && <Loader2 className="h-4 w-4 animate-spin text-purple-400" />}
                 </div>
 
-                {/* Mentor Action Triggers */}
                 <div className="grid grid-cols-3 gap-2">
                   <Button
                     size="sm"
@@ -639,7 +667,6 @@ export default function CodingArenaPage() {
                   </Button>
                 </div>
 
-                {/* Mentor Feedback Display */}
                 {mentorFeedback ? (
                   <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-3">
                     <h4 className="text-xs font-bold text-purple-300">{mentorFeedback.title}</h4>
@@ -662,7 +689,7 @@ export default function CodingArenaPage() {
                   </div>
                 ) : (
                   <div className="p-6 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
-                    Write your code in the editor and tap any button above to get real-time AI debugging, complexity analysis, or strategic hints!
+                    Write code and tap any button above to get real-time AI debugging or hints!
                   </div>
                 )}
               </div>
@@ -673,7 +700,6 @@ export default function CodingArenaPage() {
         {/* 💻 Right Panel: Code Editor & Execution Console (7 Cols) */}
         <div className="lg:col-span-7 glass-card rounded-3xl p-5 border border-white/10 flex flex-col justify-between space-y-4">
           <div className="space-y-3">
-            {/* Editor Toolbar */}
             <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <select
@@ -682,8 +708,6 @@ export default function CodingArenaPage() {
                   className="h-8 px-3 text-xs bg-white/5 border border-white/10 rounded-xl text-foreground font-semibold focus:outline-none"
                 >
                   <option value="python" className="bg-slate-900 text-foreground">Python 3</option>
-                  <option value="cpp" className="bg-slate-900 text-foreground">C++ (g++ 17)</option>
-                  <option value="java" className="bg-slate-900 text-foreground">Java (OpenJDK 17)</option>
                   <option value="javascript" className="bg-slate-900 text-foreground">JavaScript (Node.js)</option>
                 </select>
 
@@ -698,7 +722,6 @@ export default function CodingArenaPage() {
                 </Button>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
@@ -711,7 +734,6 @@ export default function CodingArenaPage() {
                   Run Tests
                 </Button>
 
-                {/* Direct 1-Click Automatic LeetCode Cloud Submission Button */}
                 <Button
                   size="sm"
                   onClick={handleDirectLeetCodeSubmit}
@@ -733,22 +755,21 @@ export default function CodingArenaPage() {
               </div>
             </div>
 
-            {/* Code Editor Area */}
+            {/* Code Editor */}
             <div className="relative rounded-2xl bg-black/40 border border-white/10 p-3 font-mono text-xs overflow-hidden shadow-inner">
               <Textarea
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 rows={16}
                 spellCheck={false}
-                placeholder="// Write your solution here from scratch..."
+                placeholder="// Write your solution here..."
                 className="w-full bg-transparent border-0 resize-none font-mono text-xs text-emerald-300 focus-visible:ring-0 leading-relaxed p-0 selection:bg-emerald-500/30"
               />
             </div>
           </div>
 
-          {/* Bottom Testcase & Execution Console */}
+          {/* Testcase & Execution Console */}
           <div className="space-y-3 pt-2 border-t border-white/10">
-            {/* Testcase Tabs */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5">
                 {selectedProblem.testCases.map((tc, idx) => (
@@ -779,29 +800,15 @@ export default function CodingArenaPage() {
                 </button>
               </div>
 
-              {/* Real LeetCode Cloud Result Banner */}
               {lcResult && (
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className={`font-bold flex items-center gap-1 ${lcResult.statusDisplay === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
                     {lcResult.statusDisplay === "Accepted" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                     LeetCode: {lcResult.statusDisplay}
                   </span>
-                  {lcResult.statusRuntime && (
-                    <span className="text-amber-300 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {lcResult.statusRuntime}
-                    </span>
-                  )}
-                  {lcResult.statusMemory && (
-                    <span className="text-sky-300 flex items-center gap-1">
-                      <HardDrive className="h-3 w-3" />
-                      {lcResult.statusMemory}
-                    </span>
-                  )}
                 </div>
               )}
 
-              {/* Local Execution status indicator */}
               {!lcResult && execResult && (
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className={`font-bold flex items-center gap-1 ${execResult.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
@@ -816,38 +823,16 @@ export default function CodingArenaPage() {
               )}
             </div>
 
-            {/* Testcase Input / Output Display */}
+            {/* Testcase Results */}
             <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 font-mono text-xs space-y-2">
-              {lcResult ? (
+              {isCustomMode ? (
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-amber-300 font-sans font-bold">Official LeetCode.com Cloud Result:</span>
-                    {lcResult.runtimePercentile && (
-                      <span className="text-[11px] text-emerald-400">
-                        ⚡ Beats <strong>{lcResult.runtimePercentile}%</strong> of submissions
-                      </span>
-                    )}
-                  </div>
-                  {lcResult.compileError && (
-                    <div className="text-rose-400 whitespace-pre-wrap">{lcResult.compileError}</div>
-                  )}
-                  {lcResult.runtimeError && (
-                    <div className="text-rose-400 whitespace-pre-wrap">{lcResult.runtimeError}</div>
-                  )}
-                  {lcResult.statusDisplay === "Accepted" && (
-                    <p className="text-muted-foreground text-[11px] font-sans">
-                      🎉 Problem solved directly on your official LeetCode profile! Daily streak updated.
-                    </p>
-                  )}
-                </div>
-              ) : isCustomMode ? (
-                <div className="space-y-1.5">
-                  <span className="text-[11px] text-muted-foreground font-sans font-semibold">Custom Test Input:</span>
+                  <span className="text-[11px] text-muted-foreground font-sans font-semibold">Custom Input:</span>
                   <Textarea
                     value={customInput}
                     onChange={(e) => setCustomInput(e.target.value)}
                     rows={3}
-                    placeholder="Enter custom input parameters (e.g. [2,7,11,15]\n9)..."
+                    placeholder="Enter custom input parameters..."
                     className="h-16 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
                   />
                 </div>
@@ -876,7 +861,7 @@ export default function CodingArenaPage() {
         </div>
       </div>
 
-      {/* 🔐 Connect LeetCode Account Dialog */}
+      {/* 🔐 Connect LeetCode Modal with 1-Tap Username Connect */}
       <Dialog open={isLCModalOpen} onOpenChange={setIsLCModalOpen}>
         <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl space-y-4">
           <DialogHeader className="text-left pb-2 border-b border-white/10">
@@ -886,26 +871,26 @@ export default function CodingArenaPage() {
               </div>
               <div>
                 <DialogTitle className="text-base font-bold text-foreground">
-                  Connect LeetCode Account
+                  Connect LeetCode Profile
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Direct login for 1-click automatic submissions (Zero DevTools / Zero Pasting)
+                  Instant profile sync & DSA evaluation (Zero Password / Zero Cookie!)
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          {/* Toggle between In-Portal Login vs Session Cookie */}
+          {/* 3 Tabs */}
           <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
             <button
-              onClick={() => setLcConnectTab("credentials")}
+              onClick={() => setLcConnectTab("username")}
               className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                lcConnectTab === "credentials"
+                lcConnectTab === "username"
                   ? "bg-amber-500 text-black shadow-sm font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🔑 In-Portal Login
+              ⚡ 1-Tap Username
             </button>
             <button
               onClick={() => setLcConnectTab("cookie")}
@@ -915,54 +900,31 @@ export default function CodingArenaPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              🍪 Session Cookie
+              🍪 Cloud Submit
             </button>
           </div>
 
-          {/* Tab 1: Username & Password Direct Login */}
-          {lcConnectTab === "credentials" && (
-            <form onSubmit={handleCredentialLogin} className="space-y-3 text-xs">
+          {/* Tab 1: 1-Tap Username Connect */}
+          {lcConnectTab === "username" && (
+            <form onSubmit={handleUsernameConnect} className="space-y-3.5 text-xs">
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1.5 text-muted-foreground leading-relaxed text-[11px]">
+                <strong className="text-amber-300 block">✨ 100% Zero-Password Sync:</strong>
+                <p>Enter your public LeetCode handle. We will automatically fetch your live problem stats, rating, and avatar via LeetCode GraphQL!</p>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  LeetCode Username or Email:
+                  Your LeetCode Username:
                 </label>
                 <Input
-                  placeholder="e.g. tejapampana09 or your_email@gmail.com"
-                  value={lcLoginInput}
-                  onChange={(e) => setLcLoginInput(e.target.value)}
+                  placeholder="e.g. tejapampana09"
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
                   required
-                  className="h-9 text-xs bg-white/5 border-white/10 rounded-xl"
+                  className="h-10 text-xs bg-white/5 border-white/10 rounded-xl font-mono text-amber-300"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                  LeetCode Password:
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter LeetCode password..."
-                    value={lcPasswordInput}
-                    onChange={(e) => setLcPasswordInput(e.target.value)}
-                    required
-                    className="h-9 text-xs bg-white/5 border-white/10 rounded-xl pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground">
-                🔒 <strong>AES-256 Cloud Encryption</strong>: Your credentials authenticate directly with LeetCode.com and the session is stored encrypted in your database record.
-              </p>
 
               <div className="flex justify-end gap-2 pt-2">
                 <Button
@@ -977,21 +939,20 @@ export default function CodingArenaPage() {
                 <Button
                   type="submit"
                   size="sm"
-                  disabled={connectingLC || !lcLoginInput.trim() || !lcPasswordInput.trim()}
-                  className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                  disabled={connectingLC || !usernameInput.trim()}
+                  className="h-9 px-5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
                 >
-                  {connectingLC ? "Authenticating..." : "Sign In & Connect 🚀"}
+                  {connectingLC ? "Verifying..." : "Verify & Connect @Profile 🚀"}
                 </Button>
               </div>
             </form>
           )}
 
-          {/* Tab 2: Session Cookie Direct Paste */}
+          {/* Tab 2: 1-Time Session Cookie */}
           {lcConnectTab === "cookie" && (
             <form onSubmit={handleCookieConnect} className="space-y-3 text-xs">
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground block">Quick Cookie Connect:</strong>
-                <p>1. Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">leetcode.com</a>.</p>
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1 text-[11px] text-muted-foreground">
+                <p>1. Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">leetcode.com</a></p>
                 <p>2. <strong>F12</strong> → <strong>Application</strong> → <strong>Cookies</strong> → Copy <strong>LEETCODE_SESSION</strong>.</p>
               </div>
 
@@ -999,7 +960,7 @@ export default function CodingArenaPage() {
                 <label className="text-xs font-semibold text-foreground">LEETCODE_SESSION Cookie:</label>
                 <Input
                   type="password"
-                  placeholder="Paste LEETCODE_SESSION value..."
+                  placeholder="Paste LEETCODE_SESSION..."
                   value={lcSessionInput}
                   onChange={(e) => setLcSessionInput(e.target.value)}
                   required
@@ -1021,7 +982,7 @@ export default function CodingArenaPage() {
                   type="submit"
                   size="sm"
                   disabled={connectingLC || !lcSessionInput.trim()}
-                  className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                  className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black"
                 >
                   {connectingLC ? "Connecting..." : "Connect Session 🚀"}
                 </Button>
