@@ -1,29 +1,72 @@
+/**
+ * WhatsApp Cloud API Notification Service
+ * Production Hardened:
+ * 1. Strict E.164 phone validation
+ * 2. PII / Phone number masking in logs
+ * 3. Meta rate limit (429) and auth (401/403) monitoring
+ * 4. Zero client-side secret exposure
+ */
+
+export function validateAndFormatPhone(phone: string): { valid: boolean; phone?: string; error?: string } {
+  if (!phone || typeof phone !== "string") {
+    return { valid: false, error: "Phone number is required." };
+  }
+
+  let clean = phone.replace(/\D/g, "");
+
+  // Strip leading 0 if 11 digits (e.g. 09542696946 -> 9542696946)
+  if (clean.startsWith("0") && clean.length === 11) {
+    clean = clean.slice(1);
+  }
+
+  // If 10 digits (Standard Indian mobile), default to +91 country code
+  if (clean.length === 10) {
+    clean = "91" + clean;
+  }
+
+  // Validate E.164 standard: 10 to 15 digits total, digits only, country code must not start with 0
+  const e164Regex = /^[1-9]\d{9,14}$/;
+  if (!e164Regex.test(clean)) {
+    return { valid: false, error: "Invalid phone number format. Please provide a valid 10-digit or international mobile number." };
+  }
+
+  return { valid: true, phone: clean };
+}
+
+export function maskPhoneNumber(phone: string): string {
+  if (!phone) return "[EMPTY]";
+  const clean = phone.replace(/\D/g, "");
+  if (clean.length <= 4) return "****";
+  const start = clean.slice(0, 4);
+  const end = clean.slice(-2);
+  return `+${start}****${end}`;
+}
+
 export async function sendWhatsAppTemplateMessage(
   recipientPhone: string,
   templateName: string = "hello_world",
   parameters: string[] = []
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; statusCode?: number }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
-    return { success: false, error: "WhatsApp credentials missing in environment variables." };
+    return { success: false, error: "WhatsApp credentials not configured on server." };
   }
 
-  let cleanPhone = recipientPhone.replace(/\D/g, "");
-  if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
-    cleanPhone = cleanPhone.slice(1);
+  const phoneValidation = validateAndFormatPhone(recipientPhone);
+  if (!phoneValidation.valid || !phoneValidation.phone) {
+    return { success: false, error: phoneValidation.error || "Invalid phone number." };
   }
-  if (cleanPhone.length === 10) {
-    cleanPhone = "91" + cleanPhone;
-  }
+  const cleanPhone = phoneValidation.phone;
+  const maskedPhone = maskPhoneNumber(cleanPhone);
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
   const bodyComponents = parameters.length > 0 ? [
     {
       type: "body",
-      parameters: parameters.map((p) => ({ type: "text", text: p })),
+      parameters: parameters.map((p) => ({ type: "text", text: String(p || "").slice(0, 1024) })),
     },
   ] : undefined;
 
@@ -47,14 +90,31 @@ export async function sendWhatsAppTemplateMessage(
       signal: AbortSignal.timeout(10000),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+
     if (res.ok) {
-      return { success: true };
+      console.log(`[WhatsApp] Template '${templateName}' delivered successfully to ${maskedPhone}`);
+      return { success: true, statusCode: res.status };
     }
 
-    return { success: false, error: data?.error?.message || "Failed to deliver WhatsApp template." };
+    // Monitor Meta API rate limit / 429
+    if (res.status === 429) {
+      console.warn(`[WhatsApp] Meta API rate limit reached (429) when messaging ${maskedPhone}`);
+      return { success: false, error: "WhatsApp service is temporarily rate-limited by Meta. Please retry shortly.", statusCode: 429 };
+    }
+
+    // Auth failures
+    if (res.status === 401 || res.status === 403) {
+      console.error(`[WhatsApp] Meta API authentication error (${res.status})`);
+      return { success: false, error: "WhatsApp service configuration error. Please contact administrator.", statusCode: res.status };
+    }
+
+    const metaErrorMsg = data?.error?.message || "Failed to deliver WhatsApp template.";
+    console.warn(`[WhatsApp] Meta delivery warning for ${maskedPhone} (Code: ${data?.error?.code}): ${metaErrorMsg}`);
+    return { success: false, error: metaErrorMsg, statusCode: res.status };
   } catch (err: any) {
-    return { success: false, error: err.message || "Network exception" };
+    console.error(`[WhatsApp] Network exception when sending to ${maskedPhone}`);
+    return { success: false, error: "Network connection to WhatsApp Cloud API failed." };
   }
 }
 
@@ -94,8 +154,7 @@ export async function sendWhatsAppDailyBriefingTemplate(
     return { success: true };
   }
 
-  console.warn(`Template ${templateName} failed (${customRes.error}), falling back to hello_world`);
-  // 2. Fallback to pre-approved hello_world if custom template is in review
+  // 2. Fallback to pre-approved hello_world if custom template is in review or failed
   return await sendWhatsAppTemplateMessage(recipientPhone, "hello_world");
 }
 
@@ -107,18 +166,16 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
     return { success: false, error: "WhatsApp credentials missing in environment variables." };
   }
 
-  let cleanPhone = recipientPhone.replace(/\D/g, "");
-  if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
-    cleanPhone = cleanPhone.slice(1);
+  const phoneValidation = validateAndFormatPhone(recipientPhone);
+  if (!phoneValidation.valid || !phoneValidation.phone) {
+    return { success: false, error: phoneValidation.error || "Invalid phone number." };
   }
-  if (cleanPhone.length === 10) {
-    cleanPhone = "91" + cleanPhone;
-  }
+  const cleanPhone = phoneValidation.phone;
+  const maskedPhone = maskPhoneNumber(cleanPhone);
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
   try {
-    // 1. Send template or direct text
     const textRes = await fetch(url, {
       method: "POST",
       headers: {
@@ -137,23 +194,29 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
       signal: AbortSignal.timeout(10000),
     });
 
-    const textData = await textRes.json();
+    const textData = await textRes.json().catch(() => ({}));
     if (textRes.ok) {
+      console.log(`[WhatsApp] Text message delivered to ${maskedPhone}`);
       return { success: true };
     }
 
-    // If 24h window is closed, fallback to approved template
-    const templateFallback = await sendWhatsAppTemplateMessage(cleanPhone, "hello_world");
-    if (templateFallback.success) {
-      return { success: true };
+    // If outside 24h customer window (Meta code 131047), fallback to template
+    if (textData?.error?.code === 131047 || textRes.status === 400) {
+      console.log(`[WhatsApp] 24h window closed for ${maskedPhone}, attempting template fallback`);
+      const templateFallback = await sendWhatsAppTemplateMessage(cleanPhone, "hello_world");
+      if (templateFallback.success) {
+        return { success: true };
+      }
     }
 
-    const err = textData?.error?.message || templateFallback.error || "Failed to deliver WhatsApp message.";
-    console.error("WhatsApp delivery failed:", textData?.error);
+    if (textRes.status === 429) {
+      return { success: false, error: "WhatsApp service rate limited by Meta. Please retry shortly." };
+    }
+
+    const err = textData?.error?.message || "Failed to deliver WhatsApp message.";
     return { success: false, error: err };
   } catch (err: any) {
-    console.error("WhatsApp network exception:", err.message);
-    return { success: false, error: err.message || "Network exception" };
+    return { success: false, error: "Network connection to WhatsApp Cloud API failed." };
   }
 }
 
