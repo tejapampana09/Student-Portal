@@ -29,7 +29,6 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
-  // STRICT SECURITY FIX: Always use authenticated username, NEVER trust body.id to prevent identity spoofing
   const username = auth.payload.username;
 
   if (!bug_description || !title || !validTitles.includes(title)) {
@@ -65,12 +64,19 @@ export async function POST(req: NextRequest) {
       ],
     };
 
-    if (process.env.D_REPORT) {
-      try {
-        await axios.post(String(process.env.D_REPORT), embedMessage);
-      } catch (webhookErr) {
-        console.error("Discord report webhook failed:", webhookErr);
+    if (!process.env.D_REPORT) {
+      console.error("D_REPORT webhook environment variable is not configured.");
+      return errorResponse("Reporting service is currently unconfigured.", {}, 503);
+    }
+
+    try {
+      const webhookRes = await axios.post(String(process.env.D_REPORT), embedMessage);
+      if (webhookRes.status >= 400) {
+        throw new Error(`Discord webhook returned status ${webhookRes.status}`);
       }
+    } catch (webhookErr) {
+      console.error("Discord report webhook failed:", webhookErr);
+      return errorResponse("Failed to deliver report to support team. Please try again later.", {}, 502);
     }
 
     return NextResponse.json({ success: true, message: "Report Submitted Successfully!" });

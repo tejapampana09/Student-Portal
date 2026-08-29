@@ -8,15 +8,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    // Completely purge Gmail credentials from user document
+    // Completely purge all Google/Gmail credentials to ensure zero orphaned token remnants
     await initDb.db("college_db").collection("users").updateOne(
       { username: auth.payload.username },
-      { $unset: { gmail: "", googleOAuth: "" } }
+      {
+        $unset: {
+          gmail: "",
+          googleOAuth: "",
+          google: "",
+        },
+      }
     );
 
     return NextResponse.json({
       success: true,
-      message: "Gmail disconnected successfully",
+      message: "Gmail and connected Google services disconnected successfully",
     });
   } catch (error: any) {
     console.error("Error disconnecting Gmail:", error);
