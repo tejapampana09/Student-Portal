@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 
-# Stage 1: Fast Cached Dependencies
+# Stage 1: Deterministic Dependencies
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install --legacy-peer-deps --ignore-scripts
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps --ignore-scripts
 
-# Stage 2: Fast Builder
+# Stage 2: Next.js Standalone Builder
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -15,26 +15,38 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN npm run build
 
-# Stage 3: Ultra-Fast Production Runner
-FROM python:3.11-slim-bookworm AS runner
+# Stage 3: Secure Production Runner (Node.js 20 + Python 3.11 LiteRT)
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
-# Install Node.js 20 in runner
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && pip install --no-cache-dir numpy pillow tflite-runtime ai-edge-litert || true \
-    && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+# Install Python3 and lightweight runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir --break-system-packages numpy pillow ai-edge-litert
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/src/static ./src/static
-COPY --from=builder /app/scripts ./scripts
+# Create non-root dedicated security user
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 nextjs
+
+# Copy runtime artifacts with correct ownership
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/src/static ./src/static
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# Native Node-based Container Healthcheck (Zero external curl dependency)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3000/api/health', (r) => {if (r.statusCode !== 200) process.exit(1)}).on('error', () => process.exit(1))"
+
+USER nextjs
 
 EXPOSE 3000
 CMD ["node", "server.js"]
