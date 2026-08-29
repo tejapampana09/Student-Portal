@@ -23,6 +23,9 @@ import {
   Clock,
   HardDrive,
   Copy,
+  ExternalLink,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +46,7 @@ export default function CodingArenaPage() {
 
   // Left Panel Tab
   const [leftTab, setLeftTab] = useState<"description" | "solution" | "ai_mentor">("description");
+  const [showSolutionCode, setShowSolutionCode] = useState(false);
 
   // Execution State
   const [executing, setExecuting] = useState(false);
@@ -65,12 +69,12 @@ export default function CodingArenaPage() {
     } catch {}
   }, []);
 
-  // Update starter code when problem or language changes
   const handleSelectProblem = (prob: CodingProblem) => {
     setSelectedProblem(prob);
     setCode(prob.starterCode[language] || prob.starterCode.python);
     setExecResult(null);
     setMentorFeedback(null);
+    setShowSolutionCode(false);
     setActiveTestCaseIdx(0);
   };
 
@@ -82,7 +86,7 @@ export default function CodingArenaPage() {
 
   const handleResetCode = () => {
     setCode(selectedProblem.starterCode[language] || selectedProblem.starterCode.python);
-    toast({ title: "Code Reset to Starter Template" });
+    toast({ title: "Code Reset to Unsolved Starter Template" });
   };
 
   const handleRunCode = async (isSubmit = false) => {
@@ -188,13 +192,24 @@ export default function CodingArenaPage() {
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Online Judge • Multi-Language Compiler • Gemini AI Code Mentor
+              Solve problems from scratch • Run against testcases • Submit directly to LeetCode
             </p>
           </div>
         </div>
 
-        {/* Problem Selector & Solved Counter */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        {/* Problem Selector & Actions */}
+        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+          {/* Direct LeetCode Link Button */}
+          <a
+            href={selectedProblem.leetcodeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="h-8 px-3 rounded-xl text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 flex items-center gap-1.5 transition-all shadow-sm"
+          >
+            Submit on LeetCode
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-bold">
             <Award className="h-3.5 w-3.5" />
             <span>Solved: {solvedIds.length}/{problems.length}</span>
@@ -347,6 +362,32 @@ export default function CodingArenaPage() {
                     {selectedProblem.optimalComplexity.approach}
                   </p>
                 </div>
+
+                {/* Reveal Solution Code Toggle */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">Solution Code:</span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowSolutionCode(!showSolutionCode)}
+                      className="text-xs h-7 text-amber-400 hover:text-amber-300 gap-1.5"
+                    >
+                      {showSolutionCode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {showSolutionCode ? "Hide Solution" : "Reveal Solution Code"}
+                    </Button>
+                  </div>
+
+                  {showSolutionCode ? (
+                    <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 font-mono text-xs text-emerald-300 overflow-x-auto">
+                      <pre>{selectedProblem.solutionCode?.[language === "javascript" ? "python" : language] || selectedProblem.solutionCode?.python}</pre>
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
+                      💡 Attempt solving the problem in the editor first! Reveal this solution when you are ready to review.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -415,7 +456,7 @@ export default function CodingArenaPage() {
                   </div>
                 ) : (
                   <div className="p-6 text-center text-xs text-muted-foreground bg-white/[0.02] rounded-2xl border border-dashed border-white/10">
-                    Tap any button above to get instant AI debugging, complexity analysis, or strategic hints for your code!
+                    Write your code in the editor and tap any button above to get real-time AI debugging, complexity analysis, or strategic hints!
                   </div>
                 )}
               </div>
@@ -471,7 +512,7 @@ export default function CodingArenaPage() {
                   className="h-8 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-md shadow-emerald-500/20 gap-1.5"
                 >
                   {executing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                  Submit
+                  Submit & Verify
                 </Button>
               </div>
             </div>
@@ -483,6 +524,7 @@ export default function CodingArenaPage() {
                 onChange={(e) => setCode(e.target.value)}
                 rows={16}
                 spellCheck={false}
+                placeholder="// Write your solution here from scratch..."
                 className="w-full bg-transparent border-0 resize-none font-mono text-xs text-emerald-300 focus-visible:ring-0 leading-relaxed p-0 selection:bg-emerald-500/30"
               />
             </div>
