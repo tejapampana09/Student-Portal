@@ -119,10 +119,19 @@ export default function NotificationPreferencesCard() {
         const registration = await navigator.serviceWorker.ready;
         let subscription = await registration.pushManager.getSubscription();
 
-        if (!subscription && vapidKey) {
+        let key = vapidKey;
+        if (!key) {
+          try {
+            const keyRes = await API.get("/notifications/push");
+            key = keyRes.data?.publicKey;
+            if (key) setVapidKey(key);
+          } catch {}
+        }
+
+        if (!subscription && key) {
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+            applicationServerKey: urlBase64ToUint8Array(key),
           });
         }
 

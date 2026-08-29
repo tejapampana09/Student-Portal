@@ -1,3 +1,63 @@
+export async function sendWhatsAppTemplateMessage(
+  recipientPhone: string,
+  templateName: string = "hello_world",
+  parameters: string[] = []
+): Promise<{ success: boolean; error?: string }> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) {
+    return { success: false, error: "WhatsApp credentials missing in environment variables." };
+  }
+
+  let cleanPhone = recipientPhone.replace(/\D/g, "");
+  if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+    cleanPhone = cleanPhone.slice(1);
+  }
+  if (cleanPhone.length === 10) {
+    cleanPhone = "91" + cleanPhone;
+  }
+
+  const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+
+  const bodyComponents = parameters.length > 0 ? [
+    {
+      type: "body",
+      parameters: parameters.map((p) => ({ type: "text", text: p })),
+    },
+  ] : undefined;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: cleanPhone,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: "en_US" },
+          ...(bodyComponents ? { components: bodyComponents } : {}),
+        },
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      return { success: true };
+    }
+
+    return { success: false, error: data?.error?.message || "Failed to deliver WhatsApp template." };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Network exception" };
+  }
+}
+
 export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -6,7 +66,6 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
     return { success: false, error: "WhatsApp credentials missing in environment variables." };
   }
 
-  // Sanitize phone number (strip +, spaces, hyphens)
   let cleanPhone = recipientPhone.replace(/\D/g, "");
   if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
     cleanPhone = cleanPhone.slice(1);
@@ -18,28 +77,7 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
   try {
-    // 1. Send approved hello_world template (guaranteed delivery outside 24h window)
-    const templateRes = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: cleanPhone,
-        type: "template",
-        template: {
-          name: "hello_world",
-          language: { code: "en_US" },
-        },
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-
-    const templateData = await templateRes.json();
-
-    // 2. Also send custom detailed text message
+    // 1. Send template or direct text
     const textRes = await fetch(url, {
       method: "POST",
       headers: {
@@ -59,13 +97,18 @@ export async function sendWhatsAppTextMessage(recipientPhone: string, message: s
     });
 
     const textData = await textRes.json();
-
-    if (templateRes.ok || textRes.ok) {
+    if (textRes.ok) {
       return { success: true };
     }
 
-    const err = textData?.error?.message || templateData?.error?.message || "Failed to deliver WhatsApp message.";
-    console.error("WhatsApp delivery failed:", textData?.error || templateData?.error);
+    // If 24h window is closed, fallback to approved template
+    const templateFallback = await sendWhatsAppTemplateMessage(cleanPhone, "hello_world");
+    if (templateFallback.success) {
+      return { success: true };
+    }
+
+    const err = textData?.error?.message || templateFallback.error || "Failed to deliver WhatsApp message.";
+    console.error("WhatsApp delivery failed:", textData?.error);
     return { success: false, error: err };
   } catch (err: any) {
     console.error("WhatsApp network exception:", err.message);
