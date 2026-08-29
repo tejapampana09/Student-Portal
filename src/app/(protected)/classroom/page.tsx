@@ -20,34 +20,32 @@ import {
   Award,
   BookCheck,
   ShieldCheck,
-  Plus,
-  Trash2,
-  CheckSquare,
-  Square,
-  FolderGit2,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/utils/useToast";
 import { useStudentData } from "@/context/StudentContext";
 import API from "@/lib/api/axiosClient";
 import { ClassroomCourse } from "@/server/classroom/classroomService";
 import { SummaryResult } from "@/server/ai/notesSummarizerService";
 
-export interface StudentAssignment {
+export interface SyncedAssignment {
   id: string;
-  title: string;
-  courseCode: string;
+  courseId: string;
   courseName: string;
+  courseCode: string;
+  title: string;
+  description?: string;
   dueDate: string;
   dueTime: string;
   dueFormatted: string;
-  description?: string;
-  type: "Assignment" | "Lab Task" | "Project" | "Quiz";
+  alternateLink?: string;
+  maxPoints?: number;
+  type: "Assignment" | "Lab Task" | "Project" | "Quiz" | "CLA";
   status: "PENDING" | "COMPLETED";
+  source: "GOOGLE_CLASSROOM" | "ACADEMIC_CURRICULUM";
 }
 
 export default function ClassroomPage() {
@@ -55,23 +53,14 @@ export default function ClassroomPage() {
   const { subjects } = useStudentData();
 
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [courses, setCourses] = useState<ClassroomCourse[]>([]);
-  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [assignments, setAssignments] = useState<SyncedAssignment[]>([]);
 
   // Navigation tab
   const [activeTab, setActiveTab] = useState<"classrooms" | "assignments" | "ai_summarizer">("classrooms");
-
-  // New Assignment Modal
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newCourseCode, setNewCourseCode] = useState("");
-  const [newDueDate, setNewDueDate] = useState("");
-  const [newDueTime, setNewDueTime] = useState("23:59");
-  const [newType, setNewType] = useState<"Assignment" | "Lab Task" | "Project" | "Quiz">("Assignment");
-  const [newDescription, setNewDescription] = useState("");
-  const [submittingTask, setSubmittingTask] = useState(false);
 
   // AI Summarizer State
   const [summarizerSubject, setSummarizerSubject] = useState("");
@@ -80,30 +69,30 @@ export default function ClassroomPage() {
   const [summarizing, setSummarizing] = useState(false);
   const [summaryResult, setSummaryResult] = useState<SummaryResult | null>(null);
 
-  const fetchClassroomData = async () => {
+  const fetchClassroomData = async (isManualSync = false) => {
     try {
-      setLoading(true);
-      const [courseRes, assignRes] = await Promise.all([
-        API.get("/classroom/courses"),
-        API.get("/classroom/assignments").catch(() => ({ data: { assignments: [] } })),
-      ]);
+      if (isManualSync) setSyncing(true);
+      else setLoading(true);
 
-      if (courseRes.data) {
-        setIsConnected(courseRes.data.isConnected);
-        setUserEmail(courseRes.data.userEmail || "");
-        setCourses(courseRes.data.courses || []);
-        if (!newCourseCode && courseRes.data.courses?.length > 0) {
-          setNewCourseCode(courseRes.data.courses[0].courseCode || "");
+      const res = await API.get("/classroom/courses");
+      if (res.data) {
+        setIsConnected(res.data.isConnected);
+        setUserEmail(res.data.userEmail || "");
+        setCourses(res.data.courses || []);
+        setAssignments(res.data.assignments || []);
+
+        if (isManualSync) {
+          toast({
+            title: "Live Sync Complete! 🔄",
+            description: `Synced ${res.data.courses?.length || 0} active semester courses.`,
+          });
         }
-      }
-
-      if (assignRes.data?.assignments) {
-        setAssignments(assignRes.data.assignments);
       }
     } catch {
       toast({ title: "Note", description: "Loaded current semester subjects." });
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
   };
 
@@ -122,73 +111,13 @@ export default function ClassroomPage() {
     }
   };
 
-  const handleAddAssignment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newCourseCode) {
-      toast({ title: "Required", description: "Please enter title and select a subject.", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setSubmittingTask(true);
-      const matched = courses.find((c) => c.courseCode === newCourseCode);
-      const res = await API.post("/classroom/assignments", {
-        title: newTitle,
-        courseCode: newCourseCode,
-        courseName: matched?.name || newCourseCode,
-        dueDate: newDueDate || new Date().toISOString().split("T")[0],
-        dueTime: newDueTime || "23:59",
-        type: newType,
-        description: newDescription,
-      });
-
-      if (res.data?.assignment) {
-        setAssignments((prev) => [res.data.assignment, ...prev]);
-        toast({ title: "Assignment Added! 🚀", description: `Added to ${newCourseCode}` });
-        setIsAddModalOpen(false);
-        setNewTitle("");
-        setNewDescription("");
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to add assignment", variant: "destructive" });
-    } finally {
-      setSubmittingTask(false);
-    }
-  };
-
-  const handleToggleAssignmentStatus = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED";
-    try {
-      setAssignments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: newStatus as any } : a))
-      );
-
-      await API.patch("/classroom/assignments", { id, status: newStatus });
-      toast({
-        title: newStatus === "COMPLETED" ? "Marked Completed! 🎉" : "Marked Pending ⏳",
-      });
-    } catch {
-      toast({ title: "Update failed", variant: "destructive" });
-    }
-  };
-
-  const handleDeleteAssignment = async (id: string) => {
-    try {
-      setAssignments((prev) => prev.filter((a) => a.id !== id));
-      await API.delete(`/classroom/assignments?id=${id}`);
-      toast({ title: "Assignment Deleted" });
-    } catch {
-      toast({ title: "Delete failed", variant: "destructive" });
-    }
-  };
-
   const handleQuickSummarizeCourse = (course: ClassroomCourse) => {
     setSummarizerSubject(course.courseCode || course.name);
     setSummarizerContent(`Module Syllabus & Key Topics for ${course.name}:\n\n- Class Lectures & Important Formulas\n- Textbook Derivations & Algorithm Implementations\n- Previous Exam Question Patterns.`);
     setActiveTab("ai_summarizer");
   };
 
-  const handleQuickSummarizeAssignment = (assign: StudentAssignment) => {
+  const handleQuickSummarizeAssignment = (assign: SyncedAssignment) => {
     setSummarizerSubject(assign.courseCode);
     setSummarizerContent(`Assignment Topic: ${assign.title}\nSubject: ${assign.courseName}\n\nTask Details:\n${assign.description || "Explain and provide step-by-step solution, theoretical proofs, and code implementation for this assignment."}`);
     setActiveTab("ai_summarizer");
@@ -223,9 +152,6 @@ export default function ClassroomPage() {
     }
   };
 
-  const pendingAssignments = assignments.filter((a) => a.status !== "COMPLETED");
-  const completedAssignments = assignments.filter((a) => a.status === "COMPLETED");
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full pb-10">
       {/* 🎓 Header Card */}
@@ -252,18 +178,19 @@ export default function ClassroomPage() {
             Academic Classroom & Study Hub
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Current semester registered subjects • Real assignment tracker • Gemini 2.5 AI slide summarizer & exam question predictor.
+            Auto-synced semester courses & coursework • 1-Click Google Classroom access • Gemini 2.5 AI slide summarizer & exam question predictor.
           </p>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 relative z-10 flex-wrap">
           <Button
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => fetchClassroomData(true)}
+            disabled={syncing || loading}
             className="rounded-2xl h-10 px-4 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-lg shadow-amber-500/20 gap-1.5"
           >
-            <Plus className="h-4 w-4" />
-            Add Assignment / Lab Task
+            <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing..." : "Sync Live Courses 🔄"}
           </Button>
 
           {!isConnected && (
@@ -272,7 +199,7 @@ export default function ClassroomPage() {
               onClick={handleConnectGoogle}
               className="rounded-2xl h-10 px-4 text-xs font-semibold border-white/15 hover:bg-white/10 gap-2"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <Zap className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
               Connect Google
             </Button>
           )}
@@ -312,7 +239,7 @@ export default function ClassroomPage() {
           }`}
         >
           <BookCheck className="h-4 w-4" />
-          Assignments ({pendingAssignments.length})
+          Coursework ({assignments.length})
         </button>
 
         <button
@@ -405,81 +332,74 @@ export default function ClassroomPage() {
         </div>
       )}
 
-      {/* 📝 TAB 2: Assignments & Deadlines Tracker */}
+      {/* 📝 TAB 2: Synced Assignments & Deadlines */}
       {activeTab === "assignments" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Assignments & Lab Tasks Tracker
+                Live Coursework & Assignments
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Keep track of lab codes, theory assignments, and semester projects.
+                Automatically pulled from Google Classroom & academic courses.
               </p>
             </div>
             <Button
               size="sm"
-              onClick={() => setIsAddModalOpen(true)}
-              className="rounded-xl h-8 px-3 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black gap-1"
+              variant="outline"
+              onClick={() => fetchClassroomData(true)}
+              disabled={syncing}
+              className="rounded-xl h-8 px-3 text-xs font-semibold border-white/15 gap-1.5"
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add Task
+              <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
+              Auto Refresh
             </Button>
           </div>
 
           {assignments.length === 0 ? (
             <div className="glass-card rounded-3xl p-12 text-center border border-white/10 space-y-4 max-w-md mx-auto">
-              <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-400 w-fit mx-auto">
+              <div className="p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit mx-auto">
                 <CheckCircle2 className="h-8 w-8" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">No Assignments Tracked Yet</h3>
+                <h3 className="text-base font-bold text-foreground">All Clear! Zero Pending Tasks</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Add your upcoming lab assignments, mini-projects, or theory homework to get deadline reminders and AI solutions!
+                  You have no pending assignments or missing lab submissions right now.
                 </p>
               </div>
-              <Button
-                size="sm"
-                onClick={() => setIsAddModalOpen(true)}
-                className="rounded-xl h-9 px-4 text-xs font-bold bg-amber-500 text-black shadow-md shadow-amber-500/20 gap-1.5"
+              <a
+                href="https://classroom.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-bold bg-white/5 border border-white/10 hover:bg-white/10 text-foreground transition-all"
               >
-                <Plus className="h-4 w-4" />
-                Add Your First Assignment
-              </Button>
+                Open Google Classroom ↗
+              </a>
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Pending Tasks */}
-              {pendingAssignments.map((assign) => (
+              {assignments.map((assign) => (
                 <div
                   key={assign.id}
                   className="glass-card rounded-2xl p-4 border border-white/10 hover:border-amber-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
                 >
-                  <div className="flex items-start gap-3">
-                    <button
-                      onClick={() => handleToggleAssignmentStatus(assign.id, assign.status)}
-                      className="mt-0.5 text-muted-foreground hover:text-amber-400 transition-colors"
-                    >
-                      <Square className="h-5 w-5" />
-                    </button>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
-                          {assign.courseCode}
-                        </Badge>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 font-semibold border border-rose-500/20">
-                          {assign.type}
-                        </span>
-                        <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Due: {assign.dueFormatted}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-foreground">{assign.title}</h4>
-                      {assign.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{assign.description}</p>
-                      )}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
+                        {assign.courseCode}
+                      </Badge>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 font-semibold border border-rose-500/20">
+                        {assign.type}
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Due: {assign.dueFormatted}
+                      </span>
                     </div>
+                    <h4 className="text-sm font-bold text-foreground">{assign.title}</h4>
+                    {assign.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{assign.description}</p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -492,52 +412,20 @@ export default function ClassroomPage() {
                       <Sparkles className="h-3.5 w-3.5 text-purple-400" />
                       Solve with AI
                     </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleDeleteAssignment(assign.id)}
-                      className="h-8 w-8 text-muted-foreground hover:text-rose-400"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {assign.alternateLink && (
+                      <a
+                        href={assign.alternateLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-8 px-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-foreground flex items-center gap-1 transition-all"
+                      >
+                        Submit
+                        <ExternalLink className="h-3 w-3 opacity-70" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
-
-              {/* Completed Tasks */}
-              {completedAssignments.length > 0 && (
-                <div className="pt-4 space-y-2">
-                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                    Completed Submissions ({completedAssignments.length})
-                  </h4>
-                  {completedAssignments.map((assign) => (
-                    <div
-                      key={assign.id}
-                      className="glass-card rounded-2xl p-3.5 border border-white/5 opacity-60 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleToggleAssignmentStatus(assign.id, assign.status)}
-                          className="text-emerald-400"
-                        >
-                          <CheckSquare className="h-5 w-5" />
-                        </button>
-                        <span className="text-xs font-medium line-through text-muted-foreground">
-                          {assign.title} ({assign.courseCode})
-                        </span>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteAssignment(assign.id)}
-                        className="h-7 w-7 text-muted-foreground hover:text-rose-400"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -695,119 +583,6 @@ export default function ClassroomPage() {
           </div>
         </div>
       )}
-
-      {/* ➕ Add Assignment Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl space-y-4">
-          <DialogHeader className="text-left pb-2 border-b border-white/10">
-            <DialogTitle className="text-base font-bold text-foreground">
-              Add Academic Assignment / Lab Task
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-              Set deadlines and track coursework for this semester
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleAddAssignment} className="space-y-3.5 text-xs">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Assignment Title:</label>
-              <Input
-                placeholder="e.g. Lab 4 - Binary Search Tree Implementation"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                required
-                className="h-9 text-xs bg-white/5 border-white/10 rounded-xl"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Subject:</label>
-                <select
-                  value={newCourseCode}
-                  onChange={(e) => setNewCourseCode(e.target.value)}
-                  required
-                  className="w-full h-9 px-3 text-xs bg-white/5 border border-white/10 rounded-xl text-foreground font-semibold focus:outline-none"
-                >
-                  <option value="" className="bg-slate-900 text-foreground">Select Subject...</option>
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.courseCode || c.name} className="bg-slate-900 text-foreground">
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Type:</label>
-                <select
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value as any)}
-                  className="w-full h-9 px-3 text-xs bg-white/5 border border-white/10 rounded-xl text-foreground font-semibold focus:outline-none"
-                >
-                  <option value="Assignment" className="bg-slate-900 text-foreground">Assignment</option>
-                  <option value="Lab Task" className="bg-slate-900 text-foreground">Lab Task</option>
-                  <option value="Project" className="bg-slate-900 text-foreground">Project</option>
-                  <option value="Quiz" className="bg-slate-900 text-foreground">Quiz</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Due Date:</label>
-                <Input
-                  type="date"
-                  value={newDueDate}
-                  onChange={(e) => setNewDueDate(e.target.value)}
-                  className="h-9 text-xs bg-white/5 border-white/10 rounded-xl"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Due Time:</label>
-                <Input
-                  type="time"
-                  value={newDueTime}
-                  onChange={(e) => setNewDueTime(e.target.value)}
-                  className="h-9 text-xs bg-white/5 border-white/10 rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">Notes / Description (Optional):</label>
-              <Textarea
-                placeholder="Paste questions or lab submission instructions..."
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                rows={3}
-                className="text-xs bg-white/5 border-white/10 rounded-xl"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsAddModalOpen(false)}
-                className="h-9 text-xs rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={submittingTask}
-                className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
-              >
-                {submittingTask ? "Saving..." : "Add Assignment 🚀"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
