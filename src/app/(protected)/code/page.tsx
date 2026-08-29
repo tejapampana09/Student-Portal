@@ -31,6 +31,8 @@ import {
   Zap,
   Check,
   Unlink,
+  Lock,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +71,12 @@ export default function CodingArenaPage() {
   const [isLCConnected, setIsLCConnected] = useState(false);
   const [lcUsername, setLcUsername] = useState<string | null>(null);
   const [isLCModalOpen, setIsLCModalOpen] = useState(false);
+  const [lcConnectTab, setLcConnectTab] = useState<"credentials" | "cookie">("credentials");
+
+  // In-Portal Credentials Login State
+  const [lcLoginInput, setLcLoginInput] = useState("");
+  const [lcPasswordInput, setLcPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [lcSessionInput, setLcSessionInput] = useState("");
   const [connectingLC, setConnectingLC] = useState(false);
 
@@ -123,8 +131,46 @@ export default function CodingArenaPage() {
     toast({ title: "Code Reset to Unsolved Starter Template" });
   };
 
-  // Connect LeetCode Account Modal Action
-  const handleConnectLeetCodeAccount = async (e: React.FormEvent) => {
+  // Connect via In-Portal Username & Password
+  const handleCredentialLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lcLoginInput.trim() || !lcPasswordInput.trim()) {
+      toast({ title: "Username & Password Required", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setConnectingLC(true);
+      const res = await API.post("/code/submit-leetcode", {
+        action: "login-credentials",
+        usernameOrEmail: lcLoginInput.trim(),
+        password: lcPasswordInput.trim(),
+      });
+
+      if (res.data?.success) {
+        setIsLCConnected(true);
+        setLcUsername(res.data.leetcodeUsername || lcLoginInput);
+        setIsLCModalOpen(false);
+        setLcLoginInput("");
+        setLcPasswordInput("");
+        toast({
+          title: "LeetCode Connected! 🎉",
+          description: `Logged in as @${res.data.leetcodeUsername || "User"}. Automatic submissions enabled!`,
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Login Failed",
+        description: err.response?.data?.message || "Invalid LeetCode username or password.",
+        variant: "destructive",
+      });
+    } finally {
+      setConnectingLC(false);
+    }
+  };
+
+  // Connect via Session Cookie
+  const handleCookieConnect = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lcSessionInput.trim()) {
       toast({ title: "Session Cookie Needed", variant: "destructive" });
@@ -145,7 +191,7 @@ export default function CodingArenaPage() {
         setLcSessionInput("");
         toast({
           title: "LeetCode Connected! 🎉",
-          description: `Account linked as @${res.data.leetcodeUsername || "User"}. Automatic submissions enabled!`,
+          description: `Account linked as @${res.data.leetcodeUsername || "User"}.`,
         });
       }
     } catch (err: any) {
@@ -843,56 +889,145 @@ export default function CodingArenaPage() {
                   Connect LeetCode Account
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Enable 1-click automatic submissions directly to your LeetCode profile
+                  Direct login for 1-click automatic submissions (Zero DevTools / Zero Pasting)
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleConnectLeetCodeAccount} className="space-y-3 text-xs">
-            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
-              <strong className="text-foreground block">30-Second Quick Setup:</strong>
-              <p>1. Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">leetcode.com</a> and log in.</p>
-              <p>2. Press <strong>F12</strong> (Inspect) → <strong>Application</strong> → <strong>Cookies</strong> → <code className="text-amber-300">leetcode.com</code>.</p>
-              <p>3. Copy the value of <strong className="text-foreground">LEETCODE_SESSION</strong>.</p>
-            </div>
+          {/* Toggle between In-Portal Login vs Session Cookie */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10">
+            <button
+              onClick={() => setLcConnectTab("credentials")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                lcConnectTab === "credentials"
+                  ? "bg-amber-500 text-black shadow-sm font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🔑 In-Portal Login
+            </button>
+            <button
+              onClick={() => setLcConnectTab("cookie")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                lcConnectTab === "cookie"
+                  ? "bg-amber-500 text-black shadow-sm font-bold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🍪 Session Cookie
+            </button>
+          </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">LEETCODE_SESSION Cookie:</label>
-              <Input
-                type="password"
-                placeholder="Paste LEETCODE_SESSION value here..."
-                value={lcSessionInput}
-                onChange={(e) => setLcSessionInput(e.target.value)}
-                required
-                className="h-9 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
-              />
-            </div>
+          {/* Tab 1: Username & Password Direct Login */}
+          {lcConnectTab === "credentials" && (
+            <form onSubmit={handleCredentialLogin} className="space-y-3 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  LeetCode Username or Email:
+                </label>
+                <Input
+                  placeholder="e.g. tejapampana09 or your_email@gmail.com"
+                  value={lcLoginInput}
+                  onChange={(e) => setLcLoginInput(e.target.value)}
+                  required
+                  className="h-9 text-xs bg-white/5 border-white/10 rounded-xl"
+                />
+              </div>
 
-            <p className="text-[10px] text-muted-foreground">
-              🔒 <strong>Encrypted Storage</strong>: Token is encrypted with AES-256 in MongoDB and used strictly to submit your code on demand.
-            </p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                  LeetCode Password:
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter LeetCode password..."
+                    value={lcPasswordInput}
+                    onChange={(e) => setLcPasswordInput(e.target.value)}
+                    required
+                    className="h-9 text-xs bg-white/5 border-white/10 rounded-xl pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsLCModalOpen(false)}
-                className="h-9 text-xs rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={connectingLC || !lcSessionInput.trim()}
-                className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
-              >
-                {connectingLC ? "Connecting..." : "Connect Account 🚀"}
-              </Button>
-            </div>
-          </form>
+              <p className="text-[10px] text-muted-foreground">
+                🔒 <strong>AES-256 Cloud Encryption</strong>: Your credentials authenticate directly with LeetCode.com and the session is stored encrypted in your database record.
+              </p>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsLCModalOpen(false)}
+                  className="h-9 text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={connectingLC || !lcLoginInput.trim() || !lcPasswordInput.trim()}
+                  className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                >
+                  {connectingLC ? "Authenticating..." : "Sign In & Connect 🚀"}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Tab 2: Session Cookie Direct Paste */}
+          {lcConnectTab === "cookie" && (
+            <form onSubmit={handleCookieConnect} className="space-y-3 text-xs">
+              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                <strong className="text-foreground block">Quick Cookie Connect:</strong>
+                <p>1. Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">leetcode.com</a>.</p>
+                <p>2. <strong>F12</strong> → <strong>Application</strong> → <strong>Cookies</strong> → Copy <strong>LEETCODE_SESSION</strong>.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">LEETCODE_SESSION Cookie:</label>
+                <Input
+                  type="password"
+                  placeholder="Paste LEETCODE_SESSION value..."
+                  value={lcSessionInput}
+                  onChange={(e) => setLcSessionInput(e.target.value)}
+                  required
+                  className="h-9 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsLCModalOpen(false)}
+                  className="h-9 text-xs rounded-xl"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={connectingLC || !lcSessionInput.trim()}
+                  className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+                >
+                  {connectingLC ? "Connecting..." : "Connect Session 🚀"}
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
