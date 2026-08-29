@@ -108,7 +108,12 @@ export async function checkAndConsumeRateLimit(
       };
     }
     console.error("[RateLimiter] Error evaluating rate limit:", err);
-    return { allowed: true };
+    return {
+      allowed: false,
+      reason: "cooldown",
+      retryAfterSec: cooldownSeconds,
+      error: "Rate limiter temporarily unavailable. Please try again later.",
+    };
   }
 }
 
