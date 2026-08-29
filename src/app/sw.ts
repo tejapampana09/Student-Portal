@@ -64,10 +64,12 @@ installSerwist({
         request.destination === "style",
       handler: new StaleWhileRevalidate(),
     },
+    // PRODUCTION SECURITY FIX: Authenticated navigation must ALWAYS be NetworkOnly
+    // to prevent cross-session user data leaks and stale profile views on shared machines.
     {
       matcher: ({ request }) =>
         request.mode === "navigate",
-      handler: new StaleWhileRevalidate(),
+      handler: new NetworkOnly(),
     },
   ],
   cleanupOutdatedCaches: true,

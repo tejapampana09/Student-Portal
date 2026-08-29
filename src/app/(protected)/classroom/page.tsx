@@ -410,18 +410,18 @@ export default function ClassroomPage() {
                           <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
                             {assign.courseName}
                           </Badge>
-                          {assign.submissionState === "TURNED_IN" ? (
+                          {assign.submissionState === "TURNED_IN" || assign.submissionState === "RETURNED" ? (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
                               <Check className="h-3 w-3" />
-                              Turned In
+                              {assign.submissionState === "RETURNED" ? `Graded ${assign.assignedGrade !== undefined ? `(${assign.assignedGrade} pts)` : "✅"}` : "Turned In ✅"}
                             </span>
                           ) : assign.isOverdue ? (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30">
-                              Overdue
+                              Missing / Overdue ⚠️
                             </span>
                           ) : (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
-                              Assigned
+                              Assigned ⏳
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">

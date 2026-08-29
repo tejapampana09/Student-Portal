@@ -52,7 +52,6 @@ export async function DELETE(req: NextRequest) {
 
     if (deleteResult.deletedCount !== 1) return errorResponse("Failed To Delete Account!");
 
-    // Privacy Data Minimization: Anonymize identity in external webhook log
     const maskedId = maskUsername(auth.payload.username);
     const embedMessage: DiscordEmbedMessage = {
       embeds: [
@@ -81,15 +80,20 @@ export async function DELETE(req: NextRequest) {
 
     if (process.env.D_REPORT) {
       try {
-        await axios.post(String(process.env.D_REPORT), embedMessage);
-      } catch (discordError) {
-        console.log("Discord notification failed for account deletion:", discordError);
+        const res = await axios.post(String(process.env.D_REPORT), embedMessage);
+        if (res.status >= 400) {
+          console.error(`[CRITICAL AUDIT] Account deletion Discord webhook returned status: ${res.status} for user: ${maskedId}`);
+        }
+      } catch (discordError: any) {
+        console.error(`[CRITICAL AUDIT] Account deletion Discord webhook delivery failed for user: ${maskedId}:`, discordError?.message || discordError);
       }
+    } else {
+      console.warn(`[AUDIT NOTICE] Account deletion completed for user ${maskedId}, but D_REPORT webhook is not configured.`);
     }
 
     return NextResponse.json({ success: true, message: "Data Deleted Successfully!" });
   } catch (err) {
-    console.log("Error From /api/auth/delete:", err);
+    console.error("Error From /api/auth/delete:", err);
     return errorResponse(undefined, {}, 500);
   }
 }

@@ -87,7 +87,6 @@ export interface ClassroomCourseItem {
   materials: ClassroomMaterialAttachment[];
 }
 
-// In-Memory 5-Minute Cache with SHA-256 Hashed Keys
 interface CacheEntry {
   data: {
     courses: ClassroomCourseItem[];
@@ -157,7 +156,6 @@ export async function fetchFullGoogleClassroomData(
   allAnnouncements: ClassroomAnnouncement[];
   allMaterials: ClassroomMaterialAttachment[];
 }> {
-  // Use SHA-256 hash of token to prevent exposing token substrings in cache keys
   const cacheKey = `cdata:${crypto.createHash("sha256").update(refreshToken).digest("hex")}`;
   const now = Date.now();
 
@@ -189,23 +187,45 @@ export async function fetchFullGoogleClassroomData(
     const courseAnnouncements: ClassroomAnnouncement[] = [];
     const courseMaterials: ClassroomMaterialAttachment[] = [];
 
-    const [matResSettled, cwResSettled, annResSettled] = await Promise.allSettled([
+    // Parallel fetch materials, coursework, announcements, AND studentSubmissions batch wildcard (courseWorkId: "-")
+    const [matResSettled, cwResSettled, annResSettled, subResSettled] = await Promise.allSettled([
       classroom.courses.courseWorkMaterials.list({
         courseId: c.id,
         courseWorkMaterialStates: ["PUBLISHED"],
-        pageSize: 20,
+        pageSize: 25,
       }),
       classroom.courses.courseWork.list({
         courseId: c.id,
         courseWorkStates: ["PUBLISHED"],
-        pageSize: 20,
+        pageSize: 25,
       }),
       classroom.courses.announcements.list({
         courseId: c.id,
         announcementStates: ["PUBLISHED"],
         pageSize: 15,
       }),
+      classroom.courses.courseWork.studentSubmissions.list({
+        courseId: c.id,
+        courseWorkId: "-", // Wildcard to fetch all submissions for this course in 1 batch
+        userId: "me",
+      }),
     ]);
+
+    // Build submissions map for O(1) status lookup
+    const submissionsMap = new Map<string, { state: "TURNED_IN" | "RETURNED" | "ASSIGNED" | "SUBMITTED"; grade?: number }>();
+    if (subResSettled.status === "fulfilled") {
+      const subs = subResSettled.value.data.studentSubmissions || [];
+      for (const s of subs) {
+        if (!s.courseWorkId) continue;
+        let sState: "TURNED_IN" | "RETURNED" | "ASSIGNED" | "SUBMITTED" = "ASSIGNED";
+        if (s.state === "TURNED_IN") sState = "TURNED_IN";
+        else if (s.state === "RETURNED") sState = "RETURNED";
+        submissionsMap.set(s.courseWorkId, {
+          state: sState,
+          grade: s.assignedGrade || undefined,
+        });
+      }
+    }
 
     // 1. Materials
     if (matResSettled.status === "fulfilled") {
@@ -230,7 +250,7 @@ export async function fetchFullGoogleClassroomData(
         let dueFormatted = "No Due Date";
         let dueDateIso = "";
         let dueTimeIso = "23:59";
-        let isOverdue = false;
+        let isPastDue = false;
 
         if (cw.dueDate) {
           const { day, month, year } = cw.dueDate;
@@ -242,8 +262,15 @@ export async function fetchFullGoogleClassroomData(
           dueTimeIso = `${String(h).padStart(2, "0")}:${m}`;
           dueFormatted = dObj.toLocaleDateString("en-IN", { month: "short", day: "numeric" }) + ` ${dueTimeIso}`;
 
-          if (dObj < nowDate) isOverdue = true;
+          if (dObj < nowDate) isPastDue = true;
         }
+
+        const subInfo = submissionsMap.get(cw.id);
+        const submissionState = subInfo?.state || "ASSIGNED";
+        const assignedGrade = subInfo?.grade;
+
+        // Accurate Overdue logic: ONLY overdue if NOT turned in and NOT returned!
+        const isOverdue = isPastDue && submissionState !== "TURNED_IN" && submissionState !== "RETURNED";
 
         const cwAttachments = parseMaterialsList(cw.materials || [], c.id, c.name, cw.creationTime || nowDate.toISOString());
         for (const item of cwAttachments) {
@@ -262,7 +289,8 @@ export async function fetchFullGoogleClassroomData(
           dueFormatted,
           maxPoints: cw.maxPoints || undefined,
           alternateLink: cw.alternateLink || undefined,
-          submissionState: "ASSIGNED",
+          submissionState,
+          assignedGrade,
           isOverdue,
           attachments: cwAttachments,
         });
