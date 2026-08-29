@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getGmailAuthUrl } from "@/server/gmail/gmailService";
 import { errorResponse, requireAuthResponse } from "@/server/utils/functions";
+import { useMongo } from "@/lib/database/useMongo";
 
-function getValidOrigin(req: NextRequest): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-
-  if (host && !host.includes("0.0.0.0")) {
-    return `${proto}://${host}`;
+function getCanonicalOrigin(): string {
+  if (process.env.APP_ORIGIN) {
+    return process.env.APP_ORIGIN.replace(/\/$/, "");
   }
-
-  const reqOrigin = req.nextUrl?.origin || "";
-  if (reqOrigin && !reqOrigin.includes("0.0.0.0")) {
-    return reqOrigin;
-  }
-
   return "https://3.87.134.201.sslip.io";
+}
+
+function sanitizeReturnTo(path: string | null): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || path.includes("://")) {
+    return "/dashboard";
+  }
+  return path;
 }
 
 export async function GET(req: NextRequest) {
@@ -23,20 +23,29 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const origin = getValidOrigin(req);
+    const origin = getCanonicalOrigin();
     const redirectUri = `${origin}/api/gmail/callback`;
     const searchParams = req.nextUrl.searchParams;
-    const returnTo = searchParams.get("returnTo") || "/dashboard";
+    const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
 
-    const statePayload = Buffer.from(
-      JSON.stringify({ username: auth.payload.username, returnTo, origin })
-    ).toString("base64");
+    const stateNonce = crypto.randomBytes(32).toString("hex");
 
-    const authUrl = getGmailAuthUrl(redirectUri, statePayload);
+    const initDb = await useMongo();
+    await initDb.db("college_db").collection("oauth_states").insertOne({
+      stateNonce,
+      username: auth.payload.username,
+      returnTo,
+      origin,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      used: false,
+    });
+
+    const authUrl = getGmailAuthUrl(redirectUri, stateNonce);
 
     return NextResponse.json({ success: true, authUrl });
   } catch (error: any) {
-    console.error("Error generating Google Auth URL:", error);
-    return errorResponse("Failed to generate Google Auth URL", {}, 500);
+    console.error("Error generating Gmail Auth URL:", error);
+    return errorResponse("Failed to generate Gmail Auth URL", {}, 500);
   }
 }

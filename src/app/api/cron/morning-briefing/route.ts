@@ -18,7 +18,7 @@ function safeCompare(a: string | null | undefined, b: string | null | undefined)
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const headerSecret = req.headers.get("x-cron-secret");
-  const cronSecret = process.env.CRON_SECRET || process.env.ACCESS_SECRET;
+  const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
     return NextResponse.json({ success: false, message: "CRON_SECRET is not configured on server" }, { status: 500 });

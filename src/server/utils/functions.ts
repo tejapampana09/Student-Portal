@@ -158,29 +158,41 @@ export async function isBlocked(username: string): Promise<boolean> {
     }
 }
 
-export async function enforceRateLimit(key: string, limit: number, windowMs: number): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-    const now = Date.now();
-    const windowStart = now - windowMs;
-    const initDb = await useMongo();
-    const col = initDb.db("college_db").collection(RATE_LIMIT_COLLECTION);
-    const existing = await col.findOne({ key });
+export async function enforceRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number
+): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+  const now = new Date();
+  const initDb = await useMongo();
+  const col = initDb.db("college_db").collection(RATE_LIMIT_COLLECTION);
 
-    if (!existing || new Date(existing.windowStart).getTime() <= windowStart) {
-        await col.updateOne(
-            { key },
-            { $set: { key, count: 1, windowStart: new Date(now), expiresAt: new Date(now + windowMs) } },
-            { upsert: true }
-        );
-        return { allowed: true, retryAfterSeconds: 0 };
-    }
+  // Atomically clear expired records if past window
+  await col.deleteOne({ key, expiresAt: { $lte: now } });
 
-    if (existing.count >= limit) {
-        const retryAfterSeconds = Math.max(1, Math.ceil((new Date(existing.expiresAt).getTime() - now) / 1000));
-        return { allowed: false, retryAfterSeconds };
-    }
+  // Atomically increment or insert
+  const doc = await col.findOneAndUpdate(
+    { key },
+    {
+      $inc: { count: 1 },
+      $setOnInsert: {
+        key,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + windowMs),
+      },
+    },
+    { upsert: true, returnDocument: "after" }
+  );
 
-    await col.updateOne({ key }, { $inc: { count: 1 } });
-    return { allowed: true, retryAfterSeconds: 0 };
+  if (!doc) return { allowed: true, retryAfterSeconds: 0 };
+
+  if (doc.count > limit) {
+    const expiresAtMs = doc.expiresAt ? new Date(doc.expiresAt).getTime() : now.getTime() + windowMs;
+    const retryAfterSeconds = Math.max(1, Math.ceil((expiresAtMs - now.getTime()) / 1000));
+    return { allowed: false, retryAfterSeconds };
+  }
+
+  return { allowed: true, retryAfterSeconds: 0 };
 }
 
 export function errorResponse(message?: string, data: Record<string, any> = {}, status: number = 400): NextResponse {

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
-  // Generous AI Rate Limit: 60 questions/min for students, 120/min for admins
+  // Rate Limiting
   const maxAllowed = isAdmin(auth.payload.username) ? 120 : 60;
   const rate = await enforceRateLimit(`ai:user:${auth.payload.username}`, maxAllowed, 60 * 1000);
   if (!rate.allowed) {
@@ -26,234 +26,133 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      {
-        success: false,
-        message: "Gemini API key is not configured on the server. Please set GEMINI_API_KEY in environment.",
-      },
+      { success: false, message: "AI assistant service is currently unavailable." },
       { status: 503 }
     );
   }
 
   try {
     const body = await req.json();
-    const { messages, userQuery } = body;
 
-    const query = userQuery || (Array.isArray(messages) && messages[messages.length - 1]?.content) || "";
-    if (!query) {
-      return errorResponse("Query is required");
+    // Strict Input Validation (Item 8)
+    if (!body || typeof body !== "object") {
+      return errorResponse("Invalid request body");
+    }
+
+    const { messages, userQuery } = body;
+    const query = (typeof userQuery === "string" ? userQuery : Array.isArray(messages) ? messages[messages.length - 1]?.content : "").trim();
+
+    if (!query || typeof query !== "string") {
+      return errorResponse("Query text is required");
+    }
+
+    if (query.length > 2000) {
+      return errorResponse("Query exceeds maximum allowed length of 2000 characters.");
+    }
+
+    // Read-only intent check for attendance code detection (Item 7)
+    const codeMatch = query.match(/\b([A-Za-z]\d{6})\b/);
+    if (codeMatch && /mark|attendance|code|submit|present/i.test(query)) {
+      const code = codeMatch[1].toUpperCase();
+      return NextResponse.json({
+        success: true,
+        answer: `I detected attendance code **${code}**. To safely record attendance without accidental inputs, please submit this code via the **Mark Attendance** button on your dashboard.`,
+        suggestedAction: {
+          type: "MARK_ATTENDANCE",
+          code,
+        },
+      });
     }
 
     const initDb = await useMongo();
     const user = await initDb.db("college_db").collection<any>("users").findOne(
       { username: auth.payload.username },
-      { projection: { data: 1, username: 1, session_time: 1, sessionId: 1, gmail: 1 } }
+      { projection: { data: 1, username: 1 } }
     );
-
-    // ⚡ Direct Attendance Marking via AI
-    const codeMatch = query.match(/\b([A-Za-z]\d{6})\b/);
-    const isMarkIntent = /mark|attendance|code|submit|present/i.test(query);
-
-    if (codeMatch && isMarkIntent) {
-      const code = codeMatch[1].toUpperCase();
-      if (!user?.sessionId) {
-        return NextResponse.json({
-          success: true,
-          answer: `I found attendance code ${code}, but you don't have an active session yet. Please tap Initiate Session on your dashboard first, and I will mark it for you!`,
-        });
-      }
-
-      try {
-        const SUBMIT_URL = "https://student.srmap.edu.in/srmapstudentcorner/students/transaction/studentattendanceresources.jsp";
-        const payload = new URLSearchParams({
-          acode: code,
-          dynamiclatdata: "0",
-          dynamiclonxdata: "0",
-          ids: "1",
-        }).toString();
-
-        const markRes = await fetch(SUBMIT_URL, {
-          method: "POST",
-          body: payload,
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "Mozilla/5.0",
-            Cookie: `JSESSIONID=${user.sessionId}`,
-          },
-        });
-
-        const text = await markRes.text();
-        let resData: any = {};
-        try {
-          resData = JSON.parse(text.trim());
-        } catch {
-          resData = JSON.parse(text.replace(/<[^>]+>/g, "").trim());
-        }
-
-        if (resData.resultstatus === "1") {
-          return NextResponse.json({
-            success: true,
-            answer: `✅ Success! Attendance marked successfully with code ${code}.`,
-          });
-        } else if (typeof resData.result === "string" && resData.result.includes("already")) {
-          return NextResponse.json({
-            success: true,
-            answer: `ℹ️ Attendance for code ${code} was already marked!`,
-          });
-        } else {
-          return NextResponse.json({
-            success: true,
-            answer: `❌ Could not mark attendance: ${resData.result || "Incorrect or expired code"}.`,
-          });
-        }
-      } catch (err: any) {
-        console.error("AI attendance marking failed:", err);
-      }
-    }
 
     let studentData: any = null;
     if (user?.data) {
       try {
         studentData = decryptData(user.data);
-      } catch (e) {
-        console.error("Failed to decrypt student data for AI:", e);
-      }
+      } catch {}
     }
 
-    const recentEmailsSummary = "Portal notifications and academic timetable active.";
+    // Data Minimization (Item 9): Inject only what the query requires
+    const qLower = query.toLowerCase();
+    const isTimetableQuery = /class|schedule|timetable|room|venue|period|slot|today|tomorrow|monday|tuesday|wednesday|thursday|friday/i.test(qLower);
+    const isAttendanceQuery = /attendance|bunk|present|absent|shortage|percentage|safe/i.test(qLower);
+    const isFacultyQuery = /faculty|professor|dr\.|teacher|cabin|hod|advisor|email/i.test(qLower);
+    const isCalendarQuery = /holiday|exam|calendar|semester|midsem|endsem|date/i.test(qLower);
+    const isGradesQuery = /cgpa|sgpa|grade|marks|credit|result/i.test(qLower);
 
-    const nowIST = DateTime.now().setZone("Asia/Kolkata");
-    const currentDayOfWeek = nowIST.toFormat("cccc");
-    const currentTimeStr = nowIST.toFormat("hh:mm a, dd-MMMM-yyyy");
+    const minimizedContext: any = {
+      studentName: studentData?.personal_details?.name || "Student",
+    };
 
-    const contextPrompt = `
-You are the official AI Academic Assistant & Copilot for SRM University-AP (SRMAP) Student Portal.
-You have access to the authenticated student's real-time academic records.
-Current Time in Campus (IST): ${currentTimeStr} (${currentDayOfWeek})
+    if (isTimetableQuery) {
+      minimizedContext.timetable = studentData?.timetable || [];
+      minimizedContext.todayDay = DateTime.now().setZone("Asia/Kolkata").weekdayLong;
+    }
 
---- STUDENT PROFILE & ACADEMICS ---
-Register Number: ${auth.payload.username}
-Student Name: ${studentData?.profile?.studentName || studentData?.name || auth.payload.username}
-Program / Section: ${studentData?.profile?.program || "B.Tech"} - ${studentData?.profile?.section || "N/A"}
-Current Semester: ${studentData?.profile?.semester || "N/A"}
-CGPA: ${JSON.stringify(studentData?.cgpa || "N/A")}
+    if (isAttendanceQuery) {
+      minimizedContext.attendanceSummary = (studentData?.attendance || []).map((a: any) => ({
+        subject: a.course_title || a.sub_code,
+        percentage: a.overall_percentage || a.attended_percentage,
+        attended: a.hours_conducted ? `${a.hours_attended}/${a.hours_conducted}` : undefined,
+      }));
+    }
 
---- LIVE ATTENDANCE SUMMARY ---
-${
-  studentData?.attendance?.length
-    ? studentData.attendance
-        .map(
-          (a: any) =>
-            `• ${a.subject_name || a.subject_code} (${a.subject_code}): Attended ${a.present}/${a.classes_conducted} classes = ${a.attendance_percentage}% (Required: 75%)`
-        )
-        .join("\n")
-    : "Attendance data not currently synced or available."
-}
+    if (isGradesQuery) {
+      minimizedContext.cgpa = studentData?.cgpa || studentData?.gpa_details;
+    }
 
---- TIMETABLE SCHEDULE ---
-${
-  studentData?.timetable?.length
-    ? studentData.timetable
-        .map((t: any) => `Day ${t.day}: ${Array.isArray(t.subjects) ? t.subjects.join(" | ") : JSON.stringify(t)}`)
-        .join("\n")
-    : "Timetable data not available."
-}
+    if (isFacultyQuery) {
+      minimizedContext.facultyDirectory = (facultyData as any[]).slice(0, 15);
+    }
 
---- REGISTERED SUBJECTS & FACULTY ---
-${
-  studentData?.subjects?.length
-    ? studentData.subjects
-        .map((s: any) => `• ${s.code} - ${s.name}: Faculty: ${s.faculty || "N/A"} | Classroom: ${s.classrooms || "N/A"}`)
-        .join("\n")
-    : "Subjects list not available."
-}
+    if (isCalendarQuery) {
+      minimizedContext.academicCalendar = academicCalendar;
+    }
 
---- CAMPUS FACULTY CABIN DIRECTORY SAMPLE ---
-${JSON.stringify(facultyData?.slice(0, 40) || [])}
-
---- ACADEMIC CALENDAR & UPCOMING EVENTS ---
-${JSON.stringify(academicCalendar || [])}
-
---- RECENT STUDENT EMAILS & PLACEMENT CIRCULARS (GMAIL) ---
-${recentEmailsSummary}
-
---- RULES & GUIDELINES ---
-1. ATTENDANCE & BUNK CALCULATION:
-   - SRM minimum mandatory attendance is 75%.
-   - If the student asks if they can skip/bunk a class: Calculate the new percentage precisely: (present) / (conducted + skipped).
-   - Tell them clearly whether it stays above 75%, how many classes they can safely skip, or how many they must attend to reach 75%.
-2. TIMETABLE & CLASSROOMS:
-   - When asked where their next class is, check the current day of the week (${currentDayOfWeek}) and the time (${currentTimeStr}).
-3. FACULTY CABINS:
-   - Provide exact cabin number, floor, and building (e.g. TP401, Tech Park, Academic Block).
-4. TONE, STYLE & FORMATTING (IMPORTANT):
-   - Keep answers SHORT, CRISP, SIMPLE, and DIRECT to the point. No long essays.
-   - Do NOT use markdown asterisks (**) or raw markdown heading hashes (###).
-   - Use simple bullet points (•), clean line breaks, and clear emojis.
-   - Give the bottom-line answer immediately.
-   - Support English, Telugu, or Hinglish naturally based on what the student uses.
-`;
+    // If query is broad, include concise high-level overview
+    if (!isTimetableQuery && !isAttendanceQuery && !isFacultyQuery && !isCalendarQuery && !isGradesQuery) {
+      minimizedContext.overview = {
+        subjectsCount: studentData?.subjects?.length || 0,
+        attendanceAverage: studentData?.overall_attendance || undefined,
+      };
+    }
 
     const ai = new GoogleGenAI({ apiKey });
 
-    const contents: any[] = [];
+    const systemPrompt = `
+You are the official SRMAP Campus Copilot AI for SRM University AP students.
+Provide accurate, concise, and student-friendly assistance.
+Current India Time: ${DateTime.now().setZone("Asia/Kolkata").toFormat("yyyy-MM-dd HH:mm")} (${DateTime.now().setZone("Asia/Kolkata").weekdayLong})
 
-    if (Array.isArray(messages) && messages.length > 1) {
-      for (const m of messages.slice(-6)) {
-        contents.push({
-          role: m.role === "user" ? "user" : "model",
-          parts: [{ text: m.content }],
-        });
-      }
-    } else {
-      contents.push({
-        role: "user",
-        parts: [{ text: query }],
-      });
-    }
+Context Data (Strictly minimized):
+${JSON.stringify(minimizedContext, null, 2)}
+`;
 
-    // High Quota Model Chain: gemini-3.1-flash-lite (500 RPD) -> gemini-3.5-flash-lite (500 RPD) -> gemini-3.6-flash
-    const candidateModels = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"];
-    let response: any = null;
-    let lastErr: any = null;
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        { role: "user", parts: [{ text: `${systemPrompt}\n\nStudent Question: ${query}` }] }
+      ],
+    });
 
-    for (const model of candidateModels) {
-      try {
-        response = await ai.models.generateContent({
-          model,
-          contents,
-          config: {
-            systemInstruction: contextPrompt,
-            temperature: 0.4,
-          },
-        });
-        if (response?.text) break;
-      } catch (e: any) {
-        lastErr = e;
-        console.warn(`Model ${model} failed, trying next candidate:`, e?.message);
-      }
-    }
-
-    if (!response && lastErr) {
-      throw lastErr;
-    }
-
-    const text = response.text || "I couldn't generate a response. Please try again.";
+    const answer = response.text || "I could not generate an answer. Please try asking again.";
 
     return NextResponse.json({
       success: true,
-      answer: text,
-      timestamp: new Date().toISOString(),
+      answer,
     });
   } catch (error: any) {
-    console.error("Error in AI Chat API:", error);
+    console.error("Error in AI Chat Copilot:", error?.message || error);
     return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || "Failed to process AI query",
-      },
+      { success: false, message: "Failed to process request. Please try again." },
       { status: 500 }
     );
   }

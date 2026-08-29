@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
 import { getGoogleAuthUrl } from "@/server/classroom/classroomService";
 import { errorResponse, requireAuthResponse } from "@/server/utils/functions";
+import { useMongo } from "@/lib/database/useMongo";
 
-function getValidOrigin(req: NextRequest): string {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
-  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-
-  if (host && !host.includes("0.0.0.0")) {
-    return `${proto}://${host}`;
+function getCanonicalOrigin(): string {
+  if (process.env.APP_ORIGIN) {
+    return process.env.APP_ORIGIN.replace(/\/$/, "");
   }
-
-  const reqOrigin = req.nextUrl?.origin || "";
-  if (reqOrigin && !reqOrigin.includes("0.0.0.0")) {
-    return reqOrigin;
-  }
-
   return "https://3.87.134.201.sslip.io";
+}
+
+function sanitizeReturnTo(path: string | null): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//") || path.includes("://")) {
+    return "/classroom";
+  }
+  return path;
 }
 
 export async function GET(req: NextRequest) {
@@ -23,17 +23,27 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const origin = getValidOrigin(req);
-    // Use the primary registered callback URI
+    const origin = getCanonicalOrigin();
     const redirectUri = `${origin}/api/gmail/callback`;
     const searchParams = req.nextUrl.searchParams;
-    const returnTo = searchParams.get("returnTo") || "/classroom";
+    const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
 
-    const statePayload = Buffer.from(
-      JSON.stringify({ username: auth.payload.username, returnTo, origin })
-    ).toString("base64");
+    // Generate cryptographic 32-byte state nonce
+    const stateNonce = crypto.randomBytes(32).toString("hex");
 
-    const authUrl = getGoogleAuthUrl(redirectUri, statePayload);
+    // Persist single-use state nonce with 10-min TTL in DB
+    const initDb = await useMongo();
+    await initDb.db("college_db").collection("oauth_states").insertOne({
+      stateNonce,
+      username: auth.payload.username,
+      returnTo,
+      origin,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      used: false,
+    });
+
+    const authUrl = getGoogleAuthUrl(redirectUri, stateNonce);
 
     return NextResponse.json({ success: true, authUrl });
   } catch (error: any) {
