@@ -1,35 +1,30 @@
-import axios from "axios";
 import { solveCaptcha } from "@/lib/captcha";
 import { main, captcha, authenticate } from "@/server/utils/headers";
-import { httpsAgent } from "@/server/utils/httpAgents";
 import { LoginResponse } from "@/types/server/login";
 
-const httpLoginClient = axios.create({
-  httpsAgent,
-  timeout: 25000,
-  validateStatus: () => true,
-});
-
 async function attemptLogin(username: string, password: string): Promise<LoginResponse> {
-  const mainRes = await httpLoginClient.get("https://student.srmap.edu.in/srmapstudentcorner/StudentLoginPage", {
+  const mainRes = await fetch("https://student.srmap.edu.in/srmapstudentcorner/StudentLoginPage", {
+    method: "GET",
     headers: main,
+    signal: AbortSignal.timeout(15000),
   });
 
-  if (mainRes.status >= 500) throw new Error("SRM server is unreachable. Please try again later.");
+  if (!mainRes.ok) throw new Error("SRM server is unreachable. Please try again later.");
 
-  const setCookie = String(mainRes.headers["set-cookie"] || "");
+  const setCookie = mainRes.headers.get("set-cookie") || "";
   const jsessionIdMatch = setCookie.match(/JSESSIONID=([^;]+)/);
   if (!jsessionIdMatch) throw new Error("Session ID not found");
   const jsessionId = jsessionIdMatch[1];
 
-  const captchaRes = await httpLoginClient.get("https://student.srmap.edu.in/srmapstudentcorner/captchas", {
+  const captchaRes = await fetch("https://student.srmap.edu.in/srmapstudentcorner/captchas", {
+    method: "GET",
     headers: captcha(jsessionId),
-    responseType: "arraybuffer",
+    signal: AbortSignal.timeout(15000),
   });
 
-  if (captchaRes.status >= 500) throw new Error("SRM server is unreachable. Please try again later.");
+  if (!captchaRes.ok) throw new Error("SRM server is unreachable. Please try again later.");
 
-  const captchaBuffer = Buffer.from(captchaRes.data);
+  const captchaBuffer = Buffer.from(await captchaRes.arrayBuffer());
   const captchaTextRaw = await solveCaptcha(captchaBuffer);
   if (!captchaTextRaw) throw new Error("Captcha solving failed");
 
@@ -37,21 +32,16 @@ async function attemptLogin(username: string, password: string): Promise<LoginRe
     txtUserName: username,
     txtAuthKey: password,
     ccode: captchaTextRaw,
-  }).toString();
+  });
 
-  const loginRes = await httpLoginClient.post(
-    "https://student.srmap.edu.in/srmapstudentcorner/StudentLoginToPortal",
-    payload,
-    {
-      headers: {
-        ...authenticate(jsessionId),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      responseType: "text",
-    }
-  );
+  const loginRes = await fetch("https://student.srmap.edu.in/srmapstudentcorner/StudentLoginToPortal", {
+    method: "POST",
+    headers: authenticate(jsessionId),
+    body: payload,
+    signal: AbortSignal.timeout(15000),
+  });
 
-  const html = String(loginRes.data || "");
+  const html = await loginRes.text();
 
   const alertMatch = html.match(/alert\(['"](.*?)['"]\)/i);
   if (alertMatch) {
@@ -70,7 +60,7 @@ async function attemptLogin(username: string, password: string): Promise<LoginRe
   return { success: true, sessionId: jsessionId };
 }
 
-async function login(username: string, password: string, maxRetries = 3): Promise<LoginResponse> {
+async function login(username: string, password: string, maxRetries = 2): Promise<LoginResponse> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -78,9 +68,9 @@ async function login(username: string, password: string, maxRetries = 3): Promis
       if (res.success) return res;
     } catch (error: unknown) {
       lastError = error;
-      console.log(`Login attempt ${attempt}/${maxRetries} failed:`, error);
+      console.log(`[SRM Login] Attempt ${attempt}/${maxRetries} error:`, error instanceof Error ? error.message : error);
       if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
       }
     }
   }
