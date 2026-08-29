@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MessageSquare, Bell, Send, CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, Smartphone, Instagram, Globe } from "lucide-react";
+import { MessageSquare, Bell, Send, CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -27,12 +27,6 @@ export default function NotificationPreferencesCard() {
   const [waSaving, setWaSaving] = useState(false);
   const [waTesting, setWaTesting] = useState(false);
 
-  // Instagram State
-  const [igHandle, setIgHandle] = useState("");
-  const [igEnabled, setIgEnabled] = useState(false);
-  const [igSaving, setIgSaving] = useState(false);
-  const [igTesting, setIgTesting] = useState(false);
-
   // Push State
   const [pushSupported, setPushSupported] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -50,17 +44,7 @@ export default function NotificationPreferencesCard() {
       })
       .catch(() => {});
 
-    // 2. Fetch Instagram Status
-    API.get("/notifications/instagram")
-      .then((res) => {
-        if (res.data?.instagram) {
-          setIgHandle(res.data.instagram.handle || "");
-          setIgEnabled(res.data.instagram.enabled || false);
-        }
-      })
-      .catch(() => {});
-
-    // 3. Fetch Push Status
+    // 2. Fetch Push Status
     if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
       setPushSupported(true);
       API.get("/notifications/push")
@@ -111,49 +95,6 @@ export default function NotificationPreferencesCard() {
       toast({ title: "Failed to Send", description: err.response?.data?.message || err.message || "WhatsApp dispatch error.", variant: "destructive" });
     } finally {
       setWaTesting(false);
-    }
-  };
-
-  // Handle Instagram Save
-  const handleSaveInstagram = async () => {
-    if (igEnabled && !igHandle.trim()) {
-      toast({ title: "Handle Required", description: "Please enter your Instagram username.", variant: "destructive" });
-      return;
-    }
-    try {
-      setIgSaving(true);
-      const clean = igHandle.replace(/^@/, "").trim();
-      await API.post("/notifications/instagram", {
-        action: "save",
-        handle: clean,
-        enabled: igEnabled,
-      });
-      toast({ title: "Instagram Saved! 📸", description: `Direct messages linked to @${clean}.` });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to save Instagram settings.", variant: "destructive" });
-    } finally {
-      setIgSaving(false);
-    }
-  };
-
-  // Handle Instagram Test
-  const handleTestInstagram = async () => {
-    if (!igHandle.trim()) {
-      toast({ title: "Enter Username", description: "Please enter your Instagram handle first.", variant: "destructive" });
-      return;
-    }
-    try {
-      setIgTesting(true);
-      const clean = igHandle.replace(/^@/, "").trim();
-      const res = await API.post("/notifications/instagram", {
-        action: "test",
-        handle: clean,
-      });
-      toast({ title: "Test Direct Message Sent! 📩", description: res.data?.message || `Sent to @${clean} on Instagram.` });
-    } catch (err: any) {
-      toast({ title: "Failed to Send", description: err.response?.data?.message || err.message || "Instagram dispatch error.", variant: "destructive" });
-    } finally {
-      setIgTesting(false);
     }
   };
 
@@ -232,14 +173,14 @@ export default function NotificationPreferencesCard() {
             <Bell className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-foreground">Notifications & Morning Briefing</h3>
+            <h3 className="text-base font-bold text-foreground">Smart Alerts & Daily Morning Briefing</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              WhatsApp, Instagram DMs, and Native Mobile Push Alerts
+              WhatsApp and Native Mobile Push Notifications
             </p>
           </div>
         </div>
         <Badge variant="outline" className="bg-white/5 text-[10px] text-muted-foreground border-white/10">
-          Multi-Channel
+          Automated
         </Badge>
       </div>
 
@@ -310,67 +251,7 @@ export default function NotificationPreferencesCard() {
           </div>
         </div>
 
-        {/* Section 2: Instagram Direct Messages (IG DMs) */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-transparent border border-pink-500/20 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 p-0.5 flex items-center justify-center text-white shadow-md">
-                <div className="w-full h-full bg-black/60 rounded-[10px] flex items-center justify-center backdrop-blur-sm">
-                  <Instagram className="h-4 w-4 text-pink-400" />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-foreground">Instagram Direct Messages (IG DMs)</h4>
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                    New
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">Receive daily briefings & alerts directly in your Instagram DM inbox</p>
-              </div>
-            </div>
-            <Switch
-              checked={igEnabled}
-              onCheckedChange={(checked) => {
-                setIgEnabled(checked);
-              }}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">@</span>
-              <Input
-                type="text"
-                placeholder="your_instagram_handle"
-                value={igHandle}
-                onChange={(e) => setIgHandle(e.target.value.replace(/^@/, "").trim())}
-                className="pl-8 h-8 text-xs bg-white/5 border-white/10 font-mono rounded-xl tracking-wide"
-              />
-            </div>
-            <Button
-              size="sm"
-              variant="glass"
-              onClick={handleSaveInstagram}
-              disabled={igSaving}
-              className="text-xs h-8 px-3 rounded-xl font-semibold"
-            >
-              {igSaving ? "Saving..." : "Save"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleTestInstagram}
-              disabled={igTesting || !igHandle}
-              className="text-xs h-8 px-3 rounded-xl border-pink-500/30 text-pink-400 hover:bg-pink-500/10 font-semibold"
-            >
-              <Send className="h-3 w-3 mr-1" />
-              {igTesting ? "Sending..." : "Test DM"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Section 3: Native PWA Web Push Notifications */}
+        {/* Section 2: Native PWA Web Push Notifications */}
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
