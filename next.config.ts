@@ -9,7 +9,7 @@ const securityHeaders = [
   },
   {
     key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
+    value: "max-age=63072000; includeSubDomains",
   },
   {
     key: "X-Frame-Options",
@@ -33,7 +33,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://student.srmap.edu.in https://*.googleusercontent.com https://lh3.googleusercontent.com https://drive.google.com https://srmapi.in",
+      "img-src 'self' data: blob: https://student.srmap.edu.in https://*.googleusercontent.com https://lh3.googleusercontent.com https://drive.google.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "connect-src 'self' https://student.srmap.edu.in https://*.googleapis.com https://www.google-analytics.com https://generativelanguage.googleapis.com https://leetcode.com https://discord.com",
       "frame-src 'self' https://classroom.google.com https://drive.google.com https://youtube.com https://www.youtube.com",

@@ -24,6 +24,9 @@ jobs:
       - name: Deterministic Dependency Installation
         run: npm ci --legacy-peer-deps
 
+      - name: Code Linting & Core Web Vitals
+        run: npm run lint
+
       - name: Strict TypeScript Compilation Check
         run: npx tsc --noEmit
 

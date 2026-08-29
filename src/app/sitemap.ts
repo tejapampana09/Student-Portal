@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://srmapi.in";
+  const baseUrl = "https://3.87.134.201.sslip.io";
 
   const mainPages = [
     { path: "", priority: 1.0, changeFrequency: "daily" as const },

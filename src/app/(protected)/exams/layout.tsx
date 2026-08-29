@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "Exams & Results",
   description: "Check your SRM University AP internal marks, past examination performance, and semester grade results.",
   alternates: {
-    canonical: "https://srmapi.in/exams",
+    canonical: "https://3.87.134.201.sslip.io/exams",
   },
   openGraph: {
     title: "Exams & Results | SRMAP API",
     description: "Check your SRM University AP internal marks, past examination performance, and semester grade results.",
-    url: "https://srmapi.in/exams",
+    url: "https://3.87.134.201.sslip.io/exams",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://srmapi.in",
+      item: "https://3.87.134.201.sslip.io",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Exams & Results",
-      item: "https://srmapi.in/exams",
+      item: "https://3.87.134.201.sslip.io/exams",
     },
   ],
 };

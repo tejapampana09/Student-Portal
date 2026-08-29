@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "PORT=3000 next start",
-    "lint": "next lint --dir src",
+    "lint": "eslint .",
     "faculty": "cd scripts/faculty && node convertFacultyExcelToJson.js"
   },
   "dependencies": {
