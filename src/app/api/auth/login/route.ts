@@ -6,7 +6,7 @@ import { createAuthSession, enforceRateLimit, errorResponse, isAdmin, isBlocked 
 
 export async function POST(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-    const rate = await enforceRateLimit(`login:ip:${ip}`, 10, 15 * 60 * 1000);
+    const rate = await enforceRateLimit(`login:ip:${ip}`, 30, 15 * 60 * 1000);
     if (!rate.allowed) {
         return NextResponse.json({ success: false, message: "Too many login attempts. Try again later." }, {
             status: 429,
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const [isValid, errorMessage] = isValidRegNumber(username);
     if (!isValid) return errorResponse(errorMessage || "Invalid Username!");
 
-    const userRate = await enforceRateLimit(`login:user:${username}`, 5, 15 * 60 * 1000);
+    const userRate = await enforceRateLimit(`login:user:${username}`, 20, 15 * 60 * 1000);
     if (!userRate.allowed) {
         return NextResponse.json({ success: false, message: "Too many login attempts for this account. Try again later." }, {
             status: 429,
