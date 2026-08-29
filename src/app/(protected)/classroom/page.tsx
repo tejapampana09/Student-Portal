@@ -21,12 +21,15 @@ import {
   BookCheck,
   ShieldCheck,
   Zap,
+  Unlink,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/utils/useToast";
 import { useStudentData } from "@/context/StudentContext";
+import { useSearchParams } from "next/navigation";
 import API from "@/lib/api/axiosClient";
 import { ClassroomCourse } from "@/server/classroom/classroomService";
 import { SummaryResult } from "@/server/ai/notesSummarizerService";
@@ -50,10 +53,12 @@ export interface SyncedAssignment {
 
 export default function ClassroomPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const { subjects } = useStudentData();
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [courses, setCourses] = useState<ClassroomCourse[]>([]);
@@ -76,7 +81,7 @@ export default function ClassroomPage() {
 
       const res = await API.get("/classroom/courses");
       if (res.data) {
-        setIsConnected(res.data.isConnected);
+        setIsConnected(!!res.data.isConnected);
         setUserEmail(res.data.userEmail || "");
         setCourses(res.data.courses || []);
         setAssignments(res.data.assignments || []);
@@ -98,7 +103,13 @@ export default function ClassroomPage() {
 
   useEffect(() => {
     fetchClassroomData();
-  }, []);
+    if (searchParams.get("gmail") === "connected") {
+      toast({
+        title: "Google Connected! 🎓",
+        description: "Google Classroom successfully synced to your current semester.",
+      });
+    }
+  }, [searchParams]);
 
   const handleConnectGoogle = async () => {
     try {
@@ -108,6 +119,21 @@ export default function ClassroomPage() {
       }
     } catch {
       toast({ title: "Error", description: "Failed to initiate Google connection.", variant: "destructive" });
+    }
+  };
+
+  const handleDisconnectGoogle = async () => {
+    try {
+      setDisconnecting(true);
+      await API.post("/gmail/disconnect");
+      setIsConnected(false);
+      setUserEmail("");
+      toast({ title: "Google Account Disconnected", description: "Classroom unlinked." });
+      fetchClassroomData(false);
+    } catch {
+      toast({ title: "Failed to disconnect", variant: "destructive" });
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -183,7 +209,7 @@ export default function ClassroomPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3 relative z-10 flex-wrap">
+        <div className="flex items-center gap-2.5 relative z-10 flex-wrap">
           <Button
             onClick={() => fetchClassroomData(true)}
             disabled={syncing || loading}
@@ -193,7 +219,17 @@ export default function ClassroomPage() {
             {syncing ? "Syncing..." : "Sync Live Courses 🔄"}
           </Button>
 
-          {!isConnected && (
+          {isConnected ? (
+            <Button
+              variant="outline"
+              onClick={handleDisconnectGoogle}
+              disabled={disconnecting}
+              className="rounded-2xl h-10 px-3 text-xs font-semibold border-rose-500/30 text-rose-300 hover:bg-rose-500/10 gap-1.5"
+            >
+              <Unlink className="h-3.5 w-3.5" />
+              Disconnect
+            </Button>
+          ) : (
             <Button
               variant="outline"
               onClick={handleConnectGoogle}
