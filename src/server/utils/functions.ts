@@ -15,8 +15,8 @@ function getAccessSecret(): string {
 }
 
 function getEncryptionSecret(): string {
-    const value = process.env.DB_ENCRYPTION_KEY;
-    if (!value || value.length < 32) throw new Error("DB_ENCRYPTION_KEY must be configured and at least 32 characters long");
+    const value = process.env.DB_ENCRYPTION_KEY || process.env.ACCESS_SECRET;
+    if (!value || value.length < 32) throw new Error("DB_ENCRYPTION_KEY or ACCESS_SECRET must be configured and at least 32 characters long");
     return value;
 }
 
