@@ -88,15 +88,7 @@ export async function GET(req: NextRequest) {
           return pct < 75;
         });
 
-        // Recent emails
-        let recentEmails: any[] = [];
-        if (u.gmail?.refreshToken) {
-          try {
-            const { fetchStudentEmails } = await import("@/server/gmail/gmailService");
-            const refreshToken = String(decryptData(String(u.gmail.refreshToken)));
-            recentEmails = await fetchStudentEmails(refreshToken, 3);
-          } catch {}
-        }
+        const recentEmails: any[] = [];
 
         const message = buildDailyBriefingMessage(
           studentName,

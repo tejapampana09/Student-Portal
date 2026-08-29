@@ -122,25 +122,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Optional: Fetch recent student emails if Gmail is connected
-    let recentEmailsSummary = "No Gmail connected. Advise student to connect Gmail on the dashboard to scan placement/circular emails.";
-    if (user?.gmail?.refreshToken) {
-      try {
-        const { fetchStudentEmails } = await import("@/server/gmail/gmailService");
-        const decrypted = decryptData(String(user.gmail.refreshToken));
-        const refreshToken = typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted);
-        const emails = await fetchStudentEmails(refreshToken, 6);
-        if (emails.length > 0) {
-          recentEmailsSummary = emails
-            .map((e) => `• [${e.date}] From: ${e.from} | Subject: ${e.subject} | Snippet: ${e.snippet}`)
-            .join("\n");
-        } else {
-          recentEmailsSummary = "No unread circulars or placement emails in the last 7 days.";
-        }
-      } catch (err) {
-        console.error("Error retrieving emails for AI:", err);
-      }
-    }
+    const recentEmailsSummary = "Portal notifications and academic timetable active.";
 
     const nowIST = DateTime.now().setZone("Asia/Kolkata");
     const currentDayOfWeek = nowIST.toFormat("cccc");

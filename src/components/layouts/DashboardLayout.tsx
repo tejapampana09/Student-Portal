@@ -480,7 +480,6 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
       },
       { title: "Career & Placement", shortTitle: "Career", path: "/career", icon: Briefcase, highlight: true },
       { title: "Coding Arena", shortTitle: "Code", path: "/code", icon: Code2, highlight: true },
-      { title: "Classroom & AI Notes", shortTitle: "Class", path: "/classroom", icon: GraduationCap },
       { title: "Cgpa Calculator", shortTitle: "CGPA", path: "/cgpa", icon: Calculator },
       { title: "Academic Calender", shortTitle: "Calendar", path: "/calender", icon: CalendarDays },
       { title: "Subjects", shortTitle: "Subs", path: "/subjects", icon: Library },
