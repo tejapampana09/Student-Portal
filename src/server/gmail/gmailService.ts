@@ -19,6 +19,9 @@ export function getGmailAuthUrl(redirectUri: string, state: string) {
     scope: [
       "https://www.googleapis.com/auth/gmail.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/classroom.courses.readonly",
+      "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+      "https://www.googleapis.com/auth/classroom.announcements.readonly",
     ],
     state,
   });
