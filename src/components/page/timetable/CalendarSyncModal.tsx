@@ -1,9 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { Calendar, Download, ExternalLink, Check, Bell, ShieldCheck, Sparkles, Smartphone, CheckCircle2, Apple, Globe } from "lucide-react";
+import { Calendar, Download, ExternalLink, Check, Bell, ShieldCheck, Sparkles, Smartphone, CheckCircle2, Globe } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/utils/useToast";
+import { useStudentData } from "@/context/StudentContext";
+import { generateICS } from "@/shared/utils/calendar";
+import API from "@/lib/api/axiosClient";
 
 interface CalendarSyncModalProps {
   trigger?: React.ReactNode;
@@ -11,16 +14,31 @@ interface CalendarSyncModalProps {
 
 export const CalendarSyncModal: React.FC<CalendarSyncModalProps> = ({ trigger }) => {
   const { toast } = useToast();
+  const { timetable, subjects, profile } = useStudentData();
   const [downloading, setDownloading] = useState(false);
   const [open, setOpen] = useState(false);
 
   const handleDownloadICS = async () => {
     try {
       setDownloading(true);
-      const res = await fetch("/api/calendar/export");
-      if (!res.ok) throw new Error("Failed to generate calendar file");
+      let icsContent = "";
 
-      const blob = await res.blob();
+      // 1. Instant Client-Side Generation if data is loaded in context
+      if (timetable && timetable.length > 0) {
+        const studentName = profile?.studentName || "Student";
+        icsContent = generateICS(timetable, subjects, studentName);
+      } else {
+        // 2. Fallback to authenticated backend API
+        const res = await API.get("/calendar/export", { responseType: "text" });
+        icsContent = res.data;
+      }
+
+      if (!icsContent) {
+        throw new Error("No timetable data found to export.");
+      }
+
+      // Create blob & download trigger
+      const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -31,10 +49,11 @@ export const CalendarSyncModal: React.FC<CalendarSyncModalProps> = ({ trigger })
       a.remove();
 
       toast({
-        title: "Calendar File Downloaded! 📅",
-        description: "Open the downloaded .ics file to automatically add all classes to Apple or Google Calendar.",
+        title: "Calendar Downloaded! 📅",
+        description: "Open the .ics file to automatically add all classes to Apple or Google Calendar.",
       });
     } catch (err: any) {
+      console.error("Calendar export error:", err);
       toast({
         title: "Export Failed",
         description: err?.message || "Could not generate calendar export.",
@@ -46,10 +65,16 @@ export const CalendarSyncModal: React.FC<CalendarSyncModalProps> = ({ trigger })
   };
 
   const handleOpenGoogleCalendar = () => {
-    window.open("https://calendar.google.com/calendar/r/settings/export", "_blank");
+    // First trigger the .ics download so user has the file
+    handleDownloadICS();
+    // Then open Google Calendar Settings import page
+    setTimeout(() => {
+      window.open("https://calendar.google.com/calendar/r/settings/export", "_blank");
+    }, 500);
+
     toast({
-      title: "Google Calendar Import Guide 🌐",
-      description: "Download the .ics file below, then drop it into Google Calendar Settings -> Import & Export.",
+      title: "Opening Google Calendar 🌐",
+      description: "Import the downloaded .ics file into your Google Calendar!",
     });
   };
 
