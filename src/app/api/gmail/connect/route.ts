@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Server configuration error" }, { status: 500 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const returnTo = searchParams.get("returnTo") || "/classroom";
+
     const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "3.87.134.201.sslip.io";
     const proto = req.headers.get("x-forwarded-proto") || "https";
     const redirectUri = `${proto}://${host}/api/gmail/callback`;
@@ -36,6 +39,7 @@ export async function GET(req: NextRequest) {
       {
         nonce,
         username: auth.payload.username,
+        returnTo,
       },
       accessSecret,
       { expiresIn: "10m" }

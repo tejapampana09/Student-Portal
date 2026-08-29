@@ -7,6 +7,7 @@ export interface TestCase {
 export interface CodingProblem {
   id: string;
   slug: string;
+  questionId: string;
   title: string;
   difficulty: "Easy" | "Medium" | "Hard";
   category: "Arrays" | "Strings" | "Linked List" | "Binary Search" | "Trees" | "Dynamic Programming" | "Graphs" | "Stack";
@@ -38,6 +39,7 @@ export const CODING_PROBLEMS: CodingProblem[] = [
   {
     id: "prob-1",
     slug: "two-sum",
+    questionId: "1",
     title: "1. Two Sum",
     difficulty: "Easy",
     category: "Arrays",
@@ -95,6 +97,7 @@ You can return the answer in any order.`,
   {
     id: "prob-2",
     slug: "maximum-subarray",
+    questionId: "53",
     title: "53. Maximum Subarray (Kadane's Algorithm)",
     difficulty: "Medium",
     category: "Arrays",
@@ -146,6 +149,7 @@ You can return the answer in any order.`,
   {
     id: "prob-3",
     slug: "best-time-to-buy-and-sell-stock",
+    questionId: "121",
     title: "121. Best Time to Buy and Sell Stock",
     difficulty: "Easy",
     category: "Arrays",
@@ -197,6 +201,7 @@ Return *the maximum profit you can achieve from this transaction*. If you cannot
   {
     id: "prob-4",
     slug: "valid-parentheses",
+    questionId: "20",
     title: "20. Valid Parentheses",
     difficulty: "Easy",
     category: "Stack",
@@ -241,6 +246,7 @@ An input string is valid if:
   {
     id: "prob-5",
     slug: "search-in-rotated-sorted-array",
+    questionId: "33",
     title: "33. Search in Rotated Sorted Array",
     difficulty: "Medium",
     category: "Binary Search",
@@ -289,6 +295,7 @@ You must write an algorithm with \`O(log n)\` runtime complexity.`,
   {
     id: "prob-6",
     slug: "coin-change",
+    questionId: "322",
     title: "322. Coin Change",
     difficulty: "Medium",
     category: "Dynamic Programming",

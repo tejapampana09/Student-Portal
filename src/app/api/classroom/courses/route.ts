@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     }));
 
     let courses: ClassroomCourse[] = [];
-    let isConnected = false;
+    let isConnected = !!(user.gmail?.email || user.gmail?.refreshToken || user.gmail?.accessToken);
     let userEmail = user.gmail?.email || "";
 
     // 1. If Google account is connected, fetch LIVE Google Classrooms filtered to this semester
@@ -30,13 +30,12 @@ export async function GET(req: NextRequest) {
       try {
         const refreshToken = String(decryptData(String(user.gmail.refreshToken)));
         courses = await fetchCurrentSemesterClassrooms(refreshToken, activeSubjects);
-        isConnected = true;
       } catch (err: any) {
         console.warn("Google Classroom live fetch error:", err?.message);
       }
     }
 
-    // 2. If Google Classroom is not connected or returns empty, map current semester subjects cleanly with ZERO fake assignments
+    // 2. If Google Classroom has no course API items or returns empty, map current semester subjects cleanly
     if (courses.length === 0 && activeSubjects.length > 0) {
       courses = activeSubjects.map((sub, idx) => ({
         id: `subject-course-${sub.code}-${idx}`,
@@ -47,12 +46,12 @@ export async function GET(req: NextRequest) {
         alternateLink: "https://classroom.google.com",
         courseCode: sub.code,
         isCurrentSemester: true,
-        assignments: [], // STRICTLY 0 FAKE ASSIGNMENTS
+        assignments: [],
         announcements: [],
       }));
     }
 
-    // Aggregate ONLY real active assignments
+    // Aggregate active assignments
     const allAssignments = courses.flatMap((c) =>
       (c.assignments || []).map((a) => ({
         ...a,

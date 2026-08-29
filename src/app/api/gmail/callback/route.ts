@@ -10,18 +10,18 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const stateRaw = searchParams.get("state");
 
-  // Determine correct public domain base URL (handle reverse proxy correctly)
+  // Determine correct public domain base URL
   const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "3.87.134.201.sslip.io";
   const proto = req.headers.get("x-forwarded-proto") || "https";
   const baseUrl = `${proto}://${host}`;
 
   if (!code || !stateRaw) {
-    return NextResponse.redirect(new URL("/dashboard?gmail=error", baseUrl));
+    return NextResponse.redirect(new URL("/classroom?gmail=error", baseUrl));
   }
 
   const accessSecret = process.env.ACCESS_SECRET;
   if (!accessSecret) {
-    return NextResponse.redirect(new URL("/dashboard?gmail=server_error", baseUrl));
+    return NextResponse.redirect(new URL("/classroom?gmail=server_error", baseUrl));
   }
 
   try {
@@ -30,12 +30,14 @@ export async function GET(req: NextRequest) {
     try {
       statePayload = jwt.verify(stateRaw, accessSecret);
     } catch {
-      return NextResponse.redirect(new URL("/dashboard?gmail=invalid_state", baseUrl));
+      return NextResponse.redirect(new URL("/classroom?gmail=invalid_state", baseUrl));
     }
 
-    const { username, nonce } = statePayload;
+    const { username, nonce, returnTo } = statePayload;
+    const destination = returnTo || "/classroom";
+
     if (!username || !nonce) {
-      return NextResponse.redirect(new URL("/dashboard?gmail=invalid_state", baseUrl));
+      return NextResponse.redirect(new URL(`${destination}?gmail=invalid_state`, baseUrl));
     }
 
     // 2. Atomically verify and consume the server-side one-time nonce
@@ -47,16 +49,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (!stateDoc) {
-      return NextResponse.redirect(new URL("/dashboard?gmail=expired_state", baseUrl));
+      return NextResponse.redirect(new URL(`${destination}?gmail=expired_state`, baseUrl));
     }
 
     const redirectUri = `${baseUrl}/api/gmail/callback`;
     const oauth2Client = getOAuth2Client(redirectUri);
     const { tokens } = await oauth2Client.getToken(code);
-
-    if (!tokens.refresh_token) {
-      console.warn("No refresh_token returned by Google");
-    }
 
     oauth2Client.setCredentials(tokens);
     const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
@@ -82,10 +80,10 @@ export async function GET(req: NextRequest) {
       { $set: updateDoc }
     );
 
-    // 3. Safe redirect strictly to public domain dashboard
-    return NextResponse.redirect(new URL("/dashboard?gmail=connected", baseUrl));
+    // 3. Clean redirect to designated target page
+    return NextResponse.redirect(new URL(`${destination}?gmail=connected`, baseUrl));
   } catch (error) {
     console.error("Error in Gmail OAuth callback:", error);
-    return NextResponse.redirect(new URL("/dashboard?gmail=failed", baseUrl));
+    return NextResponse.redirect(new URL("/classroom?gmail=failed", baseUrl));
   }
 }
