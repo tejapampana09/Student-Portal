@@ -43,20 +43,33 @@ export async function POST(req: NextRequest) {
 
       const sub = subscription || user?.pushSubscription;
       if (!sub) {
-        return errorResponse("No active push subscription found on device.");
+        return errorResponse("No active push subscription found. Please enable push notifications first.", {}, 400);
       }
 
-      const sent = await sendWebPushNotification(sub, {
+      const result = await sendWebPushNotification(sub, {
         title: "SRMAP Student Portal 🔔",
         body: "Native Web Push notifications are now active on your device! 🚀",
         url: "/dashboard",
       });
 
-      if (sent) {
+      if (result.success) {
         return NextResponse.json({ success: true, message: "Test push notification sent successfully!" });
-      } else {
-        return errorResponse("Failed to deliver push notification.", {}, 500);
       }
+
+      // Auto-cleanup if subscription expired (410/404)
+      if (result.subscriptionExpired) {
+        await usersCollection.updateOne(
+          { username: auth.payload.username },
+          { $unset: { pushSubscription: "" } }
+        );
+        return errorResponse(
+          "Your push subscription has expired. Please re-enable push notifications on this device.",
+          {},
+          410
+        );
+      }
+
+      return errorResponse(result.error || "Failed to deliver push notification.", {}, 500);
     }
 
     if (action === "unsubscribe") {
