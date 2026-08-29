@@ -28,15 +28,59 @@ export async function GET(req: NextRequest) {
     const decrypted = decryptData(String(rawToken));
     const refreshToken = typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted);
 
-    const { courses, allAssignments, allAnnouncements } = await fetchFullGoogleClassroomData(refreshToken);
+    // Extract current semester registered subjects
+    let activeSubjects: Array<{ code: string; name: string }> = [];
+    if (user.data) {
+      try {
+        const studentData: any = decryptData(user.data);
+        activeSubjects = (studentData?.subjects || []).map((s: any) => ({
+          code: (s.code || s.subject_code || "").trim(),
+          name: (s.name || s.subject_name || "").trim(),
+        }));
+      } catch {}
+    }
+
+    const { courses: allCourses, allAssignments: rawAssignments, allAnnouncements: rawAnnouncements } =
+      await fetchFullGoogleClassroomData(refreshToken);
+
+    // Filter to current semester subjects
+    let semesterCourses = allCourses;
+    if (activeSubjects.length > 0) {
+      semesterCourses = allCourses.filter((c) => {
+        const cTarget = `${c.name} ${c.section || ""} ${c.descriptionHeading || ""}`.toUpperCase();
+        return activeSubjects.some((sub) => {
+          const sCode = sub.code.toUpperCase().replace(/\s+/g, "");
+          const sName = sub.name.toUpperCase();
+          const cleanCode = sCode.replace(/[^\w]/g, "");
+
+          return (
+            (cleanCode.length >= 3 && cTarget.includes(cleanCode)) ||
+            (sCode.length >= 3 && cTarget.includes(sCode)) ||
+            (sName.length >= 5 && cTarget.includes(sName.slice(0, 10))) ||
+            (sName.length >= 5 && sName.split(" ").some((word) => word.length > 4 && cTarget.includes(word)))
+          );
+        });
+      });
+
+      // If strict filter matched courses, use them; otherwise keep all active courses with active tags
+      if (semesterCourses.length === 0) {
+        semesterCourses = allCourses;
+      }
+    }
+
+    const validCourseIds = new Set(semesterCourses.map((c) => c.id));
+    const allAssignments = rawAssignments.filter((a) => validCourseIds.has(a.courseId));
+    const allAnnouncements = rawAnnouncements.filter((ann) => validCourseIds.has(ann.courseId));
 
     return NextResponse.json({
       success: true,
       isConnected: true,
       userEmail,
-      courses,
+      courses: semesterCourses,
+      allCoursesCount: allCourses.length,
       allAssignments,
       allAnnouncements,
+      totalCurrentSubjects: activeSubjects.length,
     });
   } catch (error: any) {
     console.error("Error fetching Google Classroom:", error);

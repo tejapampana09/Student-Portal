@@ -119,7 +119,7 @@ export default function ClassroomPage() {
         <div className="space-y-2 max-w-2xl relative z-10">
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-xs font-mono">
-              Google Classroom API v1
+              Current Semester Filtered 🎯
             </Badge>
             {isConnected ? (
               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-xs gap-1">
