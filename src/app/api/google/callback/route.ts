@@ -4,13 +4,41 @@ import { useMongo } from "@/lib/database/useMongo";
 import { encryptData } from "@/server/utils/functions";
 import { google } from "googleapis";
 
+function getValidOrigin(req: NextRequest, stateOrigin?: string): string {
+  if (stateOrigin && !stateOrigin.includes("0.0.0.0")) return stateOrigin;
+
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+
+  if (host && !host.includes("0.0.0.0")) {
+    return `${proto}://${host}`;
+  }
+
+  const reqOrigin = req.nextUrl?.origin || "";
+  if (reqOrigin && !reqOrigin.includes("0.0.0.0")) {
+    return reqOrigin;
+  }
+
+  return "https://3.87.134.201.sslip.io";
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const origin = req.nextUrl.origin;
 
   let returnTo = "/classroom";
+  let stateOrigin = "";
+
+  if (state) {
+    try {
+      const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+      if (decoded.returnTo) returnTo = decoded.returnTo;
+      if (decoded.origin) stateOrigin = decoded.origin;
+    } catch {}
+  }
+
+  const origin = getValidOrigin(req, stateOrigin);
 
   if (!code || !state) {
     return NextResponse.redirect(`${origin}/classroom?google=error`);
@@ -21,7 +49,6 @@ export async function GET(req: NextRequest) {
     try {
       const decoded = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
       username = decoded.username;
-      if (decoded.returnTo) returnTo = decoded.returnTo;
     } catch {
       username = state;
     }
@@ -69,7 +96,6 @@ export async function GET(req: NextRequest) {
             accessToken: encryptedAccessToken,
             connectedAt: new Date().toISOString(),
           },
-          // Keep legacy sync compatibility
           gmail: {
             email: userInfo.data.email,
             name: userInfo.data.name,
