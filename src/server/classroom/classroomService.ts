@@ -147,6 +147,27 @@ function parseMaterialsList(
   return result;
 }
 
+// Concurrency pool helper to prevent Google API rate-limiting
+async function pMap<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let currentIndex = 0;
+
+  async function worker() {
+    while (currentIndex < items.length) {
+      const idx = currentIndex++;
+      try {
+        results[idx] = await fn(items[idx]);
+      } catch (err) {
+        results[idx] = null as unknown as R;
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 export async function fetchFullGoogleClassroomData(
   refreshToken: string,
   bypassCache = false
@@ -173,45 +194,45 @@ export async function fetchFullGoogleClassroomData(
 
   const coursesRes = await classroom.courses.list({
     courseStates: ["ACTIVE"],
-    pageSize: 30,
+    pageSize: 20,
   });
 
   const rawCourses = coursesRes.data.courses || [];
   const nowDate = new Date();
 
-  // Parallelize fetch across courses with Promise.allSettled
-  const coursePromises = rawCourses.map(async (c): Promise<ClassroomCourseItem | null> => {
+  // Execute courses in controlled concurrent batches of 4 to prevent Google API rate limit throttling
+  const processedCourses = await pMap(rawCourses, 4, async (c): Promise<ClassroomCourseItem | null> => {
     if (!c.id || !c.name) return null;
 
     const courseAssignments: ClassroomAssignment[] = [];
     const courseAnnouncements: ClassroomAnnouncement[] = [];
     const courseMaterials: ClassroomMaterialAttachment[] = [];
 
-    // Parallel fetch materials, coursework, announcements, AND studentSubmissions batch wildcard (courseWorkId: "-")
+    // Parallel fetch materials, coursework, announcements, AND studentSubmissions batch wildcard in 1 batch
     const [matResSettled, cwResSettled, annResSettled, subResSettled] = await Promise.allSettled([
       classroom.courses.courseWorkMaterials.list({
         courseId: c.id,
         courseWorkMaterialStates: ["PUBLISHED"],
-        pageSize: 25,
+        pageSize: 20,
       }),
       classroom.courses.courseWork.list({
         courseId: c.id,
         courseWorkStates: ["PUBLISHED"],
-        pageSize: 25,
+        pageSize: 20,
       }),
       classroom.courses.announcements.list({
         courseId: c.id,
         announcementStates: ["PUBLISHED"],
-        pageSize: 15,
+        pageSize: 10,
       }),
       classroom.courses.courseWork.studentSubmissions.list({
         courseId: c.id,
-        courseWorkId: "-", // Wildcard to fetch all submissions for this course in 1 batch
+        courseWorkId: "-",
         userId: "me",
       }),
     ]);
 
-    // Build submissions map for O(1) status lookup
+    // Submissions map
     const submissionsMap = new Map<string, { state: "TURNED_IN" | "RETURNED" | "ASSIGNED" | "SUBMITTED"; grade?: number }>();
     if (subResSettled.status === "fulfilled") {
       const subs = subResSettled.value.data.studentSubmissions || [];
@@ -260,22 +281,24 @@ export async function fetchFullGoogleClassroomData(
           const dObj = new Date(year || nowDate.getFullYear(), (month || 1) - 1, day || 1, h, parseInt(m));
           dueDateIso = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           dueTimeIso = `${String(h).padStart(2, "0")}:${m}`;
-          dueFormatted = dObj.toLocaleDateString("en-IN", { month: "short", day: "numeric" }) + ` ${dueTimeIso}`;
 
-          if (dObj < nowDate) isPastDue = true;
+          dueFormatted = dObj.toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
+          if (dObj < nowDate) {
+            isPastDue = true;
+          }
         }
 
         const subInfo = submissionsMap.get(cw.id);
-        const submissionState = subInfo?.state || "ASSIGNED";
-        const assignedGrade = subInfo?.grade;
+        const subState = subInfo?.state || "ASSIGNED";
+        const isSubmitted = subState === "TURNED_IN" || subState === "RETURNED" || subState === "SUBMITTED";
 
-        // Accurate Overdue logic: ONLY overdue if NOT turned in and NOT returned!
-        const isOverdue = isPastDue && submissionState !== "TURNED_IN" && submissionState !== "RETURNED";
-
-        const cwAttachments = parseMaterialsList(cw.materials || [], c.id, c.name, cw.creationTime || nowDate.toISOString());
-        for (const item of cwAttachments) {
-          courseMaterials.push(item);
-        }
+        const assignmentMaterials = parseMaterialsList(cw.materials || [], c.id, c.name, cw.creationTime || nowDate.toISOString());
 
         courseAssignments.push({
           id: cw.id,
@@ -284,35 +307,33 @@ export async function fetchFullGoogleClassroomData(
           title: cw.title,
           description: cw.description || undefined,
           state: cw.state || "PUBLISHED",
-          dueDate: dueDateIso,
-          dueTime: dueTimeIso,
+          dueDate: dueDateIso || undefined,
+          dueTime: dueTimeIso || undefined,
           dueFormatted,
           maxPoints: cw.maxPoints || undefined,
           alternateLink: cw.alternateLink || undefined,
-          submissionState,
-          assignedGrade,
-          isOverdue,
-          attachments: cwAttachments,
+          submissionState: subState,
+          assignedGrade: subInfo?.grade,
+          isOverdue: isPastDue && !isSubmitted,
+          attachments: assignmentMaterials,
         });
       }
     }
 
     // 3. Announcements
     if (annResSettled.status === "fulfilled") {
-      for (const ann of annResSettled.value.data.announcements || []) {
-        if (!ann.id || !ann.text) continue;
-        const annAttachments = parseMaterialsList(ann.materials || [], c.id, c.name, ann.creationTime || nowDate.toISOString());
-        for (const item of annAttachments) {
-          courseMaterials.push(item);
-        }
+      const annList = annResSettled.value.data.announcements || [];
+      for (const a of annList) {
+        if (!a.id || !a.text) continue;
+        const annMaterials = parseMaterialsList(a.materials || [], c.id, c.name, a.creationTime || nowDate.toISOString());
         courseAnnouncements.push({
-          id: ann.id,
+          id: a.id,
           courseId: c.id,
           courseName: c.name,
-          text: ann.text,
-          alternateLink: ann.alternateLink || undefined,
-          creationTime: ann.creationTime || nowDate.toISOString(),
-          attachments: annAttachments,
+          text: a.text,
+          alternateLink: a.alternateLink || undefined,
+          creationTime: a.creationTime || nowDate.toISOString(),
+          attachments: annMaterials,
         });
       }
     }
@@ -331,25 +352,38 @@ export async function fetchFullGoogleClassroomData(
     };
   });
 
-  const settledCourses = await Promise.all(coursePromises);
-  const courses = settledCourses.filter((c): c is ClassroomCourseItem => c !== null);
+  const validCourses = processedCourses.filter((c): c is ClassroomCourseItem => c !== null);
 
   const allAssignments: ClassroomAssignment[] = [];
   const allAnnouncements: ClassroomAnnouncement[] = [];
   const allMaterials: ClassroomMaterialAttachment[] = [];
 
-  for (const c of courses) {
+  for (const c of validCourses) {
     allAssignments.push(...c.assignments);
     allAnnouncements.push(...c.announcements);
     allMaterials.push(...c.materials);
   }
 
-  const payload = { courses, allAssignments, allAnnouncements, allMaterials };
-
-  classroomCache.set(cacheKey, {
-    data: payload,
-    expiresAt: now + 5 * 60 * 1000,
+  // Sort assignments: upcoming first, then overdue, then completed
+  allAssignments.sort((a, b) => {
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
   });
 
-  return payload;
+  // Sort announcements by newest first
+  allAnnouncements.sort((a, b) => new Date(b.creationTime).getTime() - new Date(a.creationTime).getTime());
+
+  // Sort materials by newest first
+  allMaterials.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+  const data = {
+    courses: validCourses,
+    allAssignments,
+    allAnnouncements,
+    allMaterials,
+  };
+
+  classroomCache.set(cacheKey, { data, expiresAt: now + 15 * 60 * 1000 });
+  return data;
 }

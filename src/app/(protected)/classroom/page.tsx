@@ -78,7 +78,7 @@ export default function ClassroomPage() {
       if (isManualSync) setSyncing(true);
       else setLoading(true);
 
-      const res = await API.get("/classroom");
+      const res = await API.get(isManualSync ? "/classroom?refresh=true" : "/classroom");
       if (res.data) {
         setIsConnected(!!res.data.isConnected);
         setUserEmail(res.data.userEmail || "");

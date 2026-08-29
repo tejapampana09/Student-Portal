@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { useMongo } from "@/lib/database/useMongo";
-import { decryptData, errorResponse, requireAuthResponse } from "@/server/utils/functions";
+import { decryptData, encryptData, errorResponse, requireAuthResponse } from "@/server/utils/functions";
 import { fetchFullGoogleClassroomData } from "@/server/classroom/classroomService";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  const refresh = req.nextUrl.searchParams.get("refresh") === "true";
+
   try {
     const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne({ username: auth.payload.username });
+    const userCollection = initDb.db("college_db").collection<any>("users");
+    const user = await userCollection.findOne({ username: auth.payload.username });
 
     const rawToken = user?.google?.refreshToken || user?.gmail?.refreshToken;
     const userEmail = user?.google?.email || user?.gmail?.email || "";
@@ -24,6 +27,22 @@ export async function GET(req: NextRequest) {
         allAnnouncements: [],
         allMaterials: [],
       });
+    }
+
+    // ⚡ INSTANT DB CACHE RETURN: If cached data exists and manual refresh is not requested, return in <10ms!
+    if (!refresh && user?.classroom_data) {
+      try {
+        const cachedData = decryptData(user.classroom_data) as any;
+        if (cachedData && cachedData.courses) {
+          return NextResponse.json({
+            success: true,
+            isConnected: true,
+            userEmail,
+            ...cachedData,
+            cached: true,
+          });
+        }
+      } catch {}
     }
 
     const decrypted = decryptData(String(rawToken));
@@ -45,7 +64,7 @@ export async function GET(req: NextRequest) {
       allAssignments: rawAssignments,
       allAnnouncements: rawAnnouncements,
       allMaterials: rawMaterials,
-    } = await fetchFullGoogleClassroomData(refreshToken);
+    } = await fetchFullGoogleClassroomData(refreshToken, refresh);
 
     let semesterCourses = allCourses;
     if (activeSubjects.length > 0) {
@@ -75,16 +94,31 @@ export async function GET(req: NextRequest) {
     const allAnnouncements = rawAnnouncements.filter((ann) => validCourseIds.has(ann.courseId));
     const allMaterials = rawMaterials.filter((mat) => validCourseIds.has(mat.courseId));
 
-    return NextResponse.json({
-      success: true,
-      isConnected: true,
-      userEmail,
+    const responsePayload = {
       courses: semesterCourses,
       allCoursesCount: allCourses.length,
       allAssignments,
       allAnnouncements,
       allMaterials,
       totalCurrentSubjects: activeSubjects.length,
+    };
+
+    // Save encrypted to MongoDB for instant future tab loads
+    await userCollection.updateOne(
+      { username: auth.payload.username },
+      {
+        $set: {
+          classroom_data: encryptData(responsePayload),
+          classroom_updated_at: new Date(),
+        },
+      }
+    );
+
+    return NextResponse.json({
+      success: true,
+      isConnected: true,
+      userEmail,
+      ...responsePayload,
     });
   } catch (error: any) {
     console.error("Error fetching Google Classroom:", error);
