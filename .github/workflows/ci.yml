@@ -38,3 +38,6 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: 1
           NODE_ENV: production
+          ACCESS_SECRET: "ci_build_dummy_access_secret_32_chars_long_key"
+          DB_ENCRYPTION_KEY: "ci_build_dummy_encryption_key_32_chars_long"
+          JWT_SECRET: "ci_build_dummy_jwt_secret_32_chars_long_key"

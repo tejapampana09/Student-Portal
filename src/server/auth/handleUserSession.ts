@@ -23,7 +23,7 @@ async function isSessionAlive(sessionId: string): Promise<boolean> {
                 "Content-Type": "application/x-www-form-urlencoded",
             },
             body: new URLSearchParams({ ids: "1" }),
-            signal: AbortSignal.timeout(2000),
+            signal: AbortSignal.timeout(4000),
         });
         const text = await res.text();
         return !text.includes("StudentLoginPage") && !text.includes("Session Expired") && text.length > 300;
