@@ -22,7 +22,7 @@ jobs:
           cache: 'npm'
 
       - name: Deterministic Dependency Installation
-        run: npm ci --legacy-peer-deps
+        run: npm ci --legacy-peer-deps --ignore-scripts
 
       - name: Code Linting & Core Web Vitals
         run: npm run lint

@@ -4,7 +4,10 @@ import { getTime } from "@/shared/utils/functions";
 import { encryptData, decryptData, decryptLegacyData } from "@/server/utils/functions";
 import { DateTime } from "luxon";
 
-async function decryptStoredValue(value: unknown, password: string): Promise<{ value: any; legacy: boolean }> {
+/** Stored SRM portal sessions are considered immediately reusable without network verification for 10 minutes */
+export const SRM_SESSION_REUSE_WINDOW_MS = 10 * 60 * 1000;
+
+export async function decryptStoredValue(value: unknown, password: string): Promise<{ value: any; legacy: boolean }> {
     try {
         return { value: decryptData(value), legacy: false };
     } catch {
@@ -12,7 +15,30 @@ async function decryptStoredValue(value: unknown, password: string): Promise<{ v
     }
 }
 
-async function isSessionAlive(sessionId: string): Promise<boolean> {
+export function getSessionAgeMs(sessionTime: unknown): number | null {
+    if (typeof sessionTime !== "string" || !sessionTime.trim()) return null;
+
+    // 1. Try parsing standard IST format "yyyy-MM-dd, HH:mm:ss"
+    const parsedLuxon = DateTime.fromFormat(sessionTime.trim(), "yyyy-MM-dd, HH:mm:ss", { zone: "Asia/Kolkata" });
+    if (parsedLuxon.isValid) {
+        const diffMs = DateTime.now().setZone("Asia/Kolkata").diff(parsedLuxon, "milliseconds").milliseconds;
+        // Protect against clock skew / invalid future timestamps (>60s in future is treated as invalid)
+        if (diffMs < -60000) return null;
+        return Math.max(0, diffMs);
+    }
+
+    // 2. Fallback: ISO 8601 or standard Date parsing
+    const parsedDate = new Date(sessionTime).getTime();
+    if (!isNaN(parsedDate)) {
+        const diffMs = Date.now() - parsedDate;
+        if (diffMs < -60000) return null;
+        return Math.max(0, diffMs);
+    }
+
+    return null;
+}
+
+export async function isSessionAlive(sessionId: string): Promise<boolean> {
     if (!sessionId) return false;
     try {
         const res = await fetch("https://student.srmap.edu.in/srmapstudentcorner/students/report/studentTimeTableResources.jsp", {
@@ -78,17 +104,48 @@ export async function handleUserSession({ username, password }: { username: stri
     const time = getTime();
     const user = await db.findOne({ username });
 
-    // ⚡ FAST PROBE (<0.5s): If user already has an active session, verify and reuse instantly!
+    // ⚡ OPTIMIZED CRITICAL PATH: Local session reuse
     if (user?.session_id) {
         try {
             const { value: existingSessionId } = await decryptStoredValue(user.session_id, password);
-            if (existingSessionId && (await isSessionAlive(existingSessionId))) {
-                return { success: true, sessionId: existingSessionId, sessionTime: user.session_time || time };
+            if (typeof existingSessionId === "string" && existingSessionId.trim().length > 0) {
+                const cleanSessionId = existingSessionId.trim();
+                const sessionAgeMs = getSessionAgeMs(user.session_time);
+
+                // Case B: Fresh Session (<10 min) -> INSTANT RETURN (<10ms), NO external SRM request
+                if (sessionAgeMs !== null && sessionAgeMs <= SRM_SESSION_REUSE_WINDOW_MS) {
+                    console.log(`[SRM Session] Session fresh (${Math.round(sessionAgeMs / 1000)}s old) — instant local reuse`);
+                    return {
+                        success: true,
+                        sessionId: cleanSessionId,
+                        sessionTime: user.session_time || time,
+                    };
+                }
+
+                // Case C/D: Stale Session (>10 min) -> Validate with SRM server
+                console.log(`[SRM Session] Session older than 10m (${sessionAgeMs !== null ? Math.round(sessionAgeMs / 1000) : "unknown"}s) — validating with SRM server...`);
+                const alive = await isSessionAlive(cleanSessionId);
+                if (alive) {
+                    console.log(`[SRM Session] Stale session verified alive — reusing and refreshing session timestamp`);
+                    await db.updateOne(
+                        { username },
+                        { $set: { session_time: time, portal_password: encryptData(password) } }
+                    );
+                    return {
+                        success: true,
+                        sessionId: cleanSessionId,
+                        sessionTime: time,
+                    };
+                }
+
+                console.log(`[SRM Session] Stale session expired on university server — acquiring fresh session`);
             }
-        } catch {}
+        } catch (decryptError) {
+            console.log(`[SRM Session] Corrupted or unparseable session data — creating fresh session`);
+        }
     }
 
-    // Otherwise, perform full fresh login
+    // Case A / Fallback: Create fresh SRM session via standard login flow
     const result = await login(username, password);
 
     if (!result?.success) {
