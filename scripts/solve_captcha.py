@@ -2,7 +2,14 @@ import sys
 import os
 import numpy as np
 from PIL import Image
-import ai_edge_litert.interpreter as tflite
+
+try:
+    import ai_edge_litert.interpreter as tflite
+except ImportError:
+    try:
+        import tflite_runtime.interpreter as tflite
+    except ImportError:
+        import tensorflow.lite as tflite
 
 CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
 
@@ -12,7 +19,6 @@ def solve(image_bytes, model_path):
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
 
-    # Load image from bytes with PIL
     import io
     img = Image.open(io.BytesIO(image_bytes)).convert("L")
     img = img.crop((0, 0, 120, 25))
@@ -22,7 +28,7 @@ def solve(image_bytes, model_path):
 
     interpreter.set_tensor(input_details[0]['index'], arr)
     interpreter.invoke()
-    output = interpreter.get_tensor(output_details[0]['index']) # (1, 5, 37) or flat
+    output = interpreter.get_tensor(output_details[0]['index'])
 
     flat_output = output.flatten()
     result = ""
@@ -35,11 +41,17 @@ def solve(image_bytes, model_path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        # Read from stdin
         image_bytes = sys.stdin.buffer.read()
     else:
         with open(sys.argv[1], "rb") as f:
             image_bytes = f.read()
 
-    model_path = os.path.join(os.path.dirname(__file__), "..", "src", "static", "captcha", "model", "captcha_float32.tflite")
+    # Search for model in various standard relative locations
+    possible_paths = [
+        os.path.join(os.path.dirname(__file__), "..", "src", "static", "captcha", "model", "captcha_float32.tflite"),
+        os.path.join(os.path.dirname(__file__), "src", "static", "captcha", "model", "captcha_float32.tflite"),
+        os.path.join(os.getcwd(), "src", "static", "captcha", "model", "captcha_float32.tflite"),
+    ]
+
+    model_path = next((p for p in possible_paths if os.path.exists(p)), possible_paths[0])
     print(solve(image_bytes, model_path))

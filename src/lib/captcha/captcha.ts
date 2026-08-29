@@ -80,7 +80,8 @@ function solveWithPython(imageBuffer: Buffer): Promise<string | null> {
     return new Promise((resolve) => {
         try {
             const scriptPath = path.join(process.cwd(), "scripts", "solve_captcha.py");
-            const py = spawn("python", [scriptPath]);
+            const pythonCmd = process.platform === "win32" ? "python" : "python3";
+            const py = spawn(pythonCmd, [scriptPath]);
             let output = "";
             let errorOutput = "";
 
@@ -98,14 +99,32 @@ function solveWithPython(imageBuffer: Buffer): Promise<string | null> {
                     const lastLine = lines[lines.length - 1].trim();
                     resolve(lastLine || null);
                 } else {
-                    console.error("[Python Captcha] Exit with error:", errorOutput);
+                    console.error(`[Python Captcha (${pythonCmd})] Exit code ${code}:`, errorOutput);
                     resolve(null);
                 }
             });
 
             py.on("error", (err) => {
-                console.error("[Python Captcha] Process error:", err);
-                resolve(null);
+                console.error(`[Python Captcha (${pythonCmd})] Process spawn error:`, err.message);
+                // Secondary fallback attempt if python3 vs python mismatch
+                const fallbackCmd = pythonCmd === "python3" ? "python" : "python3";
+                try {
+                    const fallbackPy = spawn(fallbackCmd, [scriptPath]);
+                    let fbOut = "";
+                    fallbackPy.stdout.on("data", (d) => { fbOut += d.toString(); });
+                    fallbackPy.on("close", (c) => {
+                        if (c === 0 && fbOut.trim()) {
+                            resolve(fbOut.trim().split("\n").pop()?.trim() || null);
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                    fallbackPy.on("error", () => resolve(null));
+                    fallbackPy.stdin.write(imageBuffer);
+                    fallbackPy.stdin.end();
+                } catch {
+                    resolve(null);
+                }
             });
 
             py.stdin.write(imageBuffer);
