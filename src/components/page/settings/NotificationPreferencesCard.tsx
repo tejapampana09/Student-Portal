@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MessageSquare, Bell, Send, CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, Smartphone } from "lucide-react";
+import { MessageSquare, Bell, Send, CheckCircle2, AlertTriangle, ShieldCheck, Sparkles, Smartphone, Instagram, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +27,12 @@ export default function NotificationPreferencesCard() {
   const [waSaving, setWaSaving] = useState(false);
   const [waTesting, setWaTesting] = useState(false);
 
+  // Instagram State
+  const [igHandle, setIgHandle] = useState("");
+  const [igEnabled, setIgEnabled] = useState(false);
+  const [igSaving, setIgSaving] = useState(false);
+  const [igTesting, setIgTesting] = useState(false);
+
   // Push State
   const [pushSupported, setPushSupported] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -44,7 +50,17 @@ export default function NotificationPreferencesCard() {
       })
       .catch(() => {});
 
-    // 2. Fetch Push Status
+    // 2. Fetch Instagram Status
+    API.get("/notifications/instagram")
+      .then((res) => {
+        if (res.data?.instagram) {
+          setIgHandle(res.data.instagram.handle || "");
+          setIgEnabled(res.data.instagram.enabled || false);
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch Push Status
     if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
       setPushSupported(true);
       API.get("/notifications/push")
@@ -90,63 +106,106 @@ export default function NotificationPreferencesCard() {
         action: "test",
         phone: waPhone.trim(),
       });
-      toast({ title: "Message Sent! 🚀", description: "Check your WhatsApp for the test alert." });
+      toast({ title: "Test Sent! 💬", description: "Check your WhatsApp for the test message." });
     } catch (err: any) {
-      toast({ title: "Test Failed", description: err.message || "Could not deliver WhatsApp message.", variant: "destructive" });
+      toast({ title: "Failed to Send", description: err.response?.data?.message || err.message || "WhatsApp dispatch error.", variant: "destructive" });
     } finally {
       setWaTesting(false);
     }
   };
 
-  const DEFAULT_VAPID_KEY = "BE6XJ1s9K-5thzTzD5-R0GLEZGE-xEYodghIdH4Vj7bQpf12p1AOwBfjZI8N45WsiJy7OxRpw9tAsakehbDbliA";
+  // Handle Instagram Save
+  const handleSaveInstagram = async () => {
+    if (igEnabled && !igHandle.trim()) {
+      toast({ title: "Handle Required", description: "Please enter your Instagram username.", variant: "destructive" });
+      return;
+    }
+    try {
+      setIgSaving(true);
+      const clean = igHandle.replace(/^@/, "").trim();
+      await API.post("/notifications/instagram", {
+        action: "save",
+        handle: clean,
+        enabled: igEnabled,
+      });
+      toast({ title: "Instagram Saved! 📸", description: `Direct messages linked to @${clean}.` });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to save Instagram settings.", variant: "destructive" });
+    } finally {
+      setIgSaving(false);
+    }
+  };
+
+  // Handle Instagram Test
+  const handleTestInstagram = async () => {
+    if (!igHandle.trim()) {
+      toast({ title: "Enter Username", description: "Please enter your Instagram handle first.", variant: "destructive" });
+      return;
+    }
+    try {
+      setIgTesting(true);
+      const clean = igHandle.replace(/^@/, "").trim();
+      const res = await API.post("/notifications/instagram", {
+        action: "test",
+        handle: clean,
+      });
+      toast({ title: "Test Direct Message Sent! 📩", description: res.data?.message || `Sent to @${clean} on Instagram.` });
+    } catch (err: any) {
+      toast({ title: "Failed to Send", description: err.response?.data?.message || err.message || "Instagram dispatch error.", variant: "destructive" });
+    } finally {
+      setIgTesting(false);
+    }
+  };
 
   // Handle Push Toggle
-  const handleTogglePush = async (checked: boolean) => {
+  const handleTogglePush = async (enabled: boolean) => {
     if (!pushSupported) {
-      toast({ title: "Not Supported", description: "Web push is not supported in this browser.", variant: "destructive" });
+      toast({ title: "Push Unsupported", description: "Your browser or device does not support Web Push notifications.", variant: "destructive" });
       return;
     }
 
     try {
       setPushLoading(true);
 
-      if (!checked) {
-        // Unsubscribe
-        const reg = await navigator.serviceWorker.getRegistration("/sw.js") || await navigator.serviceWorker.ready;
-        const sub = await reg?.pushManager?.getSubscription();
-        if (sub) await sub.unsubscribe();
+      if (enabled) {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          toast({ title: "Permission Denied", description: "Please allow notifications in your browser settings.", variant: "destructive" });
+          setPushEnabled(false);
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription && vapidKey) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          });
+        }
+
+        if (subscription) {
+          await API.post("/notifications/push", {
+            action: "subscribe",
+            subscription: subscription.toJSON(),
+          });
+          setPushEnabled(true);
+          toast({ title: "Push Enabled! 🔔", description: "You will now receive campus alerts on this device." });
+        }
+      } else {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
         await API.post("/notifications/push", { action: "unsubscribe" });
         setPushEnabled(false);
-        toast({ title: "Push Disabled", description: "You will no longer receive browser push notifications." });
-        return;
+        toast({ title: "Push Disabled", description: "Web push notifications have been deactivated." });
       }
-
-      // Request Permission
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        toast({ title: "Permission Denied", description: "Please allow notifications in your browser settings.", variant: "destructive" });
-        return;
-      }
-
-      // Ensure service worker is registered
-      let reg = await navigator.serviceWorker.getRegistration("/sw.js");
-      if (!reg) {
-        reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      }
-      await navigator.serviceWorker.ready;
-
-      const key = vapidKey || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_KEY;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(key),
-      });
-
-      await API.post("/notifications/push", { subscription: sub.toJSON() });
-      setPushEnabled(true);
-      toast({ title: "Push Activated! 🔔", description: "You will now receive live alerts on your device." });
     } catch (err: any) {
-      console.error("Push subscription error:", err);
-      toast({ title: "Subscription Error", description: err.message || "Could not register push notifications.", variant: "destructive" });
+      toast({ title: "Push Setup Error", description: err.message || "Could not toggle push notifications.", variant: "destructive" });
+      setPushEnabled(false);
     } finally {
       setPushLoading(false);
     }
@@ -156,41 +215,36 @@ export default function NotificationPreferencesCard() {
   const handleTestPush = async () => {
     try {
       setPushLoading(true);
-      const reg = await navigator.serviceWorker.getRegistration("/sw.js") || await navigator.serviceWorker.ready;
-      const sub = await reg?.pushManager?.getSubscription();
-      
-      await API.post("/notifications/push", {
-        action: "test",
-        subscription: sub ? sub.toJSON() : undefined,
-      });
-      toast({ title: "Push Triggered! 🔔", description: "Check your device notification bar." });
+      await API.post("/notifications/push", { action: "test" });
+      toast({ title: "Test Push Sent! 🔔", description: "Look out for the notification banner." });
     } catch (err: any) {
-      toast({ title: "Test Error", description: err.message || "Failed to trigger push notification.", variant: "destructive" });
+      toast({ title: "Test Failed", description: err.message || "Failed to trigger test push.", variant: "destructive" });
     } finally {
       setPushLoading(false);
     }
   };
 
   return (
-    <div className="glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg relative overflow-hidden">
-      {/* Background ambient light */}
-      <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="space-y-6">
-        {/* Card Header */}
-        <div className="flex items-center justify-between">
+    <div className="glass-card rounded-3xl p-6 border border-white/10 shadow-lg relative overflow-hidden space-y-6">
+      <div className="flex items-center justify-between pb-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+            <Bell className="h-5 w-5" />
+          </div>
           <div>
-            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-emerald-400" />
-              Smart Alerts & Briefings
-            </h3>
+            <h3 className="text-base font-bold text-foreground">Notifications & Morning Briefing</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Automated daily WhatsApp digests and native mobile push notifications.
+              WhatsApp, Instagram DMs, and Native Mobile Push Alerts
             </p>
           </div>
         </div>
+        <Badge variant="outline" className="bg-white/5 text-[10px] text-muted-foreground border-white/10">
+          Multi-Channel
+        </Badge>
+      </div>
 
-        {/* Section 1: WhatsApp AI Daily Morning Briefing */}
+      <div className="space-y-4">
+        {/* Section 1: WhatsApp Daily Morning Briefing */}
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -199,20 +253,20 @@ export default function NotificationPreferencesCard() {
               </div>
               <div>
                 <h4 className="text-xs font-bold text-foreground">WhatsApp Morning Briefing</h4>
-                <p className="text-[11px] text-muted-foreground">7:30 AM Timetable, Low Attendance & Circulars</p>
+                <p className="text-[11px] text-muted-foreground">Daily 7:30 AM schedule, attendance, and holiday alerts</p>
               </div>
             </div>
             <Switch
               checked={waEnabled}
-              onCheckedChange={(val) => {
-                setWaEnabled(val);
+              onCheckedChange={(checked) => {
+                setWaEnabled(checked);
               }}
             />
           </div>
 
           <div className="flex items-center gap-2 pt-1">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-2 text-xs font-mono text-muted-foreground font-semibold">+91</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">+91</span>
               <Input
                 type="tel"
                 placeholder="95426 96946"
@@ -256,7 +310,67 @@ export default function NotificationPreferencesCard() {
           </div>
         </div>
 
-        {/* Section 2: Native PWA Web Push Notifications */}
+        {/* Section 2: Instagram Direct Messages (IG DMs) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-pink-500/5 to-transparent border border-pink-500/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 p-0.5 flex items-center justify-center text-white shadow-md">
+                <div className="w-full h-full bg-black/60 rounded-[10px] flex items-center justify-center backdrop-blur-sm">
+                  <Instagram className="h-4 w-4 text-pink-400" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-foreground">Instagram Direct Messages (IG DMs)</h4>
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                    New
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Receive daily briefings & alerts directly in your Instagram DM inbox</p>
+              </div>
+            </div>
+            <Switch
+              checked={igEnabled}
+              onCheckedChange={(checked) => {
+                setIgEnabled(checked);
+              }}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">@</span>
+              <Input
+                type="text"
+                placeholder="your_instagram_handle"
+                value={igHandle}
+                onChange={(e) => setIgHandle(e.target.value.replace(/^@/, "").trim())}
+                className="pl-8 h-8 text-xs bg-white/5 border-white/10 font-mono rounded-xl tracking-wide"
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="glass"
+              onClick={handleSaveInstagram}
+              disabled={igSaving}
+              className="text-xs h-8 px-3 rounded-xl font-semibold"
+            >
+              {igSaving ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleTestInstagram}
+              disabled={igTesting || !igHandle}
+              className="text-xs h-8 px-3 rounded-xl border-pink-500/30 text-pink-400 hover:bg-pink-500/10 font-semibold"
+            >
+              <Send className="h-3 w-3 mr-1" />
+              {igTesting ? "Sending..." : "Test DM"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Section 3: Native PWA Web Push Notifications */}
         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

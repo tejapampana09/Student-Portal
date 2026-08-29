@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { useMongo } from "@/lib/database/useMongo";
 import { decryptData } from "@/server/utils/functions";
 import { buildDailyBriefingMessage, sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
+import { buildInstagramBriefing, sendInstagramDirectMessage } from "@/server/notifications/instagramService";
 import { ALL_DAYS, parseSubject } from "@/shared/utils/timetable";
 import academicCalendar from "@/static/academic_calendar.json";
 import { DateTime } from "luxon";
@@ -34,8 +35,10 @@ export async function GET(req: NextRequest) {
   try {
     const initDb = await useMongo();
     const users = await initDb.db("college_db").collection<any>("users").find({
-      "whatsapp.enabled": true,
-      "whatsapp.phone": { $exists: true, $ne: "" },
+      $or: [
+        { "whatsapp.enabled": true, "whatsapp.phone": { $exists: true, $ne: "" } },
+        { "instagram.enabled": true, "instagram.handle": { $exists: true, $ne: "" } },
+      ],
     }).toArray();
 
     const nowIST = DateTime.now().setZone("Asia/Kolkata");
@@ -98,18 +101,34 @@ export async function GET(req: NextRequest) {
           } catch {}
         }
 
-        const message = buildDailyBriefingMessage(
-          studentName,
-          currentDay,
-          todayClasses,
-          lowAttendance,
-          nextHoliday,
-          recentEmails,
-          u.courseraCourses
-        );
+        // 1. WhatsApp Dispatch
+        if (u.whatsapp?.enabled && u.whatsapp?.phone) {
+          const waMsg = buildDailyBriefingMessage(
+            studentName,
+            currentDay,
+            todayClasses,
+            lowAttendance,
+            nextHoliday,
+            recentEmails,
+            u.courseraCourses
+          );
+          const sentWa = await sendWhatsAppTextMessage(u.whatsapp.phone, waMsg);
+          if (sentWa.success) dispatched++;
+        }
 
-        const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
-        if (sent.success) dispatched++;
+        // 2. Instagram Direct Message Dispatch
+        if (u.instagram?.enabled && u.instagram?.handle) {
+          const igMsg = buildInstagramBriefing(
+            studentName,
+            currentDay,
+            todayClasses,
+            lowAttendance,
+            nextHoliday,
+            u.courseraCourses
+          );
+          const sentIg = await sendInstagramDirectMessage(u.instagram.handle, igMsg);
+          if (sentIg.success) dispatched++;
+        }
       } catch (userErr) {
         console.error(`Error processing morning briefing for ${u.username}:`, userErr);
       }

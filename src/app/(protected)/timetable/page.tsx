@@ -11,6 +11,7 @@ import { trimText } from "@/shared/utils/functions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Clock, Calendar, Play } from "lucide-react";
+import { CalendarSyncModal } from "@/components/page/timetable/CalendarSyncModal";
 
 const Timetable = () => {
   const { timetable, subjects, attendance } = useStudentData();
@@ -51,20 +52,23 @@ const Timetable = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-1 rounded-2xl glass-dock p-1 border border-white/10 self-end sm:self-auto">
-          {(["old", "new"] as const).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => updateSettings({ timeTableViewMode: mode })}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 ${
-                viewMode === mode
-                  ? "bg-white/20 dark:bg-white/15 text-foreground shadow-sm border border-white/15"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/10"
-              }`}
-            >
-              {mode === "old" ? "Detailed View" : "Minimal View"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          <CalendarSyncModal />
+          <div className="flex items-center space-x-1 rounded-2xl glass-dock p-1 border border-white/10">
+            {(["old", "new"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => updateSettings({ timeTableViewMode: mode })}
+                className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all duration-200 ${
+                  viewMode === mode
+                    ? "bg-white/20 dark:bg-white/15 text-foreground shadow-sm border border-white/15"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                }`}
+              >
+                {mode === "old" ? "Detailed View" : "Minimal View"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
