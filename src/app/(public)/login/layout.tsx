@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "Student Login",
   description: "Sign in to SRMAP API using your SRM AP student credentials to access attendance, CGPA, timetable, and academic data.",
   alternates: {
-    canonical: "https://3.87.134.201.sslip.io/login",
+    canonical: "https://13.233.246.195.sslip.io/login",
   },
   openGraph: {
     title: "Student Login | SRMAP API",
     description: "Sign in to SRMAP API using your SRM AP student credentials to access attendance, CGPA, timetable, and academic data.",
-    url: "https://3.87.134.201.sslip.io/login",
+    url: "https://13.233.246.195.sslip.io/login",
   },
 };
 

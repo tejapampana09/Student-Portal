@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "CGPA & SGPA Calculator",
   description: "Calculate your SGPA and CGPA accurately for SRM University AP courses. Auto-fill grades or calculate manually.",
   alternates: {
-    canonical: "https://3.87.134.201.sslip.io/cgpa",
+    canonical: "https://13.233.246.195.sslip.io/cgpa",
   },
   openGraph: {
     title: "CGPA & SGPA Calculator | SRMAP API",
     description: "Calculate your SGPA and CGPA accurately for SRM University AP courses. Auto-fill grades or calculate manually.",
-    url: "https://3.87.134.201.sslip.io/cgpa",
+    url: "https://13.233.246.195.sslip.io/cgpa",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://3.87.134.201.sslip.io",
+      item: "https://13.233.246.195.sslip.io",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "CGPA Calculator",
-      item: "https://3.87.134.201.sslip.io/cgpa",
+      item: "https://13.233.246.195.sslip.io/cgpa",
     },
   ],
 };

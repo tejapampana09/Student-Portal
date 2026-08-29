@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "About Us",
   description: "Learn more about SRMAP API, an independent alternative student portal built by students for SRM University AP.",
   alternates: {
-    canonical: "https://3.87.134.201.sslip.io/aboutus",
+    canonical: "https://13.233.246.195.sslip.io/aboutus",
   },
   openGraph: {
     title: "About Us | SRMAP API",
     description: "Learn more about SRMAP API, an independent alternative student portal built by students for SRM University AP.",
-    url: "https://3.87.134.201.sslip.io/aboutus",
+    url: "https://13.233.246.195.sslip.io/aboutus",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://3.87.134.201.sslip.io",
+      item: "https://13.233.246.195.sslip.io",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "About Us",
-      item: "https://3.87.134.201.sslip.io/aboutus",
+      item: "https://13.233.246.195.sslip.io/aboutus",
     },
   ],
 };

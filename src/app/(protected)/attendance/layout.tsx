@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "Attendance Tracker",
   description: "Track your SRM University AP subject-wise attendance percentage, bunk calculations, and attendance threshold margins.",
   alternates: {
-    canonical: "https://3.87.134.201.sslip.io/attendance",
+    canonical: "https://13.233.246.195.sslip.io/attendance",
   },
   openGraph: {
     title: "Attendance Tracker | SRMAP API",
     description: "Track your SRM University AP subject-wise attendance percentage, bunk calculations, and attendance threshold margins.",
-    url: "https://3.87.134.201.sslip.io/attendance",
+    url: "https://13.233.246.195.sslip.io/attendance",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://3.87.134.201.sslip.io",
+      item: "https://13.233.246.195.sslip.io",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Attendance Tracker",
-      item: "https://3.87.134.201.sslip.io/attendance",
+      item: "https://13.233.246.195.sslip.io/attendance",
     },
   ],
 };

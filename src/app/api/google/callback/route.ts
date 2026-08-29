@@ -8,7 +8,7 @@ function getCanonicalOrigin(): string {
   if (process.env.APP_ORIGIN) {
     return process.env.APP_ORIGIN.replace(/\/$/, "");
   }
-  return "https://3.87.134.201.sslip.io";
+  return "https://13.233.246.195.sslip.io";
 }
 
 export async function GET(req: NextRequest) {

@@ -4,11 +4,16 @@ import { getGmailAuthUrl } from "@/server/gmail/gmailService";
 import { errorResponse, requireAuthResponse } from "@/server/utils/functions";
 import { useMongo } from "@/lib/database/useMongo";
 
-function getCanonicalOrigin(): string {
+function getCanonicalOrigin(req: NextRequest): string {
   if (process.env.APP_ORIGIN) {
     return process.env.APP_ORIGIN.replace(/\/$/, "");
   }
-  return "https://3.87.134.201.sslip.io";
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || req.nextUrl.host;
+  const proto = req.headers.get("x-forwarded-proto") || req.nextUrl.protocol.replace(":", "") || "https";
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return "https://13.233.246.195.sslip.io";
 }
 
 function sanitizeReturnTo(path: string | null): string {
@@ -23,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const origin = getCanonicalOrigin();
+    const origin = getCanonicalOrigin(req);
     const redirectUri = `${origin}/api/gmail/callback`;
     const searchParams = req.nextUrl.searchParams;
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));

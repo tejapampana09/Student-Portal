@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = "https://3.87.134.201.sslip.io";
+  const baseUrl = "https://13.233.246.195.sslip.io";
 
   const mainPages = [
     { path: "", priority: 1.0, changeFrequency: "daily" as const },

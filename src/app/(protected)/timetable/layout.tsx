@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "Timetable & Class Schedule",
   description: "View your daily class schedule, timetable slots, classroom numbers, and faculty details for SRM University AP.",
   alternates: {
-    canonical: "https://3.87.134.201.sslip.io/timetable",
+    canonical: "https://13.233.246.195.sslip.io/timetable",
   },
   openGraph: {
     title: "Timetable & Class Schedule | SRMAP API",
     description: "View your daily class schedule, timetable slots, classroom numbers, and faculty details for SRM University AP.",
-    url: "https://3.87.134.201.sslip.io/timetable",
+    url: "https://13.233.246.195.sslip.io/timetable",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://3.87.134.201.sslip.io",
+      item: "https://13.233.246.195.sslip.io",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Timetable",
-      item: "https://3.87.134.201.sslip.io/timetable",
+      item: "https://13.233.246.195.sslip.io/timetable",
     },
   ],
 };

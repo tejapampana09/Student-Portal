@@ -138,6 +138,6 @@ export function buildDailyBriefingMessage(
     }
   }
 
-  text += `\n🔗 *Portal:* https://3.87.134.201.sslip.io\nHave a productive day! 🚀`;
+  text += `\n🔗 *Portal:* https://13.233.246.195.sslip.io\nHave a productive day! 🚀`;
   return text;
 }
