@@ -88,6 +88,18 @@ async function fetchFromWebsite(sessionId: string): Promise<WebsiteData | null> 
         postPage("6")
       ]);
 
+    const attStr = typeof resAttendance.data === "string" ? resAttendance.data : "";
+    const origStr = typeof resOriginal.data === "string" ? resOriginal.data : "";
+    if (
+      attStr.includes("StudentLoginPage") ||
+      attStr.includes("SRM AP Student Login") ||
+      attStr.includes("Session Expired") ||
+      origStr.includes("StudentLoginPage")
+    ) {
+      console.log("[fetchFromWebsite] University session is expired or returned login page");
+      return null;
+    }
+
     const $original = cheerio.load(resOriginal.data);
     const $attendance = cheerio.load(resAttendance.data);
     const $timetable = cheerio.load(resTimetable.data);

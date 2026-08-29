@@ -5,6 +5,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { fetchFromWebsite } from "@/server/srmapi/fetchData";
 import { fetchTimetable } from "@/server/srmapi/utils/extractTimetable";
 import { getTime, isSessionValid } from "@/shared/utils/functions";
+import { login } from "@/server/auth/login";
 import { UNAUTHORIZED, INVALID_CREDENTIALS } from "@/shared/utils/messages";
 import { encryptData, decryptData, errorResponse, requireAuthResponse } from "@/server/utils/functions";
 
@@ -22,96 +23,113 @@ export async function POST(req: NextRequest) {
         const user = await db.findOne({ username: auth.payload.username });
         if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
 
-        // Auto-resolve active session from body OR stored DB session
+        // Auto-resolve active session and portal password from body OR stored DB
         let activeSessionId = sessionId;
+        let portalPassword: string | null = null;
+
+        if (user?.portal_password) {
+            try { portalPassword = decryptData(user.portal_password) as string; } catch {}
+        }
         if (!activeSessionId && user?.session_id) {
-            try {
-                const dec = decryptData(user.session_id);
-                activeSessionId = typeof dec === "string" ? dec : JSON.stringify(dec);
-            } catch {}
+            try { activeSessionId = decryptData(user.session_id) as string; } catch {}
         }
 
-        if (activeSessionId) {
-            const result = await fetchFromWebsite(activeSessionId);
-            if (result) {
-                const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
-                const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
+        let result = activeSessionId ? await fetchFromWebsite(activeSessionId) : null;
 
-                const updateOps: Promise<any>[] = [
-                    db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } })
-                ];
-
-                if (!hasTodayEntry && result.attendance) {
-                    updateOps.push(
-                        db.updateOne({ username: auth.payload.username }, {
-                            $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
-                        })
-                    );
-                }
-
-                // Run database cache saves concurrently
-                void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
-
-                // 🔔 Real-time Web Push Alert for Low Attendance
-                if (user.pushSubscription && Array.isArray(result.attendance)) {
-                    const lowSubjects = result.attendance.filter((a: any) => parseFloat(a.attendance_percentage || "0") < 75);
-                    if (lowSubjects.length > 0) {
-                        void (async () => {
-                            try {
-                                const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
-                                await sendWebPushNotification(user.pushSubscription, {
-                                    title: `⚠️ Attendance Alert: ${lowSubjects.length} Subject(s) Below 75%`,
-                                    body: `${lowSubjects.map((s: any) => `${s.subject_code || s.subject_name}: ${s.attendance_percentage}%`).join(", ")}. Tap to calculate safe bunks.`,
-                                    url: "/attendance",
-                                });
-                            } catch (pushErr) {
-                                console.error("Failed to dispatch low attendance push alert:", pushErr);
-                            }
-                        })();
-                    }
-                }
-
-                // Background timetable indexer
-                (async () => {
-                    try {
-                        const settingsDb = initDb.db("college_db").collection("settings");
-                        const appSettings = await settingsDb.findOne({ id: "app-settings" });
-                        if (appSettings?.timetableCollection === false) return;
-                        const emptyClassesDb = initDb.db("college_db").collection("empty_classes");
-                        const emptyClassesData = fetchTimetable(result);
-                        const dataHash = crypto.createHash("sha256").update(JSON.stringify(emptyClassesData)).digest("hex");
-                        const lastCollectedUser = await emptyClassesDb.findOne({ id: "last-collected-timetable" });
-                        if (lastCollectedUser?.hash === dataHash) return;
-                        await emptyClassesDb.updateOne(
-                            { id: "last-collected-timetable" },
-                            { $set: { hash: dataHash, data: emptyClassesData, time: DateTime.now().setZone("Asia/Kolkata").toISO() } },
-                            { upsert: true }
-                        );
-                    } catch (timetableError) {
-                        console.error("Timetable indexer error:", timetableError);
-                    }
-                })();
-
-                return NextResponse.json({
-                    success: true,
-                    data: result,
-                    message: "Data retrieved successfully",
-                    hasCachedData: false,
-                    sessionTime: time,
-                });
+        // Auto-heal: If session expired on university server, re-login transparently to fetch fresh data
+        if (!result && portalPassword) {
+            console.log(`[srmapi/fetch] Session expired for ${user.username}, auto-authenticating for fresh data...`);
+            const freshLogin = await login(user.username, portalPassword);
+            if (freshLogin.success && freshLogin.sessionId) {
+                activeSessionId = freshLogin.sessionId;
+                await db.updateOne(
+                    { username: user.username },
+                    { $set: { session_id: encryptData(activeSessionId), session_time: time } }
+                );
+                result = await fetchFromWebsite(activeSessionId);
             }
+        }
+
+        if (result && Array.isArray(result.attendance) && result.attendance.length > 0) {
+            const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
+            const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
+
+            const updateOps: Promise<any>[] = [
+                db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } })
+            ];
+
+            if (!hasTodayEntry && result.attendance) {
+                updateOps.push(
+                    db.updateOne({ username: auth.payload.username }, {
+                        $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
+                    })
+                );
+            }
+
+            // Run database cache saves concurrently
+            void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
+
+            // 🔔 Real-time Web Push Alert for Low Attendance
+            if (user.pushSubscription && Array.isArray(result.attendance)) {
+                const lowSubjects = result.attendance.filter((a: any) => parseFloat(a.attendance_percentage || "0") < 75);
+                if (lowSubjects.length > 0) {
+                    void (async () => {
+                        try {
+                            const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
+                            await sendWebPushNotification(user.pushSubscription, {
+                                title: `⚠️ Attendance Alert: ${lowSubjects.length} Subject(s) Below 75%`,
+                                body: `${lowSubjects.map((s: any) => `${s.subject_code || s.subject_name}: ${s.attendance_percentage}%`).join(", ")}. Tap to calculate safe bunks.`,
+                                url: "/attendance",
+                            });
+                        } catch (pushErr) {
+                            console.error("Failed to dispatch low attendance push alert:", pushErr);
+                        }
+                    })();
+                }
+            }
+
+            // Background timetable indexer
+            (async () => {
+                try {
+                    const settingsDb = initDb.db("college_db").collection("settings");
+                    const appSettings = await settingsDb.findOne({ id: "app-settings" });
+                    if (appSettings?.timetableCollection === false) return;
+                    const emptyClassesDb = initDb.db("college_db").collection("empty_classes");
+                    const emptyClassesData = fetchTimetable(result);
+                    const dataHash = crypto.createHash("sha256").update(JSON.stringify(emptyClassesData)).digest("hex");
+                    const lastCollectedUser = await emptyClassesDb.findOne({ id: "last-collected-timetable" });
+                    if (lastCollectedUser?.hash === dataHash) return;
+                    await emptyClassesDb.updateOne(
+                        { id: "last-collected-timetable" },
+                        { $set: { hash: dataHash, data: emptyClassesData, time: DateTime.now().setZone("Asia/Kolkata").toISO() } },
+                        { upsert: true }
+                    );
+                } catch (timetableError) {
+                    console.error("Timetable indexer error:", timetableError);
+                }
+            })();
+
+            return NextResponse.json({
+                success: true,
+                data: result,
+                message: "Data retrieved successfully",
+                hasCachedData: false,
+                sessionTime: time,
+            });
         }
 
         if (user?.data) {
             try {
                 const cachedData = decryptData(user.data);
-                return NextResponse.json({
-                    success: true,
-                    data: cachedData,
-                    message: "Data retrieved successfully (Cached)",
-                    hasCachedData: true,
-                    sessionTime: user.session_time,
-                });
+                if (cachedData && (cachedData as any).attendance?.length > 0) {
+                    return NextResponse.json({
+                        success: true,
+                        data: cachedData,
+                        message: "Data retrieved successfully (Cached)",
+                        hasCachedData: true,
+                        sessionTime: user.session_time,
+                    });
+                }
             } catch (e) {
                 console.error("Error decrypting user.data:", e);
             }
