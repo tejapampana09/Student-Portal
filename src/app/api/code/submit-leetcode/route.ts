@@ -43,26 +43,28 @@ export async function POST(req: NextRequest) {
     let activeCsrf = csrfToken;
 
     // Use saved encrypted credentials if not provided in payload
-    if ((!activeSession || !activeCsrf) && user?.leetcodeAuth?.sessionCookie) {
+    if (!activeSession && user?.leetcodeAuth?.sessionCookie) {
       try {
         activeSession = decryptData(user.leetcodeAuth.sessionCookie);
-        activeCsrf = decryptData(user.leetcodeAuth.csrfToken);
+        if (user.leetcodeAuth.csrfToken) {
+          activeCsrf = decryptData(user.leetcodeAuth.csrfToken);
+        }
       } catch {}
     }
 
-    if (!activeSession || !activeCsrf) {
-      return errorResponse("LeetCode Session Cookie and CSRF token required. Please connect your LeetCode account.");
+    if (!activeSession) {
+      return errorResponse("LeetCode Session Cookie required. Please connect your LeetCode account.");
     }
 
     // Optionally save/update credentials
-    if (saveCredentials && sessionCookie && csrfToken) {
+    if (saveCredentials && sessionCookie) {
       await usersCollection.updateOne(
         { username: auth.payload.username },
         {
           $set: {
             leetcodeAuth: {
               sessionCookie: encryptData(sessionCookie),
-              csrfToken: encryptData(csrfToken),
+              csrfToken: csrfToken ? encryptData(csrfToken) : "",
               updatedAt: new Date().toISOString(),
             },
           },

@@ -3,11 +3,11 @@ import axios from "axios";
 export interface LeetCodeSubmissionResponse {
   success: boolean;
   submissionId?: number;
-  statusDisplay: string; // "Accepted", "Wrong Answer", "Compile Error", "Runtime Error", "Time Limit Exceeded"
-  statusRuntime?: string; // "35 ms"
-  runtimePercentile?: number; // 84.5
-  statusMemory?: string; // "16.2 MB"
-  memoryPercentile?: number; // 91.2
+  statusDisplay: string;
+  statusRuntime?: string;
+  runtimePercentile?: number;
+  statusMemory?: string;
+  memoryPercentile?: number;
   totalCorrect?: number;
   totalTestcases?: number;
   compileError?: string;
@@ -29,9 +29,31 @@ const LANG_MAP: Record<string, string> = {
   c: "c",
 };
 
+export async function getCsrfTokenFromSession(sessionCookie: string): Promise<string> {
+  const cleanSession = sessionCookie.replace(/^LEETCODE_SESSION=/, "").trim();
+  try {
+    const res = await axios.get("https://leetcode.com/graphql", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        Cookie: `LEETCODE_SESSION=${cleanSession};`,
+      },
+      validateStatus: () => true,
+    });
+
+    const setCookies = res.headers["set-cookie"] || [];
+    for (const c of setCookies) {
+      const match = c.match(/csrftoken=([^;]+)/);
+      if (match) return match[1];
+    }
+  } catch (err) {
+    console.warn("Could not fetch CSRF token automatically:", err);
+  }
+  return "placeholder_csrf_token";
+}
+
 export async function submitDirectToLeetCode(
   sessionCookie: string,
-  csrfToken: string,
+  csrfToken: string | undefined,
   slug: string,
   questionId: string,
   code: string,
@@ -39,7 +61,11 @@ export async function submitDirectToLeetCode(
 ): Promise<LeetCodeSubmissionResponse> {
   const cleanLang = LANG_MAP[language.toLowerCase()] || "python3";
   const cleanSession = sessionCookie.replace(/^LEETCODE_SESSION=/, "").trim();
-  const cleanCsrf = csrfToken.replace(/^csrftoken=/, "").trim();
+
+  let cleanCsrf = (csrfToken || "").replace(/^csrftoken=/, "").trim();
+  if (!cleanCsrf || cleanCsrf.length < 5) {
+    cleanCsrf = await getCsrfTokenFromSession(cleanSession);
+  }
 
   const client = axios.create({
     baseURL: "https://leetcode.com",
@@ -67,7 +93,7 @@ export async function submitDirectToLeetCode(
       return {
         success: false,
         statusDisplay: "Submission Failed",
-        message: submitRes.data?.error || "Invalid session cookie or CSRF token. Please re-check credentials.",
+        message: submitRes.data?.error || "Invalid session cookie. Please ensure you are logged into leetcode.com.",
       };
     }
 

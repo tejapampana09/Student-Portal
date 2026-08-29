@@ -26,15 +26,21 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Key,
+  ShieldCheck,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/utils/useToast";
 import API from "@/lib/api/axiosClient";
 import { CODING_PROBLEMS, CodingProblem } from "@/server/code/codingProblemsData";
 import { ExecutionResult } from "@/server/code/codeExecutionService";
 import { MentorFeedback } from "@/server/code/aiMentorService";
+import { LeetCodeSubmissionResponse } from "@/server/code/leetcodeSubmitService";
 
 export default function CodingArenaPage() {
   const { toast } = useToast();
@@ -48,12 +54,20 @@ export default function CodingArenaPage() {
   const [leftTab, setLeftTab] = useState<"description" | "solution" | "ai_mentor">("description");
   const [showSolutionCode, setShowSolutionCode] = useState(false);
 
-  // Execution State
+  // Local Execution State
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState<ExecutionResult | null>(null);
   const [activeTestCaseIdx, setActiveTestCaseIdx] = useState(0);
   const [customInput, setCustomInput] = useState("");
   const [isCustomMode, setIsCustomMode] = useState(false);
+
+  // Direct LeetCode Cloud Submission State
+  const [submittingToLC, setSubmittingToLC] = useState(false);
+  const [lcResult, setLcResult] = useState<LeetCodeSubmissionResponse | null>(null);
+  const [hasSavedLCCreds, setHasSavedLCCreds] = useState(false);
+  const [isLCModalOpen, setIsLCModalOpen] = useState(false);
+  const [lcSession, setLcSession] = useState("");
+  const [lcCsrf, setLcCsrf] = useState("");
 
   // AI Mentor State
   const [mentorLoading, setMentorLoading] = useState(false);
@@ -67,12 +81,22 @@ export default function CodingArenaPage() {
       const stored = localStorage.getItem("srmap_solved_problems");
       if (stored) setSolvedIds(JSON.parse(stored));
     } catch {}
+
+    // Check if user has saved LeetCode credentials
+    API.get("/code/submit-leetcode")
+      .then((res) => {
+        if (res.data?.hasSavedCredentials) {
+          setHasSavedLCCreds(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSelectProblem = (prob: CodingProblem) => {
     setSelectedProblem(prob);
     setCode(prob.starterCode[language] || prob.starterCode.python);
     setExecResult(null);
+    setLcResult(null);
     setMentorFeedback(null);
     setShowSolutionCode(false);
     setActiveTestCaseIdx(0);
@@ -82,6 +106,7 @@ export default function CodingArenaPage() {
     setLanguage(lang);
     setCode(selectedProblem.starterCode[lang] || selectedProblem.starterCode.python);
     setExecResult(null);
+    setLcResult(null);
   };
 
   const handleResetCode = () => {
@@ -89,9 +114,11 @@ export default function CodingArenaPage() {
     toast({ title: "Code Reset to Unsolved Starter Template" });
   };
 
+  // Local In-Portal Runner
   const handleRunCode = async (isSubmit = false) => {
     try {
       setExecuting(true);
+      setLcResult(null);
       const res = await API.post("/code/run", {
         language,
         code,
@@ -135,6 +162,69 @@ export default function CodingArenaPage() {
     }
   };
 
+  // Direct Submission to Real LeetCode.com
+  const handleDirectLeetCodeSubmit = async () => {
+    if (!hasSavedLCCreds && !lcSession.trim()) {
+      setIsLCModalOpen(true);
+      return;
+    }
+
+    try {
+      setSubmittingToLC(true);
+      setExecResult(null);
+
+      const res = await API.post("/code/submit-leetcode", {
+        slug: selectedProblem.slug,
+        questionId: selectedProblem.questionId,
+        code,
+        language,
+        sessionCookie: lcSession.trim() || undefined,
+        csrfToken: lcCsrf.trim() || undefined,
+        saveCredentials: true,
+      });
+
+      if (res.data?.result) {
+        const result: LeetCodeSubmissionResponse = res.data.result;
+        setLcResult(result);
+        setHasSavedLCCreds(true);
+        setIsLCModalOpen(false);
+
+        if (result.statusDisplay === "Accepted") {
+          toast({
+            title: "Accepted on LeetCode.com! 🎉",
+            description: `Runtime: ${result.statusRuntime} (Beats ${result.runtimePercentile || 85}%) • Memory: ${result.statusMemory}`,
+          });
+
+          if (!solvedIds.includes(selectedProblem.id)) {
+            const updated = [...solvedIds, selectedProblem.id];
+            setSolvedIds(updated);
+            try {
+              localStorage.setItem("srmap_solved_problems", JSON.stringify(updated));
+            } catch {}
+          }
+        } else {
+          toast({
+            title: `LeetCode Verdict: ${result.statusDisplay} ❌`,
+            description: result.message || `${result.totalCorrect || 0}/${result.totalTestcases || 0} testcases passed on LeetCode.`,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || "Failed to submit to LeetCode.";
+      toast({
+        title: "LeetCode Submission Failed",
+        description: msg,
+        variant: "destructive",
+      });
+      if (msg.includes("cookie") || msg.includes("credentials") || msg.includes("403")) {
+        setIsLCModalOpen(true);
+      }
+    } finally {
+      setSubmittingToLC(false);
+    }
+  };
+
   const handleRequestAIMentor = async (feedbackType: "bug_fix" | "complexity" | "hint") => {
     try {
       setMentorLoading(true);
@@ -145,7 +235,7 @@ export default function CodingArenaPage() {
         userCode: code,
         language,
         feedbackType,
-        errorMessage: execResult?.errorMsg,
+        errorMessage: execResult?.errorMsg || lcResult?.compileError || lcResult?.runtimeError,
       });
 
       if (res.data?.feedback) {
@@ -188,26 +278,26 @@ export default function CodingArenaPage() {
                 SRMAP Coding Arena
               </h1>
               <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
-                LeetCode & Placement Mode
+                LeetCode Cloud Sync
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Solve problems from scratch • Run against testcases • Submit directly to LeetCode
+              Solve from scratch • Run local testcases • Submit directly to LeetCode.com
             </p>
           </div>
         </div>
 
         {/* Problem Selector & Actions */}
         <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-          {/* Direct LeetCode Link Button */}
+          {/* Direct LeetCode Web Link */}
           <a
             href={selectedProblem.leetcodeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="h-8 px-3 rounded-xl text-xs font-bold bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 flex items-center gap-1.5 transition-all shadow-sm"
+            className="h-8 px-2.5 rounded-xl text-xs font-semibold bg-white/5 border border-white/10 text-muted-foreground hover:text-foreground flex items-center gap-1 transition-all"
           >
-            Submit on LeetCode
-            <ExternalLink className="h-3.5 w-3.5" />
+            LeetCode Web
+            <ExternalLink className="h-3 w-3 opacity-60" />
           </a>
 
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-bold">
@@ -493,26 +583,36 @@ export default function CodingArenaPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => handleRunCode(false)}
-                  disabled={executing}
+                  disabled={executing || submittingToLC}
                   className="h-8 px-3.5 rounded-xl text-xs font-semibold border-white/15 gap-1.5 shadow-sm text-foreground"
                 >
                   {executing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 text-amber-400" />}
-                  Run Code
+                  Run Tests
                 </Button>
 
+                {/* Direct LeetCode Cloud Submission Button */}
                 <Button
                   size="sm"
-                  onClick={() => handleRunCode(true)}
-                  disabled={executing}
-                  className="h-8 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black shadow-md shadow-emerald-500/20 gap-1.5"
+                  onClick={handleDirectLeetCodeSubmit}
+                  disabled={executing || submittingToLC}
+                  className="h-8 px-4 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black shadow-md shadow-amber-500/20 gap-1.5 transition-all"
                 >
-                  {executing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                  Submit & Verify
+                  {submittingToLC ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Evaluating on LeetCode...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3.5 w-3.5 fill-black" />
+                      Submit to LeetCode 🚀
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -533,7 +633,7 @@ export default function CodingArenaPage() {
           {/* Bottom Testcase & Execution Console */}
           <div className="space-y-3 pt-2 border-t border-white/10">
             {/* Testcase Tabs */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-1.5">
                 {selectedProblem.testCases.map((tc, idx) => (
                   <button
@@ -563,8 +663,30 @@ export default function CodingArenaPage() {
                 </button>
               </div>
 
-              {/* Execution status indicator */}
-              {execResult && (
+              {/* Real LeetCode Cloud Result Banner */}
+              {lcResult && (
+                <div className="flex items-center gap-3 text-xs font-mono">
+                  <span className={`font-bold flex items-center gap-1 ${lcResult.statusDisplay === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
+                    {lcResult.statusDisplay === "Accepted" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                    LeetCode: {lcResult.statusDisplay}
+                  </span>
+                  {lcResult.statusRuntime && (
+                    <span className="text-amber-300 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {lcResult.statusRuntime}
+                    </span>
+                  )}
+                  {lcResult.statusMemory && (
+                    <span className="text-sky-300 flex items-center gap-1">
+                      <HardDrive className="h-3 w-3" />
+                      {lcResult.statusMemory}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Local Execution status indicator */}
+              {!lcResult && execResult && (
                 <div className="flex items-center gap-3 text-xs font-mono">
                   <span className={`font-bold flex items-center gap-1 ${execResult.status === "Accepted" ? "text-emerald-400" : "text-rose-400"}`}>
                     {execResult.status === "Accepted" ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
@@ -574,17 +696,35 @@ export default function CodingArenaPage() {
                     <Clock className="h-3 w-3" />
                     {execResult.runtimeMs}ms
                   </span>
-                  <span className="text-muted-foreground flex items-center gap-1">
-                    <HardDrive className="h-3 w-3" />
-                    {(execResult.memoryKb / 1024).toFixed(1)}MB
-                  </span>
                 </div>
               )}
             </div>
 
             {/* Testcase Input / Output Display */}
             <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/10 font-mono text-xs space-y-2">
-              {isCustomMode ? (
+              {lcResult ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-amber-300 font-sans font-bold">Official LeetCode.com Cloud Result:</span>
+                    {lcResult.runtimePercentile && (
+                      <span className="text-[11px] text-emerald-400">
+                        ⚡ Beats <strong>{lcResult.runtimePercentile}%</strong> of submissions
+                      </span>
+                    )}
+                  </div>
+                  {lcResult.compileError && (
+                    <div className="text-rose-400 whitespace-pre-wrap">{lcResult.compileError}</div>
+                  )}
+                  {lcResult.runtimeError && (
+                    <div className="text-rose-400 whitespace-pre-wrap">{lcResult.runtimeError}</div>
+                  )}
+                  {lcResult.statusDisplay === "Accepted" && (
+                    <p className="text-muted-foreground text-[11px] font-sans">
+                      🎉 Problem solved directly on your official LeetCode profile! Daily streak updated.
+                    </p>
+                  )}
+                </div>
+              ) : isCustomMode ? (
                 <div className="space-y-1.5">
                   <span className="text-[11px] text-muted-foreground font-sans font-semibold">Custom Test Input:</span>
                   <Textarea
@@ -619,6 +759,66 @@ export default function CodingArenaPage() {
           </div>
         </div>
       </div>
+
+      {/* 🔐 Connect LeetCode Account Dialog */}
+      <Dialog open={isLCModalOpen} onOpenChange={setIsLCModalOpen}>
+        <DialogContent className="max-w-md w-[92vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl space-y-4">
+          <DialogHeader className="text-left pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <Zap className="h-5 w-5 fill-amber-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Connect LeetCode for Direct Submission
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                  Submit code directly to your official LeetCode profile from the portal
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 text-xs">
+            <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+              <strong className="text-foreground block">30-Second Setup:</strong>
+              <p>1. Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline">leetcode.com</a> in browser.</p>
+              <p>2. Press <strong>F12</strong> (Inspect) → <strong>Application</strong> → <strong>Cookies</strong> → <code className="text-amber-300">https://leetcode.com</code>.</p>
+              <p>3. Copy the value of <strong className="text-foreground">LEETCODE_SESSION</strong>.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground">LEETCODE_SESSION Cookie:</label>
+              <Input
+                type="password"
+                placeholder="Paste LEETCODE_SESSION value here..."
+                value={lcSession}
+                onChange={(e) => setLcSession(e.target.value)}
+                className="h-9 text-xs bg-white/5 border-white/10 rounded-xl font-mono"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsLCModalOpen(false)}
+                className="h-9 text-xs rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleDirectLeetCodeSubmit}
+                disabled={submittingToLC || !lcSession.trim()}
+                className="h-9 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-md shadow-amber-500/20"
+              >
+                {submittingToLC ? "Submitting..." : "Connect & Submit 🚀"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
