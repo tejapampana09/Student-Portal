@@ -620,47 +620,62 @@ export default function ClassroomPage() {
           <div className="lg:col-span-7 glass-card rounded-3xl p-6 border border-white/10 space-y-5">
             {summaryResult ? (
               <div className="space-y-5 text-xs">
-                {/* 5-Min Summary */}
+                {/* Title & Bullet Points */}
                 <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2">
                   <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
                     <BookOpen className="h-4 w-4" />
-                    5-Minute Crash Revision:
+                    {summaryResult.title || "Exam Concept Revision"}:
                   </h4>
-                  <p className="text-foreground/90 leading-relaxed whitespace-pre-line">
-                    {summaryResult.fiveMinuteSummary}
-                  </p>
+                  <ul className="space-y-1.5 pl-4 list-disc text-foreground/90 leading-relaxed">
+                    {(summaryResult.summaryBulletPoints || []).map((bp, i) => (
+                      <li key={i}>{bp}</li>
+                    ))}
+                  </ul>
                 </div>
 
-                {/* Key Points */}
-                {summaryResult.keyTakeaways && (
-                  <div className="space-y-2">
-                    <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px]">Key Exam Takeaways:</h4>
-                    <ul className="space-y-1 pl-4 list-disc text-muted-foreground">
-                      {summaryResult.keyTakeaways.map((k, i) => (
-                        <li key={i}>{k}</li>
+                {/* Predicted 2-Mark Short Questions */}
+                {summaryResult.predictedQuestions?.shortQuestions && summaryResult.predictedQuestions.shortQuestions.length > 0 && (
+                  <div className="space-y-2.5 pt-2 border-t border-white/10">
+                    <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <Award className="h-4 w-4 text-emerald-400" />
+                      Predicted 2-Mark Conceptual Questions:
+                    </h4>
+                    <div className="space-y-2">
+                      {summaryResult.predictedQuestions.shortQuestions.map((q, i) => (
+                        <div key={i} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-emerald-300">{q.question}</span>
+                            <Badge className="text-[10px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
+                              {q.marks}M
+                            </Badge>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed pt-0.5 font-mono text-[11px]">
+                            <strong>Ans: </strong>{q.answer}
+                          </p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
 
-                {/* Predicted Exam Questions */}
-                {summaryResult.predictedQuestions && (
-                  <div className="space-y-3 pt-2 border-t border-white/10">
+                {/* Predicted 10-Mark Long Questions */}
+                {summaryResult.predictedQuestions?.longQuestions && summaryResult.predictedQuestions.longQuestions.length > 0 && (
+                  <div className="space-y-2.5 pt-2 border-t border-white/10">
                     <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                       <Award className="h-4 w-4 text-amber-400" />
-                      Predicted Exam Questions:
+                      Predicted 10-Mark Core Questions:
                     </h4>
                     <div className="space-y-2.5">
-                      {summaryResult.predictedQuestions.map((q, i) => (
+                      {summaryResult.predictedQuestions.longQuestions.map((q, i) => (
                         <div key={i} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1.5">
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-amber-300">{q.question}</span>
                             <Badge className="text-[10px] bg-amber-500/15 text-amber-300 border-amber-500/30">
-                              {q.type} ({q.marks}M)
+                              {q.marks}M
                             </Badge>
                           </div>
                           <p className="text-muted-foreground leading-relaxed pt-1">
-                            <strong className="text-emerald-400 font-mono">Model Answer: </strong>{q.modelAnswer}
+                            <strong className="text-foreground">Model Answer: </strong>{q.modelAnswer}
                           </p>
                         </div>
                       ))}
