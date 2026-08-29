@@ -12,6 +12,26 @@ async function decryptStoredValue(value: unknown, password: string): Promise<{ v
     }
 }
 
+async function isSessionAlive(sessionId: string): Promise<boolean> {
+    if (!sessionId) return false;
+    try {
+        const res = await fetch("https://student.srmap.edu.in/srmapstudentcorner/students/report/studentTimeTableResources.jsp", {
+            method: "POST",
+            headers: {
+                "User-Agent": "Mozilla/5.0",
+                "Cookie": `JSESSIONID=${sessionId}`,
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ ids: "1" }),
+            signal: AbortSignal.timeout(2000),
+        });
+        const text = await res.text();
+        return !text.includes("StudentLoginPage") && !text.includes("Session Expired") && text.length > 300;
+    } catch {
+        return false;
+    }
+}
+
 async function migrateLegacyData(user: any, password: string, db: any) {
     const updates: Record<string, unknown> = {};
 
@@ -57,6 +77,18 @@ export async function handleUserSession({ username, password }: { username: stri
     const db = initDb.db("college_db").collection<any>("users");
     const time = getTime();
     const user = await db.findOne({ username });
+
+    // ⚡ FAST PROBE (<0.5s): If user already has an active session, verify and reuse instantly!
+    if (user?.session_id) {
+        try {
+            const { value: existingSessionId } = await decryptStoredValue(user.session_id, password);
+            if (existingSessionId && (await isSessionAlive(existingSessionId))) {
+                return { success: true, sessionId: existingSessionId, sessionTime: user.session_time || time };
+            }
+        } catch {}
+    }
+
+    // Otherwise, perform full fresh login
     const result = await login(username, password);
 
     if (!result?.success) {
