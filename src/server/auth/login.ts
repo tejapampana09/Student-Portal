@@ -6,8 +6,8 @@ import { LoginResponse } from "@/types/server/login";
 
 const httpLoginClient = axios.create({
   httpsAgent,
-  timeout: 15000,
-  validateStatus: () => true, // Don't throw on redirects/alerts
+  timeout: 10000,
+  validateStatus: () => true,
 });
 
 async function attemptLogin(username: string, password: string): Promise<LoginResponse> {
@@ -80,7 +80,8 @@ async function login(username: string, password: string, maxRetries = 3): Promis
       lastError = error;
       console.log(`Login attempt ${attempt}/${maxRetries} failed:`, error);
       if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+        // Fast 200ms retry instead of 800ms
+        await new Promise((resolve) => setTimeout(resolve, 200 * attempt));
       }
     }
   }
