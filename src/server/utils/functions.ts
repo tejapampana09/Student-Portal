@@ -78,15 +78,7 @@ export function decryptLegacyData(encryptedData: unknown, password: string): unk
     return JSON.parse(decrypted.toString("utf8")) as unknown;
 }
 
-export function encryptLegacyData(data: unknown, password: string): string {
-    const salt = crypto.randomBytes(16);
-    const key = crypto.pbkdf2Sync(password, salt, 100000, 32, "sha256");
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
-    const jsonData = Buffer.from(JSON.stringify(data), "utf8");
-    const encrypted = Buffer.concat([cipher.update(jsonData), cipher.final()]);
-    return Buffer.concat([salt, iv, encrypted]).toString("base64");
-}
+/** [DEPRECATED] All new data is strictly encrypted using AES-256-GCM only. */
 
 export function createToken(payload: object) {
     return jwt.sign(payload, getAccessSecret(), { algorithm: "HS256" });

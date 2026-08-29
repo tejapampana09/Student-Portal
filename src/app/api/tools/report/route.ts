@@ -22,18 +22,36 @@ interface DiscordEmbedMessage {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { title, reason: bug_description, time: timestamp } = body;
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {
+    return errorResponse("Invalid JSON payload", {}, 400);
+  }
+
+  const { title, reason: bug_description } = body;
   const validTitles = ["Bug", "Feature Request", "UI Issue", "Contact", "Error"];
 
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
-  const username = auth.payload.username;
-
-  if (!bug_description || !title || !validTitles.includes(title)) {
-    return errorResponse("Required Parameters Not Matched!");
+  // STRICT VALIDATION: Title check, reason type check, length bounds (10 to 4000 chars)
+  if (
+    typeof title !== "string" ||
+    !validTitles.includes(title.trim()) ||
+    typeof bug_description !== "string" ||
+    bug_description.trim().length < 10 ||
+    bug_description.length > 4000
+  ) {
+    return errorResponse(
+      "Validation Failed: Title must be a valid category and reason must be between 10 and 4000 characters.",
+      {},
+      400
+    );
   }
+
+  const username = auth.payload.username;
+  const serverTimestamp = new Date().toISOString();
 
   try {
     const initDb = await useMongo();
@@ -41,14 +59,14 @@ export async function POST(req: NextRequest) {
     const user = await db.findOne({ username });
 
     if (!user) {
-      return errorResponse("Unauthorized Access!");
+      return errorResponse("Unauthorized Access!", {}, 401);
     }
 
     const embedMessage: DiscordEmbedMessage = {
       embeds: [
         {
-          title: `${username}${title ? ` (${title})` : ""}`,
-          description: bug_description,
+          title: `${username} (${title.trim()})`,
+          description: bug_description.trim(),
           color: 5814783,
           fields: [
             {
@@ -58,7 +76,7 @@ export async function POST(req: NextRequest) {
             },
           ],
           footer: {
-            text: timestamp || new Date().toISOString(),
+            text: serverTimestamp,
           },
         },
       ],
