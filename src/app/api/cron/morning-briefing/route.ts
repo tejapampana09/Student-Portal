@@ -108,8 +108,30 @@ export async function GET(req: NextRequest) {
           u.courseraCourses
         );
 
-        const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
-        if (sent.success) dispatched++;
+        // 1. WhatsApp Dispatch
+        if (u.whatsapp?.enabled && u.whatsapp?.phone) {
+          const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
+          if (sent.success) dispatched++;
+        }
+
+        // 2. Native PWA Web Push Dispatch
+        if (u.pushSubscription) {
+          try {
+            const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
+            const holidaySummary = nextHoliday ? ` | 🏖️ ${nextHoliday.occasion}` : "";
+            const classSummary = todayClasses.length > 0 ? `${todayClasses.length} Classes Today` : "No Classes (Free Day!)";
+            const lowAttnSummary = lowAttendance.length > 0 ? ` | ⚠️ ${lowAttendance.length} Low Attn` : "";
+
+            const pushSent = await sendWebPushNotification(u.pushSubscription, {
+              title: `🌅 Daily Briefing: ${studentName}`,
+              body: `📚 ${classSummary}${holidaySummary}${lowAttnSummary}. Tap to view schedule.`,
+              url: "/dashboard",
+            });
+            if (pushSent) dispatched++;
+          } catch (pushErr) {
+            console.error(`Failed to send web push for ${u.username}:`, pushErr);
+          }
+        }
       } catch (userErr) {
         console.error(`Error processing morning briefing for ${u.username}:`, userErr);
       }
