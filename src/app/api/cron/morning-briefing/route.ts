@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { useMongo } from "@/lib/database/useMongo";
 import { decryptData } from "@/server/utils/functions";
-import { buildDailyBriefingMessage, sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
+import { buildDailyBriefingMessage, sendWhatsAppDailyBriefingTemplate, sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
 import { ALL_DAYS, parseSubject } from "@/shared/utils/timetable";
 import academicCalendar from "@/static/academic_calendar.json";
 import { DateTime } from "luxon";
@@ -102,8 +102,21 @@ export async function GET(req: NextRequest) {
 
         // 1. WhatsApp Dispatch
         if (u.whatsapp?.enabled && u.whatsapp?.phone) {
-          const sent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
-          if (sent.success) dispatched++;
+          const templateSent = await sendWhatsAppDailyBriefingTemplate(
+            u.whatsapp.phone,
+            studentName,
+            currentDay,
+            todayClasses,
+            lowAttendance,
+            nextHoliday
+          );
+
+          if (templateSent.success) {
+            dispatched++;
+          } else {
+            const textSent = await sendWhatsAppTextMessage(u.whatsapp.phone, message);
+            if (textSent.success) dispatched++;
+          }
         }
 
         // 2. Native PWA Web Push Dispatch

@@ -58,6 +58,47 @@ export async function sendWhatsAppTemplateMessage(
   }
 }
 
+export async function sendWhatsAppDailyBriefingTemplate(
+  recipientPhone: string,
+  studentName: string,
+  currentDay: string,
+  todayClasses: any[],
+  lowAttendanceSubjects: any[],
+  nextHoliday: any
+): Promise<{ success: boolean; error?: string }> {
+  const templateName = process.env.WHATSAPP_TEMPLATE_NAME || "srmap_daily_briefing";
+
+  const classesParam = todayClasses.length === 0
+    ? "No classes scheduled today 🌴"
+    : `${todayClasses.length} class(es) scheduled`;
+
+  const attendanceParam = lowAttendanceSubjects.length === 0
+    ? "All subjects above 75% ✅"
+    : `⚠️ ${lowAttendanceSubjects.length} subject(s) below 75%`;
+
+  const holidayParam = nextHoliday
+    ? `${nextHoliday.occasion} on ${nextHoliday.date}`
+    : "No upcoming holidays";
+
+  const parameters = [
+    studentName || "Student",
+    currentDay || "Today",
+    classesParam,
+    attendanceParam,
+    holidayParam,
+  ];
+
+  // 1. Try custom approved template first
+  const customRes = await sendWhatsAppTemplateMessage(recipientPhone, templateName, parameters);
+  if (customRes.success) {
+    return { success: true };
+  }
+
+  console.warn(`Template ${templateName} failed (${customRes.error}), falling back to hello_world`);
+  // 2. Fallback to pre-approved hello_world if custom template is in review
+  return await sendWhatsAppTemplateMessage(recipientPhone, "hello_world");
+}
+
 export async function sendWhatsAppTextMessage(recipientPhone: string, message: string): Promise<{ success: boolean; error?: string }> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { useMongo } from "@/lib/database/useMongo";
 import { errorResponse, requireAuthResponse } from "@/server/utils/functions";
-import { sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
+import { sendWhatsAppDailyBriefingTemplate, sendWhatsAppTextMessage } from "@/server/notifications/whatsappService";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
@@ -36,12 +36,22 @@ export async function POST(req: NextRequest) {
 
     if (action === "test") {
       if (!phone) return errorResponse("Phone number is required for test message");
-      const testMsg = `🎓 *SRMAP Student Portal Alert*\n\nHello! This is a test notification from your SRMAP Student Portal. Your WhatsApp briefing integration is now active! 🚀\n\n🔗 https://13.233.246.195.sslip.io`;
-      const sent = await sendWhatsAppTextMessage(phone, testMsg);
+      const sent = await sendWhatsAppDailyBriefingTemplate(
+        phone,
+        auth.payload.username || "Student",
+        "Today",
+        [],
+        [],
+        null
+      );
       if (sent.success) {
-        return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
+        return NextResponse.json({ success: true, message: "Test WhatsApp template message sent successfully!" });
       } else {
-        return errorResponse(sent.error || "Failed to send WhatsApp message. Ensure recipient is in allowed list.", {}, 500);
+        const fallback = await sendWhatsAppTextMessage(phone, "🎓 *SRMAP Student Portal Alert*\n\nHello! This is a test notification from your SRMAP Student Portal.");
+        if (fallback.success) {
+          return NextResponse.json({ success: true, message: "Test WhatsApp message sent successfully!" });
+        }
+        return errorResponse(sent.error || fallback.error || "Failed to send WhatsApp message.", {}, 500);
       }
     }
 
