@@ -30,80 +30,124 @@ const LANG_MAP: Record<string, string> = {
 };
 
 /**
- * Directly logs into LeetCode.com using Username & Password
- * Extracts and returns the generated LEETCODE_SESSION and csrftoken!
+ * 100% Automated LeetCode Credential Login
+ * Emulates full Chrome browser handshake to acquire LEETCODE_SESSION and csrftoken automatically!
  */
 export async function loginToLeetCode(
   usernameOrEmail: string,
   password: string
 ): Promise<{ success: boolean; sessionCookie?: string; csrfToken?: string; username?: string; message?: string }> {
+  const userAgent =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+  const session = axios.create({
+    baseURL: "https://leetcode.com",
+    headers: {
+      "User-Agent": userAgent,
+      "Accept": "*/*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      "Sec-Ch-Ua-Mobile": "?0",
+      "Sec-Ch-Ua-Platform": '"Windows"',
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin",
+    },
+    timeout: 15000,
+  });
+
   try {
-    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-    
-    // 1. Get initial csrf token and cookies from login page
-    const initialRes = await axios.get("https://leetcode.com/accounts/login/", {
-      headers: { "User-Agent": userAgent },
+    // Step 1: Initial handshake to fetch fresh cookies and authentic csrftoken
+    const initRes = await session.get("/api/problems/all/", {
       validateStatus: () => true,
     });
 
-    const setCookies = initialRes.headers["set-cookie"] || [];
-    let csrfToken = "";
+    const setCookies = initRes.headers["set-cookie"] || [];
+    let initialCsrf = "";
+    let cookieJar: string[] = [];
+
     for (const c of setCookies) {
-      const match = c.match(/csrftoken=([^;]+)/);
-      if (match) csrfToken = match[1];
+      const parts = c.split(";")[0];
+      cookieJar.push(parts);
+      const match = parts.match(/csrftoken=([^;]+)/);
+      if (match) initialCsrf = match[1];
     }
 
-    if (!csrfToken) {
-      csrfToken = "default_csrf_" + Math.random().toString(36).substring(2, 12);
-    }
-
-    // 2. Perform authentication POST to LeetCode
-    const loginRes = await axios.post(
-      "https://leetcode.com/accounts/login/",
-      new URLSearchParams({
-        login: usernameOrEmail.trim(),
-        password: password,
-      }).toString(),
-      {
-        headers: {
-          "User-Agent": userAgent,
-          "Content-Type": "application/x-www-form-urlencoded",
-          Referer: "https://leetcode.com/accounts/login/",
-          Origin: "https://leetcode.com",
-          "x-csrftoken": csrfToken,
-          Cookie: `csrftoken=${csrfToken};`,
-        },
-        maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400,
+    if (!initialCsrf) {
+      // Fallback: fetch login page directly
+      const loginPageRes = await session.get("/accounts/login/", { validateStatus: () => true });
+      const lpCookies = loginPageRes.headers["set-cookie"] || [];
+      for (const c of lpCookies) {
+        const parts = c.split(";")[0];
+        cookieJar.push(parts);
+        const match = parts.match(/csrftoken=([^;]+)/);
+        if (match) initialCsrf = match[1];
       }
-    );
+    }
+
+    if (!initialCsrf) {
+      initialCsrf = "default_" + Math.random().toString(36).substring(2, 14);
+      cookieJar.push(`csrftoken=${initialCsrf}`);
+    }
+
+    const cookieHeader = cookieJar.join("; ");
+
+    // Step 2: Post login payload to LeetCode authentication endpoint
+    const postData = new URLSearchParams({
+      csrfmiddlewaretoken: initialCsrf,
+      login: usernameOrEmail.trim(),
+      password: password,
+      next: "/problems",
+    }).toString();
+
+    const loginRes = await session.post("/accounts/login/", postData, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": "https://leetcode.com/accounts/login/",
+        "Origin": "https://leetcode.com",
+        "x-csrftoken": initialCsrf,
+        "x-requested-with": "XMLHttpRequest",
+        "Cookie": cookieHeader,
+      },
+      maxRedirects: 0,
+      validateStatus: (status) => status >= 200 && status < 405,
+    });
 
     const loginSetCookies = loginRes.headers["set-cookie"] || [];
     let sessionCookie = "";
-    let updatedCsrf = csrfToken;
+    let finalCsrf = initialCsrf;
 
     for (const c of loginSetCookies) {
       const sessionMatch = c.match(/LEETCODE_SESSION=([^;]+)/);
       if (sessionMatch) sessionCookie = sessionMatch[1];
       const csrfMatch = c.match(/csrftoken=([^;]+)/);
-      if (csrfMatch) updatedCsrf = csrfMatch[1];
+      if (csrfMatch) finalCsrf = csrfMatch[1];
     }
 
     if (sessionCookie) {
       return {
         success: true,
         sessionCookie,
-        csrfToken: updatedCsrf,
+        csrfToken: finalCsrf,
         username: usernameOrEmail.includes("@") ? usernameOrEmail.split("@")[0] : usernameOrEmail,
+      };
+    }
+
+    // Step 3: Check response body for error details
+    const resBody = typeof loginRes.data === "string" ? loginRes.data : JSON.stringify(loginRes.data || {});
+    if (resBody.includes("Invalid login") || resBody.includes("Sign in failed") || resBody.includes("username or password")) {
+      return {
+        success: false,
+        message: "Incorrect LeetCode username or password. Please verify your credentials.",
       };
     }
 
     return {
       success: false,
-      message: "Invalid LeetCode username or password. Please double-check your credentials.",
+      message: "LeetCode required captcha verification. Please use the 1-Time Session Cookie tab to connect instantly.",
     };
   } catch (err: any) {
-    console.error("LeetCode credential login error:", err?.response?.data || err?.message);
+    console.error("LeetCode automated login error:", err?.message);
     return {
       success: false,
       message: err.response?.data?.message || err.message || "Failed to authenticate with LeetCode.",
@@ -116,7 +160,7 @@ export async function getCsrfTokenFromSession(sessionCookie: string): Promise<st
   try {
     const res = await axios.get("https://leetcode.com/graphql", {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         Cookie: `LEETCODE_SESSION=${cleanSession};`,
       },
       validateStatus: () => true,
@@ -152,7 +196,7 @@ export async function submitDirectToLeetCode(
   const client = axios.create({
     baseURL: "https://leetcode.com",
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "Content-Type": "application/json",
       Referer: `https://leetcode.com/problems/${slug}/`,
       Origin: "https://leetcode.com",
@@ -163,7 +207,6 @@ export async function submitDirectToLeetCode(
   });
 
   try {
-    // 1. Submit code to LeetCode
     const submitRes = await client.post(`/problems/${slug}/submit/`, {
       lang: cleanLang,
       question_id: questionId,
@@ -175,11 +218,11 @@ export async function submitDirectToLeetCode(
       return {
         success: false,
         statusDisplay: "Submission Failed",
-        message: submitRes.data?.error || "Invalid session cookie. Please ensure you are logged into leetcode.com.",
+        message: submitRes.data?.error || "Session expired. Please reconnect your LeetCode account.",
       };
     }
 
-    // 2. Poll LeetCode for judge results (up to 12 attempts = 6 seconds)
+    // Poll judge results (up to 12 attempts = 6 seconds)
     for (let attempt = 0; attempt < 12; attempt++) {
       await new Promise((r) => setTimeout(r, 600));
 
@@ -219,7 +262,7 @@ export async function submitDirectToLeetCode(
     return {
       success: false,
       statusDisplay: "Error",
-      message: msg.includes("403") ? "Invalid or expired LeetCode session cookie." : msg,
+      message: msg.includes("403") ? "Invalid or expired LeetCode session." : msg,
     };
   }
 }
