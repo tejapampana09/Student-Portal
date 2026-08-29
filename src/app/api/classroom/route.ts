@@ -22,13 +22,13 @@ export async function GET(req: NextRequest) {
         courses: [],
         allAssignments: [],
         allAnnouncements: [],
+        allMaterials: [],
       });
     }
 
     const decrypted = decryptData(String(rawToken));
     const refreshToken = typeof decrypted === "string" ? decrypted : JSON.stringify(decrypted);
 
-    // Extract current semester registered subjects
     let activeSubjects: Array<{ code: string; name: string }> = [];
     if (user.data) {
       try {
@@ -40,10 +40,13 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
-    const { courses: allCourses, allAssignments: rawAssignments, allAnnouncements: rawAnnouncements } =
-      await fetchFullGoogleClassroomData(refreshToken);
+    const {
+      courses: allCourses,
+      allAssignments: rawAssignments,
+      allAnnouncements: rawAnnouncements,
+      allMaterials: rawMaterials,
+    } = await fetchFullGoogleClassroomData(refreshToken);
 
-    // Filter to current semester subjects
     let semesterCourses = allCourses;
     if (activeSubjects.length > 0) {
       semesterCourses = allCourses.filter((c) => {
@@ -62,7 +65,6 @@ export async function GET(req: NextRequest) {
         });
       });
 
-      // If strict filter matched courses, use them; otherwise keep all active courses with active tags
       if (semesterCourses.length === 0) {
         semesterCourses = allCourses;
       }
@@ -71,6 +73,7 @@ export async function GET(req: NextRequest) {
     const validCourseIds = new Set(semesterCourses.map((c) => c.id));
     const allAssignments = rawAssignments.filter((a) => validCourseIds.has(a.courseId));
     const allAnnouncements = rawAnnouncements.filter((ann) => validCourseIds.has(ann.courseId));
+    const allMaterials = rawMaterials.filter((mat) => validCourseIds.has(mat.courseId));
 
     return NextResponse.json({
       success: true,
@@ -80,6 +83,7 @@ export async function GET(req: NextRequest) {
       allCoursesCount: allCourses.length,
       allAssignments,
       allAnnouncements,
+      allMaterials,
       totalCurrentSubjects: activeSubjects.length,
     });
   } catch (error: any) {

@@ -20,6 +20,7 @@ export function getGoogleAuthUrl(redirectUri: string, state: string) {
     scope: [
       "https://www.googleapis.com/auth/classroom.courses.readonly",
       "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+      "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly",
       "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
       "https://www.googleapis.com/auth/classroom.announcements.readonly",
       "https://www.googleapis.com/auth/gmail.readonly",
@@ -30,13 +31,25 @@ export function getGoogleAuthUrl(redirectUri: string, state: string) {
   });
 }
 
+export interface ClassroomMaterialAttachment {
+  id: string;
+  title: string;
+  type: "PDF" | "DriveFile" | "Link" | "YouTube" | "Form";
+  alternateLink: string;
+  thumbnailUrl?: string;
+  courseId: string;
+  courseName: string;
+  description?: string;
+  uploadedAt: string;
+}
+
 export interface ClassroomAssignment {
   id: string;
   courseId: string;
   courseName: string;
   title: string;
   description?: string;
-  state: string; // PUBLISHED
+  state: string;
   dueDate?: string;
   dueTime?: string;
   dueFormatted: string;
@@ -45,6 +58,7 @@ export interface ClassroomAssignment {
   submissionState?: "TURNED_IN" | "RETURNED" | "ASSIGNED" | "SUBMITTED";
   assignedGrade?: number;
   isOverdue?: boolean;
+  attachments?: ClassroomMaterialAttachment[];
 }
 
 export interface ClassroomAnnouncement {
@@ -54,6 +68,7 @@ export interface ClassroomAnnouncement {
   text: string;
   alternateLink?: string;
   creationTime: string;
+  attachments?: ClassroomMaterialAttachment[];
 }
 
 export interface ClassroomCourseItem {
@@ -64,9 +79,58 @@ export interface ClassroomCourseItem {
   enrollmentCode?: string;
   alternateLink?: string;
   descriptionHeading?: string;
-  teacherName?: string;
   assignments: ClassroomAssignment[];
   announcements: ClassroomAnnouncement[];
+  materials: ClassroomMaterialAttachment[];
+}
+
+function parseMaterialsList(
+  materialsRaw: any[],
+  courseId: string,
+  courseName: string,
+  uploadedAt: string
+): ClassroomMaterialAttachment[] {
+  const result: ClassroomMaterialAttachment[] = [];
+
+  for (const m of materialsRaw || []) {
+    if (m.driveFile?.driveFile) {
+      const df = m.driveFile.driveFile;
+      const isPdf = (df.title || "").toLowerCase().endsWith(".pdf") || (df.alternateLink || "").includes("pdf");
+      result.push({
+        id: df.id || `df-${Math.random()}`,
+        title: df.title || "Drive Material",
+        type: isPdf ? "PDF" : "DriveFile",
+        alternateLink: df.alternateLink || `https://drive.google.com/file/d/${df.id}/view`,
+        thumbnailUrl: df.thumbnailUrl || undefined,
+        courseId,
+        courseName,
+        uploadedAt,
+      });
+    } else if (m.link) {
+      result.push({
+        id: `link-${Math.random()}`,
+        title: m.link.title || m.link.url || "Resource Link",
+        type: "Link",
+        alternateLink: m.link.url,
+        courseId,
+        courseName,
+        uploadedAt,
+      });
+    } else if (m.youtubeVideo) {
+      result.push({
+        id: m.youtubeVideo.id || `yt-${Math.random()}`,
+        title: m.youtubeVideo.title || "Lecture Video",
+        type: "YouTube",
+        alternateLink: m.youtubeVideo.alternateLink || `https://youtube.com/watch?v=${m.youtubeVideo.id}`,
+        thumbnailUrl: m.youtubeVideo.thumbnailUrl || undefined,
+        courseId,
+        courseName,
+        uploadedAt,
+      });
+    }
+  }
+
+  return result;
 }
 
 export async function fetchFullGoogleClassroomData(
@@ -75,13 +139,13 @@ export async function fetchFullGoogleClassroomData(
   courses: ClassroomCourseItem[];
   allAssignments: ClassroomAssignment[];
   allAnnouncements: ClassroomAnnouncement[];
+  allMaterials: ClassroomMaterialAttachment[];
 }> {
   const oauth2Client = getGoogleOAuth2Client();
   oauth2Client.setCredentials({ refresh_token: refreshToken });
 
   const classroom = google.classroom({ version: "v1", auth: oauth2Client });
 
-  // 1. Fetch Active Courses
   const coursesRes = await classroom.courses.list({
     courseStates: ["ACTIVE"],
     pageSize: 30,
@@ -91,6 +155,7 @@ export async function fetchFullGoogleClassroomData(
   const courses: ClassroomCourseItem[] = [];
   const allAssignments: ClassroomAssignment[] = [];
   const allAnnouncements: ClassroomAnnouncement[] = [];
+  const allMaterials: ClassroomMaterialAttachment[] = [];
 
   const now = new Date();
 
@@ -99,8 +164,30 @@ export async function fetchFullGoogleClassroomData(
 
     const courseAssignments: ClassroomAssignment[] = [];
     const courseAnnouncements: ClassroomAnnouncement[] = [];
+    const courseMaterials: ClassroomMaterialAttachment[] = [];
 
-    // 2. Fetch CourseWork (Assignments) for each course
+    // 1. Fetch CourseWork Materials (Official lecture slides & PDFs)
+    try {
+      const matRes = await classroom.courses.courseWorkMaterials.list({
+        courseId: c.id,
+        courseWorkMaterialStates: ["PUBLISHED"],
+        pageSize: 20,
+      });
+
+      for (const cwm of matRes.data.courseWorkMaterial || []) {
+        const parsed = parseMaterialsList(cwm.materials || [], c.id, c.name, cwm.creationTime || now.toISOString());
+        for (const item of parsed) {
+          item.description = cwm.description || cwm.title || undefined;
+          if (cwm.title && cwm.title !== item.title) {
+            item.title = `${cwm.title} — ${item.title}`;
+          }
+          courseMaterials.push(item);
+          allMaterials.push(item);
+        }
+      }
+    } catch {}
+
+    // 2. Fetch CourseWork (Assignments & Lab Tasks with attachments)
     try {
       const cwRes = await classroom.courses.courseWork.list({
         courseId: c.id,
@@ -131,7 +218,6 @@ export async function fetchFullGoogleClassroomData(
           }
         }
 
-        // Try to fetch submission status
         let submissionState: "TURNED_IN" | "RETURNED" | "ASSIGNED" | "SUBMITTED" = "ASSIGNED";
         let assignedGrade: number | undefined;
 
@@ -149,6 +235,12 @@ export async function fetchFullGoogleClassroomData(
           }
         } catch {}
 
+        const cwAttachments = parseMaterialsList(cw.materials || [], c.id, c.name, cw.creationTime || now.toISOString());
+        for (const item of cwAttachments) {
+          courseMaterials.push(item);
+          allMaterials.push(item);
+        }
+
         const assignmentItem: ClassroomAssignment = {
           id: cw.id,
           courseId: c.id,
@@ -164,32 +256,39 @@ export async function fetchFullGoogleClassroomData(
           submissionState,
           assignedGrade,
           isOverdue: isOverdue && submissionState !== "TURNED_IN" && submissionState !== "RETURNED",
+          attachments: cwAttachments,
         };
 
         courseAssignments.push(assignmentItem);
         allAssignments.push(assignmentItem);
       }
-    } catch (cwErr) {
-      console.warn(`Could not fetch coursework for course ${c.id}:`, cwErr);
-    }
+    } catch {}
 
-    // 3. Fetch Announcements for each course
+    // 3. Fetch Announcements with attachments
     try {
       const annRes = await classroom.courses.announcements.list({
         courseId: c.id,
         announcementStates: ["PUBLISHED"],
-        pageSize: 10,
+        pageSize: 15,
       });
 
       for (const ann of annRes.data.announcements || []) {
         if (!ann.id || !ann.text) continue;
+
+        const annAttachments = parseMaterialsList(ann.materials || [], c.id, c.name, ann.creationTime || now.toISOString());
+        for (const item of annAttachments) {
+          courseMaterials.push(item);
+          allMaterials.push(item);
+        }
+
         const annItem: ClassroomAnnouncement = {
           id: ann.id,
           courseId: c.id,
           courseName: c.name,
           text: ann.text,
           alternateLink: ann.alternateLink || undefined,
-          creationTime: ann.creationTime || new Date().toISOString(),
+          creationTime: ann.creationTime || now.toISOString(),
+          attachments: annAttachments,
         };
         courseAnnouncements.push(annItem);
         allAnnouncements.push(annItem);
@@ -206,15 +305,9 @@ export async function fetchFullGoogleClassroomData(
       descriptionHeading: c.descriptionHeading || undefined,
       assignments: courseAssignments,
       announcements: courseAnnouncements,
+      materials: courseMaterials,
     });
   }
 
-  // Sort assignments: upcoming/overdue first
-  allAssignments.sort((a, b) => {
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return a.dueDate.localeCompare(b.dueDate);
-  });
-
-  return { courses, allAssignments, allAnnouncements };
+  return { courses, allAssignments, allAnnouncements, allMaterials };
 }
