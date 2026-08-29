@@ -8,9 +8,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
+    // Completely purge Gmail credentials from user document
     await initDb.db("college_db").collection("users").updateOne(
       { username: auth.payload.username },
-      { $unset: { gmail: "" } }
+      { $unset: { gmail: "", googleOAuth: "" } }
     );
 
     return NextResponse.json({

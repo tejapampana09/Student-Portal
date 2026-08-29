@@ -8,17 +8,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
+    // Completely purge all Google OAuth credentials to guarantee zero orphaned tokens
     await initDb.db("college_db").collection("users").updateOne(
       { username: auth.payload.username },
-      { $unset: { google: "", gmail: "" } }
+      { $unset: { googleOAuth: "", google: "", gmail: "" } }
     );
 
     return NextResponse.json({
       success: true,
-      message: "Google Classroom & Gmail disconnected successfully",
+      message: "Google Classroom & connected Google services disconnected successfully",
     });
   } catch (error: any) {
     console.error("Error disconnecting Google:", error);
-    return errorResponse("Failed to disconnect Google", {}, 500);
+    return errorResponse("Failed to disconnect Google account", {}, 500);
   }
 }

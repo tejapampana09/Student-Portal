@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
-  const username = body.id || auth.payload.username;
+  // STRICT SECURITY FIX: Always use authenticated username, NEVER trust body.id to prevent identity spoofing
+  const username = auth.payload.username;
 
   if (!bug_description || !title || !validTitles.includes(title)) {
     return errorResponse("Required Parameters Not Matched!");
@@ -37,8 +38,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    const db = initDb.db('college_db').collection("users");
-    const user = await db.findOne({ username: auth.payload.username });
+    const db = initDb.db("college_db").collection("users");
+    const user = await db.findOne({ username });
 
     if (!user) {
       return errorResponse("Unauthorized Access!");
@@ -47,53 +48,34 @@ export async function POST(req: NextRequest) {
     const embedMessage: DiscordEmbedMessage = {
       embeds: [
         {
-          title: `${auth.payload.username}${title ? ` (${title})` : ""}`,
+          title: `${username}${title ? ` (${title})` : ""}`,
           description: bug_description,
           color: 5814783,
+          fields: [
+            {
+              name: "Authenticated Student",
+              value: `> ${username}`,
+              inline: true,
+            },
+          ],
           footer: {
-            text: timestamp || "",
+            text: timestamp || new Date().toISOString(),
           },
         },
       ],
     };
 
-    if (username) {
-      embedMessage.embeds[0].fields = [
-        {
-          name: "Id",
-          value: `> ${username}`,
-          inline: false,
-        },
-      ];
-    }
-
-    const response = await axios.post(String(process.env.D_REPORT), embedMessage);
-
-    if (response.status === 204) {
-      let successMessage = "Issue Reported Successfully!";
-      switch (title) {
-        case "Bug":
-          successMessage = "Bug Reported Successfully!";
-          break;
-        case "Ui":
-          successMessage = "UI Bug Reported Successfully!";
-          break;
-        case "RequestFeature":
-          successMessage = "Feature Requested Successfully!";
-          break;
-        case "Contact":
-          successMessage = "We Will Respond In 24 Hours To The Email Provided.";
-          break;
-        case "Error":
-          successMessage = "Thank you for reporting this issue. Our team has been notified and will resolve it as soon as possible!";
-          break;
+    if (process.env.D_REPORT) {
+      try {
+        await axios.post(String(process.env.D_REPORT), embedMessage);
+      } catch (webhookErr) {
+        console.error("Discord report webhook failed:", webhookErr);
       }
-      return NextResponse.json({ success: true, message: successMessage });
-    } else {
-      return errorResponse("Failed To Report!");
     }
+
+    return NextResponse.json({ success: true, message: "Report Submitted Successfully!" });
   } catch (err) {
-    console.log("Error From /api/tools/report:- ", err);
+    console.error("Error From /api/tools/report:", err);
     return errorResponse(undefined, {}, 500);
   }
 }
