@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
-  let returnTo = "/dashboard";
+  let returnTo = "/classroom";
   let stateOrigin = "";
 
   if (state) {
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
   const origin = getValidOrigin(req, stateOrigin);
 
   if (!code || !state) {
-    return NextResponse.redirect(`${origin}/dashboard?gmail=error`);
+    return NextResponse.redirect(`${origin}${returnTo}?google=error`);
   }
 
   try {
@@ -61,7 +61,12 @@ export async function GET(req: NextRequest) {
       const newAuth = oauth2Client.generateAuthUrl({
         access_type: "offline",
         prompt: "consent",
+        include_granted_scopes: true,
         scope: [
+          "https://www.googleapis.com/auth/classroom.courses.readonly",
+          "https://www.googleapis.com/auth/classroom.coursework.me.readonly",
+          "https://www.googleapis.com/auth/classroom.student-submissions.me.readonly",
+          "https://www.googleapis.com/auth/classroom.announcements.readonly",
           "https://www.googleapis.com/auth/gmail.readonly",
           "https://www.googleapis.com/auth/userinfo.email",
           "https://www.googleapis.com/auth/userinfo.profile",
@@ -83,7 +88,7 @@ export async function GET(req: NextRequest) {
       { username },
       {
         $set: {
-          gmail: {
+          google: {
             email: userInfo.data.email,
             name: userInfo.data.name,
             picture: userInfo.data.picture,
@@ -91,7 +96,7 @@ export async function GET(req: NextRequest) {
             accessToken: encryptedAccessToken,
             connectedAt: new Date().toISOString(),
           },
-          google: {
+          gmail: {
             email: userInfo.data.email,
             name: userInfo.data.name,
             picture: userInfo.data.picture,
@@ -103,10 +108,12 @@ export async function GET(req: NextRequest) {
       }
     );
 
-    const cleanReturn = returnTo.includes("?") ? `${returnTo}&gmail=connected` : `${returnTo}?gmail=connected`;
+    const cleanReturn = returnTo.includes("?")
+      ? `${returnTo}&google=connected&gmail=connected`
+      : `${returnTo}?google=connected&gmail=connected`;
     return NextResponse.redirect(`${origin}${cleanReturn}`);
   } catch (error) {
-    console.error("Error during Gmail OAuth callback:", error);
-    return NextResponse.redirect(`${origin}/dashboard?gmail=error`);
+    console.error("Error during Google OAuth callback:", error);
+    return NextResponse.redirect(`${origin}${returnTo}?google=error`);
   }
 }

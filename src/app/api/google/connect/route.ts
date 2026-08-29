@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
 
   try {
     const origin = getValidOrigin(req);
-    const redirectUri = `${origin}/api/google/callback`;
+    // Use the primary registered callback URI
+    const redirectUri = `${origin}/api/gmail/callback`;
     const searchParams = req.nextUrl.searchParams;
     const returnTo = searchParams.get("returnTo") || "/classroom";
 
