@@ -60,7 +60,7 @@
     "re2": "^1.23.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "tailwind-merge": "^2.5.2",
+    "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tfjs-tflite-node": "^0.0.2",
     "tough-cookie": "^5.1.2",
