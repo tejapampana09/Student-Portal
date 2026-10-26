@@ -4,12 +4,12 @@ export const metadata: Metadata = {
   title: "Study Resources & Notes",
   description: "Access curated study material, lecture notes, syllabus guides, and previous question papers for SRM AP courses.",
   alternates: {
-    canonical: "https://13.233.246.195.sslip.io/resources",
+    canonical: "https://srmapi.in/resources",
   },
   openGraph: {
     title: "Study Resources & Notes | SRMAP API",
     description: "Access curated study material, lecture notes, syllabus guides, and previous question papers for SRM AP courses.",
-    url: "https://13.233.246.195.sslip.io/resources",
+    url: "https://srmapi.in/resources",
   },
 };
 
@@ -21,13 +21,13 @@ const breadcrumbJsonLd = {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://13.233.246.195.sslip.io",
+      item: "https://srmapi.in",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Study Resources",
-      item: "https://13.233.246.195.sslip.io/resources",
+      item: "https://srmapi.in/resources",
     },
   ],
 };

@@ -13,7 +13,7 @@ function getCanonicalOrigin(req: NextRequest): string {
   if (host) {
     return `${proto}://${host}`;
   }
-  return "https://13.233.246.195.sslip.io";
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://srmapi.in";
 }
 
 function sanitizeReturnTo(path: string | null): string {

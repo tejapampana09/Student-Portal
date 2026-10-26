@@ -285,6 +285,7 @@ export function buildDailyBriefingMessage(
     }
   }
 
-  text += `\n🔗 *Portal:* https://13.233.246.195.sslip.io\nHave a productive day! 🚀`;
+  const portalUrl = process.env.NEXT_PUBLIC_APP_URL || "https://srmapi.in";
+  text += `\n🔗 *Portal:* ${portalUrl}\nHave a productive day! 🚀`;
   return text;
 }

@@ -8,7 +8,7 @@ function getCanonicalOrigin(): string {
   if (process.env.APP_ORIGIN) {
     return process.env.APP_ORIGIN.replace(/\/$/, "");
   }
-  return "https://13.233.246.195.sslip.io";
+  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://srmapi.in";
 }
 
 export async function GET(req: NextRequest) {
