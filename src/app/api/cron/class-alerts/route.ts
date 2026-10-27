@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    const users = await initDb.db("college_db").collection<any>("users").find({
+    const users = await initDb.db("college_db").collection("users").find({
       pushSubscription: { $exists: true, $ne: null },
     }).toArray();
 

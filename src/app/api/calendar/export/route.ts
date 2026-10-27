@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne({ username: auth.payload.username });
+    const user = await initDb.db("college_db").collection("users").findOne({ username: auth.payload.username });
 
     if (!user || !user.data) {
       return NextResponse.json({ success: false, message: "User data not found" }, { status: 404 });

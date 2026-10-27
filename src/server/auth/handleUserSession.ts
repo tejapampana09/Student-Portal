@@ -99,10 +99,19 @@ async function migrateLegacyData(user: any, password: string, db: any) {
 }
 
 export async function handleUserSession({ username, password }: { username: string; password: string; }) {
-    const initDb = await useMongo();
-    const db = initDb.db("college_db").collection<any>("users");
+    let db: any = null;
+    let user: any = null;
     const time = getTime();
-    const user = await db.findOne({ username });
+
+    if (process.env.MONGO_URI) {
+        try {
+            const initDb = await useMongo();
+            db = initDb.db("college_db").collection<any>("users");
+            user = await db.findOne({ username });
+        } catch (dbErr) {
+            console.warn("[Mongo] DB unavailable, proceeding directly to SRM portal:", (dbErr as any)?.message);
+        }
+    }
 
     // ⚡ OPTIMIZED CRITICAL PATH: Local session reuse
     if (user?.session_id) {
@@ -167,19 +176,25 @@ export async function handleUserSession({ username, password }: { username: stri
         return { success: false, message: result?.message || "Invalid credentials" };
     }
 
-    await db.updateOne(
-        { username },
-        {
-            $set: {
-                session_id: encryptData(result.sessionId),
-                session_time: time,
-                portal_password: encryptData(password),
-            },
-            $setOnInsert: { createdAt: DateTime.now().toJSDate() },
-        },
-        { upsert: true }
-    );
+    if (db) {
+        try {
+            await db.updateOne(
+                { username },
+                {
+                    $set: {
+                        session_id: encryptData(result.sessionId),
+                        session_time: time,
+                        portal_password: encryptData(password),
+                    },
+                    $setOnInsert: { createdAt: DateTime.now().toJSDate() },
+                },
+                { upsert: true }
+            );
 
-    if (user) await migrateLegacyData(user, password, db);
+            if (user) await migrateLegacyData(user, password, db);
+        } catch (dbErr) {
+            console.warn("[Mongo] Could not save session to DB:", (dbErr as any)?.message);
+        }
+    }
     return { success: true, sessionId: result.sessionId, sessionTime: time };
 }

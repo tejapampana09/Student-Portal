@@ -3,7 +3,8 @@ import "@/css/pages/feedback/RadioButton.css";
 
 import { Suspense } from "react";
 import ErrorFallBack from "./error";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -17,25 +18,33 @@ import AuroraBackground from "@/components/ui/AuroraBackground";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 
+export const viewport: Viewport = {
+  themeColor: "#090d16",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   referrer: "origin-when-cross-origin",
   title: {
-    default: "SRMAP API - Alternative Portal For SRMAP Students",
-    template: "%s | SRMAP API",
+    default: "Student Corner - SRM AP",
+    template: "%s | Student Corner - SRM AP",
   },
-  description: "SRMAP API is the modern, fast alternative student portal for SRM University AP students to track attendance, calculate CGPA, view timetable, and access resources.",
+  description: "Student portal for SRM University AP students to track attendance, calculate CGPA, view timetable, and access resources.",
   keywords: [
-    "SRMAP API",
-    "Srmapi",
+    "Student Corner",
+    "SRM AP Student Corner",
     "SRMAP student portal",
-    "alternative portal",
     "SRM University AP",
     "CGPA Calculator",
     "Attendance Tracker",
     "SRMAP Timetable",
     "SRMAP Resources",
   ],
-  authors: [{ name: "Srmapi Team" }],
+  authors: [{ name: "Student Corner Team" }],
   metadataBase: new URL("https://srmapi.in"),
   alternates: {
     canonical: "./",
@@ -52,10 +61,10 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "SRMAP API - Alternative Portal for SRMAP Students",
-    description: "An alternative, modern portal for SRMAP students with better features, accessibility, and speed.",
+    title: "Student Corner - SRM AP",
+    description: "Student portal for SRM University AP students.",
     url: "https://srmapi.in",
-    siteName: "SRMAP API",
+    siteName: "Student Corner - SRM AP",
     images: [
       {
         url: "/icons/round_corner_logo.png",
@@ -140,9 +149,16 @@ const sitelinksJsonLd = [
   },
 ];
 
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
@@ -156,7 +172,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(sitelinksJsonLd) }}
         />
       </head>
-      <body className="relative min-h-screen overflow-x-hidden">
+      <body className={`${poppins.variable} font-sans relative min-h-screen overflow-x-hidden`}>
         <ServiceWorkerRegister />
         <PwaInstallPrompt />
         <AuroraBackground />

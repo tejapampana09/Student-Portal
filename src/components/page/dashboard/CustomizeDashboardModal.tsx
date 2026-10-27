@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { SlidersHorizontal, Eye, EyeOff, RotateCcw, Check, Sparkles } from "lucide-react";
+import { SlidersHorizontal, RotateCcw, Check, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,24 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 
 export interface DashboardWidgetsConfig {
-  attendanceRing: boolean;
+  studentCard: boolean;
   upcomingClass: boolean;
-  smartTasks: boolean;
+  attendanceRing: boolean;
   cgpaCard: boolean;
   timetable: boolean;
-  courseBreakdown: boolean;
-  upcomingHolidays: boolean;
   studentEmails: boolean;
 }
 
 export const DEFAULT_WIDGETS_CONFIG: DashboardWidgetsConfig = {
-  attendanceRing: true,
+  studentCard: true,
   upcomingClass: true,
-  smartTasks: true,
+  attendanceRing: true,
   cgpaCard: true,
   timetable: true,
-  courseBreakdown: true,
-  upcomingHolidays: true,
   studentEmails: true,
 };
 
@@ -47,27 +43,27 @@ const WIDGET_DEFINITIONS: Array<{
   icon: string;
 }> = [
   {
-    key: "smartTasks",
-    title: "AI Smart Tasks & Priorities",
-    description: "Daily synthesized academic checklist, Coursera & class tasks",
-    icon: "✨",
+    key: "studentCard",
+    title: "Digital Student ID Card",
+    description: "Official verified institutional credential with QR code and active status",
+    icon: "🪪",
+  },
+  {
+    key: "upcomingClass",
+    title: "Live / Next Class Telemetry",
+    description: "Real-time lecture timing, classroom venue, and course status",
+    icon: "📍",
   },
   {
     key: "attendanceRing",
-    title: "Attendance Overview Ring",
+    title: "Attendance Gauge & Bunks",
     description: "Overall percentage ring and total safe bunks summary",
     icon: "🎯",
   },
   {
-    key: "upcomingClass",
-    title: "Live / Upcoming Class Hero",
-    description: "Real-time next lecture, room venue, and faculty details",
-    icon: "📍",
-  },
-  {
     key: "cgpaCard",
-    title: "CGPA & Academic Stats",
-    description: "Cumulative GPA, total credits, and semester standing",
+    title: "CGPA & Academic Standing",
+    description: "Cumulative GPA, grading scale progress bar, and academic standing",
     icon: "🎓",
   },
   {
@@ -77,21 +73,9 @@ const WIDGET_DEFINITIONS: Array<{
     icon: "📅",
   },
   {
-    key: "courseBreakdown",
-    title: "Course Attendance Cards",
-    description: "Subject-wise attendance breakdown and bunk calculator",
-    icon: "📚",
-  },
-  {
-    key: "upcomingHolidays",
-    title: "Upcoming Holidays & Long Weekends",
-    description: "Countdown to academic holidays and festive breaks",
-    icon: "🏖️",
-  },
-  {
     key: "studentEmails",
-    title: "Student Email & Circulars Feed",
-    description: "Live CDC placement notices, circulars, and exam updates",
+    title: "Official Emails & Circulars Feed",
+    description: "CDC placement drives, exam notices, and university announcements",
     icon: "📬",
   },
 ];
@@ -116,12 +100,12 @@ export const CustomizeDashboardModal: React.FC<Props> = ({ config, onChange }) =
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-2.5 sm:px-3 rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-foreground backdrop-blur-md gap-1.5 shadow-sm transition-all hover:scale-105 shrink-0"
+          className="h-8 px-2.5 sm:px-3 rounded-full border-white/20 bg-white/10 hover:bg-white/20 text-xs font-semibold text-white backdrop-blur-md gap-1.5 shadow-sm transition-all hover:scale-105 shrink-0"
         >
-          <SlidersHorizontal className="h-3.5 w-3.5 text-primary shrink-0" />
+          <SlidersHorizontal className="h-3.5 w-3.5 text-white shrink-0" />
           <span>Customize</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-primary/20 text-primary font-bold">
-            {activeCount}/8
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-white/20 text-white font-bold">
+            {activeCount}/6
           </span>
         </Button>
       </DialogTrigger>

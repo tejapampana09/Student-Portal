@@ -30,7 +30,7 @@
     "@serwist/precaching": "9.5.12",
     "@serwist/sw": "9.5.12",
     "serwist": "9.5.12",
-    "@tensorflow/tfjs": "^4.22.0",
+
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "^19.1.11",
     "@types/react-dom": "^19.1.11",
@@ -57,12 +57,12 @@
     "next-themes": "^0.4.6",
     "nprogress": "^0.2.0",
     "postcss": "^8.5.23",
-    "re2": "^1.23.2",
+
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
-    "tfjs-tflite-node": "^0.0.2",
+
     "tough-cookie": "^5.1.2",
     "typescript": "^5.9.2",
     "vaul": "^1.1.2",

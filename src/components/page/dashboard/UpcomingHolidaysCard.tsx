@@ -56,7 +56,7 @@ export default function UpcomingHolidaysCard() {
   const isLongWeekend = nextHoliday.day === "Friday" || nextHoliday.day === "Monday";
 
   return (
-    <div className="glass-card rounded-3xl p-6 flex flex-col justify-between border border-white/10 shadow-lg relative overflow-hidden">
+    <div className="glass-card rounded-[2rem] p-6 flex flex-col justify-between border border-white/20 dark:border-white/10 shadow-xl relative overflow-hidden">
       {/* Subtle background glow */}
       <div className="absolute -top-12 -right-12 w-36 h-36 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 

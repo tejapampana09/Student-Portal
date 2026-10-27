@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
 import { useIsMobile } from "@/hooks/utils/useMobile";
@@ -16,7 +17,22 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
-import { BookOpenText, Lock, ChevronDown, Library, Folder, MessageSquare, ChevronRight, MessageCircle, ChevronUp, Sun, Moon, LogOut, RotateCcw, Home, List, AppWindow, Calendar, Calculator, User, Users, Settings, ListChecks, CalendarDays, Shield, Edit, X, FileSpreadsheet, Building, MoreVertical, Check, Loader2, Clapperboard, CheckCircle2, AlertCircle, Info, Briefcase, GraduationCap, Code2 } from "lucide-react";
+import { 
+  BookOpenText, Lock, ChevronDown, Library, Folder, MessageSquare, ChevronRight, 
+  MessageCircle, ChevronUp, Sun, Moon, LogOut, RotateCcw, Home, List, AppWindow, 
+  Calendar, Calculator, User, Users, Settings, ListChecks, CalendarDays, Shield, 
+  Edit, X, FileSpreadsheet, Building, MoreVertical, Check, Loader2, Clapperboard, 
+  CheckCircle2, AlertCircle, Info, Briefcase, GraduationCap, Code2, PanelLeft,
+  LayoutGrid, UserCheck, CalendarClock, Fingerprint, Award, TrendingUp, BookOpen, 
+  MessageSquareHeart, MoreHorizontal, Download
+} from "lucide-react";
+
+const getInitials = (name?: string) => {
+  if (!name) return "PT";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -62,6 +78,12 @@ const MobileSubMenuDrawer: React.FC<MobileSubMenuDrawerProps> = ({ isOpen, onClo
     router.push(path);
     onClose();
   };
+
+  React.useEffect(() => {
+    if (isOpen && typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, [isOpen]);
 
   const isActive = (path: string) => pathname === path;
 
@@ -120,6 +142,149 @@ const MobileSubMenuDrawer: React.FC<MobileSubMenuDrawerProps> = ({ isOpen, onClo
               )}
             </button>
           )}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+};
+
+interface MobileMoreDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  items: MenuItem[];
+}
+
+const MobileMoreDrawer: React.FC<MobileMoreDrawerProps> = ({ isOpen, onClose, items }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  React.useEffect(() => {
+    if (isOpen && typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, [isOpen]);
+
+  const handleNavigate = (path: string) => {
+    router.push(path);
+    onClose();
+  };
+
+  const handleInstallClick = () => {
+    onClose();
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("trigger-pwa-install"));
+    }
+  };
+
+  const isActive = (path: string) =>
+    pathname === path || (path !== "/dashboard" && pathname.startsWith(path + "/"));
+
+  return (
+    <Drawer open={isOpen} onOpenChange={onClose}>
+      <DrawerContent className="max-h-[85vh] p-0 rounded-t-3xl border-t border-border/80">
+        <DrawerHeader className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <MoreHorizontal className="h-4 w-4" />
+            </div>
+            <div className="text-left">
+              <DrawerTitle className="text-base font-bold text-foreground font-sans">
+                More Features
+              </DrawerTitle>
+              <p className="text-[11px] text-muted-foreground">Exams, CGPA, Calendar, Classroom & Tools</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">
+            <X className="h-4 w-4" />
+          </Button>
+        </DrawerHeader>
+
+        <div className="p-4 overflow-y-auto space-y-3 max-h-[70vh]">
+          {/* Main more items list */}
+          <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
+            {items.map((item) => {
+              const active = isActive(item.path);
+              return (
+                <div key={item.path} className="p-1">
+                  {item.subItems ? (
+                    <div className="p-2 space-y-1">
+                      <div className="flex items-center gap-2 px-2 py-1 text-xs font-bold text-foreground">
+                        <item.icon className="h-4 w-4 text-blue-500" />
+                        <span>{item.title}</span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1 pl-6">
+                        {item.subItems.map((sub) => {
+                          const subActive = pathname === sub.path;
+                          return (
+                            <button
+                              key={sub.path}
+                              onClick={() => handleNavigate(sub.path)}
+                              className={`flex items-center justify-between w-full px-3 py-2 rounded-xl text-xs font-medium transition-colors text-left ${
+                                subActive
+                                  ? "bg-blue-600 text-white font-bold"
+                                  : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <span>{sub.title}</span>
+                              <ChevronRight className="h-3 w-3 opacity-60" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleNavigate(item.path)}
+                      className={`flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-xs font-semibold transition-colors text-left ${
+                        active
+                          ? "bg-blue-600 text-white font-bold"
+                          : "hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <item.icon className={`h-4 w-4 ${active ? "text-white" : "text-muted-foreground"}`} />
+                        <span>{item.title}</span>
+                      </div>
+                      <ChevronRight className={`h-3.5 w-3.5 ${active ? "text-white" : "text-muted-foreground"}`} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick shortcuts */}
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <button
+              onClick={() => handleNavigate("/profile")}
+              className="flex items-center gap-2 p-3 rounded-2xl border border-border/60 bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors text-left"
+            >
+              <User className="h-4 w-4 text-blue-500" />
+              <span>Student Profile</span>
+            </button>
+            <button
+              onClick={() => handleNavigate("/settings")}
+              className="flex items-center gap-2 p-3 rounded-2xl border border-border/60 bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors text-left"
+            >
+              <Settings className="h-4 w-4 text-indigo-500" />
+              <span>Settings</span>
+            </button>
+          </div>
+
+          {/* PWA App Install Action */}
+          <button
+            onClick={handleInstallClick}
+            className="w-full flex items-center justify-between p-3 rounded-2xl border border-blue-500/20 bg-blue-500/10 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/15 transition-colors text-left"
+          >
+            <div className="flex items-center gap-2.5">
+              <Download className="h-4 w-4 text-blue-500" />
+              <div>
+                <p className="font-bold">Install App to Home Screen</p>
+                <p className="text-[10.5px] text-muted-foreground font-normal">Add shortcut for standalone view</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 opacity-70" />
+          </button>
         </div>
       </DrawerContent>
     </Drawer>
@@ -186,6 +351,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
     isOpen: false,
     menuItem: null
   });
+  const [isMoreDrawerOpen, setIsMoreDrawerOpen] = useState(false);
   const mobileNavScrollRef = React.useRef<HTMLDivElement | null>(null);
   const notificationPanelRef = React.useRef<HTMLDivElement | null>(null);
 
@@ -463,30 +629,25 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   useEffect(() => {
     const baseMenu: MenuItem[] = [
-      { title: "Dashboard", shortTitle: "Home", path: "/dashboard", icon: Home },
-      { title: "Attendance Details", shortTitle: "Attendance", path: "/attendance", icon: List },
-      { title: "Time Table", shortTitle: "Timetable", path: "/timetable", icon: Calendar },
-      { title: "Mark Attendance", shortTitle: "Mark", path: "/markattendance", icon: ListChecks },
+      { title: "Dashboard", shortTitle: "Home", path: "/dashboard", icon: LayoutGrid },
+      { title: "Attendance Details", shortTitle: "Attendance", path: "/attendance", icon: UserCheck },
+      { title: "Time Table", shortTitle: "Timetable", path: "/timetable", icon: CalendarClock },
+      { title: "Capture Attendance", shortTitle: "Capture", path: "/markattendance", icon: Fingerprint },
       {
         title: "Exams",
         shortTitle: "Exam",
         path: "/exams",
-        icon: FileSpreadsheet,
+        icon: Award,
         subItems: [
           { title: "Internals", path: "/exams/internals" },
           { title: "Past Internals", path: "/exams/past-internals" },
           { title: "Semester Results", path: "/exams/semester-results" },
         ],
       },
-      { title: "Career & Placement", shortTitle: "Career", path: "/career", icon: Briefcase, highlight: true },
-      { title: "Coding Arena", shortTitle: "Code", path: "/code", icon: Code2, highlight: true },
-      { title: "Google Classroom", shortTitle: "Class", path: "/classroom", icon: GraduationCap },
-      { title: "Cgpa Calculator", shortTitle: "CGPA", path: "/cgpa", icon: Calculator },
+      { title: "Cgpa Calculator", shortTitle: "CGPA", path: "/cgpa", icon: TrendingUp },
       { title: "Academic Calender", shortTitle: "Calendar", path: "/calender", icon: CalendarDays },
-      { title: "Subjects", shortTitle: "Subs", path: "/subjects", icon: Library },
-      { title: "Profile", shortTitle: "Me", path: "/profile", icon: User },
-      { title: "Feedback", shortTitle: "Feed", path: "/feedback", icon: Edit },
-      { title: "Settings", shortTitle: "Set", path: "/settings", icon: Settings },
+      { title: "Google Classroom", shortTitle: "Class", path: "/classroom", icon: BookOpen },
+      { title: "Feedback", shortTitle: "Feed", path: "/feedback", icon: MessageSquareHeart },
     ];
 
     let menu = [...baseMenu];
@@ -510,7 +671,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
   }, [pathname]);
 
   useEffect(() => {
-    document.title = `Srmapi - ${profile?.studentName}`;
+    document.title = "Student Corner - SRM AP";
   }, [router, pathname, profile?.studentName]);
 
   useEffect(() => {
@@ -543,6 +704,22 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
     } catch (error) { }
   }, [isMobile, menuItems.length]);
 
+  // 🚀 Auto-scroll floating mobile dock to keep active item centered
+  useEffect(() => {
+    if (!isMobile || !mobileNavScrollRef.current) return;
+    const timer = setTimeout(() => {
+      const activeEl = mobileNavScrollRef.current?.querySelector<HTMLElement>('[data-active="true"]');
+      if (activeEl) {
+        activeEl.scrollIntoView({
+          behavior: "smooth",
+          inline: "center",
+          block: "nearest",
+        });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [pathname, isMobile, menuItems]);
+
   useEffect(() => {
     localStorage.setItem("sidebarState", state);
   }, [state]);
@@ -555,33 +732,35 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex w-full bg-transparent relative">
-      {!isMobile && (
-        <Sidebar className="border-r-0 shadow-2xl" style={{ background: "rgba(15,15,20,0.55)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)", borderRight: "1px solid rgba(255,255,255,0.07)" }} collapsible="icon">
-          <SidebarContent className="bg-transparent">
+      <Sidebar className="border-r-0 shadow-2xl glass-panel" style={{ backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }} collapsible="icon">
+        <SidebarContent className="bg-transparent">
             {!isCollapsed && (
-              <div className="p-4 relative border-b border-white/[0.07]">
+              <div className="p-4 relative border-b border-white/[0.08] dark:border-white/[0.06]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-lg shrink-0 bg-white/5">
+                  <div className="w-10 h-10 rounded-2xl overflow-hidden ring-2 ring-blue-500/30 shadow-lg shrink-0 bg-white/5 flex items-center justify-center">
                     <Image
                       src={!imgError && profile?.picture ? profile.picture : Logo_White}
                       alt="Profile"
-                      width={36}
-                      height={36}
+                      width={40}
+                      height={40}
                       unoptimized
                       onError={() => setImgError(true)}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{profile?.registerNo}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{profile?.studentName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-bold text-foreground truncate font-mono">{profile?.registerNo}</p>
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{profile?.studentName}</p>
                   </div>
                 </div>
               </div>
             )}
             {isCollapsed && (
-              <div className="py-3 px-2 border-b border-white/10 dark:border-white/[0.06] flex justify-center">
-                <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-white/15 shadow-md bg-white/5">
+              <div className="py-3 px-2 border-b border-white/[0.08] dark:border-white/[0.06] flex justify-center">
+                <div className="w-9 h-9 rounded-2xl overflow-hidden ring-2 ring-blue-500/30 shadow-md bg-white/5">
                   <Image
                     src={!imgError && profile?.picture ? profile.picture : Logo_White}
                     alt="Profile"
@@ -607,7 +786,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                             onMouseEnter={(e) => handleMouseEnter(item, e)}
                             onMouseLeave={handleMouseLeave}
                             onClick={() => handleMenuClick(item)}
-                            className={`group transition-all duration-200 cursor-pointer relative w-10 h-10 p-0 flex items-center justify-center rounded-xl ${isSubPathActive(item.path) ? "bg-white/15 text-foreground ring-1 ring-white/20" : "hover:bg-white/10 text-muted-foreground hover:text-foreground"}`}
+                            className={`group transition-all duration-200 cursor-pointer relative w-10 h-10 p-0 flex items-center justify-center rounded-xl ${isSubPathActive(item.path) ? "bg-gradient-to-tr from-blue-500/25 to-sky-400/20 text-foreground ring-1 ring-sky-400/30 shadow-md shadow-blue-500/10" : "hover:bg-white/10 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground"}`}
                           >
                             <item.icon className="h-4 w-4" />
 
@@ -619,7 +798,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                             )}
 
                             {isSubPathActive(item.path) && (
-                              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0.5 h-6 bg-sidebar-accent-foreground rounded-l-sm" />
+                              <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0.5 h-6 bg-sky-400 rounded-l-sm" />
                             )}
                           </SidebarMenuButton>
                           <HoverMenu
@@ -633,7 +812,7 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                           <SidebarMenuButton
                             onClick={() => handleMenuClick(item)}
                             hasSubItems={!!item.subItems}
-                            className={`group transition-all duration-150 cursor-pointer relative rounded-xl ${isSubPathActive(item.path) ? "bg-white/[0.12] dark:bg-white/[0.08] text-foreground ring-1 ring-white/12" : "hover:bg-white/[0.07] text-muted-foreground hover:text-foreground"} ${isMobile ? "text-sm py-2" : "py-2.5"}`}
+                            className={`group transition-all duration-150 cursor-pointer relative rounded-xl ${isSubPathActive(item.path) ? "bg-gradient-to-r from-blue-500/20 via-sky-500/15 to-transparent text-foreground font-semibold border-l-2 border-sky-400 shadow-sm" : "hover:bg-white/[0.08] dark:hover:bg-white/[0.05] text-muted-foreground hover:text-foreground"} ${isMobile ? "text-sm py-2" : "py-2.5"}`}
                           >
                             <div className="flex items-center justify-between w-full">
                               <div className="flex items-center">
@@ -756,11 +935,10 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             </div>
           </SidebarContent>
         </Sidebar>
-      )}
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto overflow-x-hidden relative">
         {lProfile?.hasCachedData && (
-          <div className="w-full bg-red-500 text-white text-center text-xs sm:text-sm py-2 px-4 font-medium z-30 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+          <div className="w-full bg-red-500 text-white text-center text-xs sm:text-sm py-2 px-4 font-medium z-30 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 shrink-0">
             <span>Showing cached data from {lProfile.sessionTime} since college portal is down. Click below button if portal was up again!</span>
             <Button 
               size="sm" 
@@ -786,30 +964,55 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
             </Button>
           </div>
         )}
-        <div className="sticky top-3 sm:top-4 z-40 w-full px-3 sm:px-6">
-          <motion.div
-            animate={{ opacity: isMobile && activeMobileToast ? 0 : 1 }}
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            className={isMobile && activeMobileToast ? "pointer-events-none" : ""}
-          >
-            <header className="h-14 rounded-2xl px-3 sm:px-5 flex items-center shadow-xl border border-white/[0.12] dark:border-white/[0.08]" style={{ background: "rgba(15,15,20,0.6)", backdropFilter: "blur(40px)", WebkitBackdropFilter: "blur(40px)" }}>
-              <div className="flex items-center px-2 sm:px-4 h-full w-full">
+        <header
+          style={{
+            backdropFilter: "blur(24px) saturate(180%)",
+            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          }}
+          className={`sticky top-0 z-40 h-16 w-full px-4 sm:px-6 md:px-8 flex items-center border-b border-black/[0.08] dark:border-white/[0.08] bg-white/70 dark:bg-[#090d16]/75 backdrop-blur-2xl backdrop-saturate-200 shadow-sm transition-all duration-300 transform-gpu shrink-0 ${isMobile && activeMobileToast ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+        >
+            <div className="flex items-center justify-between h-full w-full">
+              {/* Left: Sidebar Toggle + Brand Emblem + Current Page (SkillWallet Style) */}
+              <div className="flex items-center gap-3 min-w-0">
                 {!isMobile && (
-                  <div className="relative">
+                  <div className="relative shrink-0 hidden md:block">
                     <SidebarTrigger
-                      className="mr-4 hover:bg-accent hover:text-accent-foreground"
+                      className="hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors h-9 w-9 cursor-pointer"
                       onClick={handleSidebarClick}
                     />
                     {showTutorial && (
-                      <div className="absolute left-full -ml-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-lg shadow-lg whitespace-nowrap flex items-center">
+                      <div className="absolute left-full -ml-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground text-xs px-3 py-1 rounded-lg shadow-lg whitespace-nowrap flex items-center z-50">
                         👈 Click here to open the menu
                         <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary rotate-45"></div>
                       </div>
                     )}
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h1 className={`${isMobile ? "text-lg" : "text-xl"} font-semibold truncate`}>
+
+                {/* Brand Emblem & Name */}
+                <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0 group">
+                  <Image
+                    src={Logo_White}
+                    alt="Portal Emblem"
+                    className="w-8 h-8 object-contain drop-shadow-sm group-hover:scale-105 transition-transform"
+                    priority
+                  />
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1 leading-none">
+                      <span className="font-extrabold text-sm sm:text-base tracking-tight text-foreground font-sans">
+                        SRMAP <span className="text-blue-600 dark:text-blue-400 font-black">PORTAL</span>
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-medium tracking-wide mt-1 hidden sm:inline">
+                      Student Cockpit
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Active Page Indicator Pill */}
+                <div className="hidden md:flex items-center">
+                  <span className="text-muted-foreground/30 mx-2 font-light">/</span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                     {(() => {
                       for (const item of menuItems) {
                         if (item.subItems) {
@@ -827,125 +1030,139 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
                       if (subPathMatch) return subPathMatch.title;
                       return "Dashboard";
                     })()}
-                  </h1>
-                  {!isMobile ? (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {profile?.studentName}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground truncate">
-                      {profile?.registerNo}
-                    </p>
-                  )}
+                  </span>
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5 sm:space-x-2">
+                  {/* Direct 1-Click Theme Switcher */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                    className="rounded-xl h-8 w-8 hover:bg-white/10 dark:hover:bg-white/5 border border-white/10"
+                    aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+                  >
+                    {theme === "light" ? (
+                      <Moon className="h-4 w-4 text-blue-400" />
+                    ) : (
+                      <Sun className="h-4 w-4 text-amber-400" />
+                    )}
+                  </Button>
+
+                  {/* Direct 1-Click Reload Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleRefresh}
+                    className="rounded-xl h-8 w-8 hover:bg-white/10 dark:hover:bg-white/5 border border-white/10 hidden sm:inline-flex"
+                    aria-label="Reload portal data"
+                    title="Reload data"
+                  >
+                    <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+
+                  {/* Account Switcher Avatar */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="rounded-full overflow-hidden hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
+                        className="rounded-full h-9 w-9 p-0 overflow-hidden hover:opacity-90 ring-2 ring-emerald-500/30 hover:ring-emerald-400 transition-all duration-200"
                         aria-label="Switch account"
                       >
                         {!imgError && profile?.picture ? (
                           <Image
                             src={profile.picture}
                             alt="Profile"
-                            width={32}
-                            height={32}
+                            width={36}
+                            height={36}
                             unoptimized
                             onError={() => setImgError(true)}
-                            className="h-8 w-8 rounded-full object-cover"
+                            className="h-full w-full object-cover rounded-full"
                           />
                         ) : (
-                          <User className="h-4 w-4" />
+                          <div className="w-full h-full rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center">
+                            {getInitials(profile?.studentName)}
+                          </div>
                         )}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <DropdownMenuLabel>Switch Account</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {(accounts?.length || 0) > 0 ? (
-                        accounts.map((account) => {
-                          const isActiveAccount = account.id === activeAccountId;
-                          return (
-                            <DropdownMenuItem
-                              key={account.id}
-                              onClick={() => {
-                                if (!isActiveAccount) {
-                                  handleAccountSwitch(account.id);
-                                }
-                              }}
-                              className="cursor-pointer flex items-center justify-between"
-                            >
-                              <span>{account.username}</span>
-                              {isActiveAccount && <Check className="h-4 w-4" />}
-                            </DropdownMenuItem>
-                          );
-                        })
-                      ) : (
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onClick={() => router.push("/settings")}
-                        >
-                          No accounts found
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
+                    <DropdownMenuContent align="end" className="w-64 glass-panel rounded-2xl p-1.5 shadow-2xl border border-white/20 dark:border-white/10">
+                      {/* User Header */}
+                      <div className="px-3 py-2.5 border-b border-border/50 mb-1">
+                        <p className="text-sm font-bold text-foreground truncate font-sans">
+                          {profile?.studentName || "Student"}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {profile?.registerNo || "SRMAP Portal"}
+                        </p>
+                      </div>
+
+                      {/* Primary Navigation to Profile & Settings */}
                       <DropdownMenuItem
-                        className="cursor-pointer"
+                        className="cursor-pointer rounded-xl py-2 px-3 gap-2.5 text-xs font-medium"
+                        onClick={() => router.push("/profile")}
+                      >
+                        <User className="h-4 w-4 text-blue-500" />
+                        <span>Student Profile</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        className="cursor-pointer rounded-xl py-2 px-3 gap-2.5 text-xs font-medium"
                         onClick={() => router.push("/settings")}
                       >
-                        Manage accounts
+                        <Settings className="h-4 w-4 text-indigo-500" />
+                        <span>Portal Settings</span>
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="hover:bg-accent hover:text-accent-foreground transition-colors duration-200"
-                        aria-label="Open actions menu"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-52">
-                      <DropdownMenuItem
-                        onClick={handleHomeNavigation}
-                        className="cursor-pointer"
-                      >
-                        <Home className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={handleRefresh}
-                        className="cursor-pointer"
-                      >
-                        <RotateCcw className="mr-2 h-4 w-4" />
-                        Reload
-                      </DropdownMenuItem>
+                      {/* Quick Theme Switch */}
                       <DropdownMenuItem
                         onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-                        className="cursor-pointer"
+                        className="cursor-pointer rounded-xl py-2 px-3 gap-2.5 text-xs font-medium"
                       >
                         {theme === "light" ? (
-                          <Moon className="mr-2 h-4 w-4" />
+                          <Moon className="h-4 w-4 text-blue-400" />
                         ) : (
-                          <Sun className="mr-2 h-4 w-4" />
+                          <Sun className="h-4 w-4 text-amber-400" />
                         )}
-                        Theme Change
+                        <span>{theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+
+                      {/* Account Switcher Section (if multiple accounts) */}
+                      {(accounts?.length || 0) > 1 && (
+                        <>
+                          <DropdownMenuSeparator className="my-1 border-border/40" />
+                          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground px-3 py-1 font-mono">
+                            Switch Account
+                          </DropdownMenuLabel>
+                          {accounts.map((account) => {
+                            const isActiveAccount = account.id === activeAccountId;
+                            return (
+                              <DropdownMenuItem
+                                key={account.id}
+                                onClick={() => {
+                                  if (!isActiveAccount) handleAccountSwitch(account.id);
+                                }}
+                                className="cursor-pointer rounded-xl py-1.5 px-3 flex items-center justify-between text-xs"
+                              >
+                                <span className="font-mono">{account.username}</span>
+                                {isActiveAccount && <Check className="h-3.5 w-3.5 text-blue-500" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </>
+                      )}
+
+                      <DropdownMenuSeparator className="my-1 border-border/40" />
+
+                      {/* Sign Out */}
                       <DropdownMenuItem
                         onClick={() => logout()}
-                        className="cursor-pointer text-red-600 focus:text-destructive"
+                        className="cursor-pointer rounded-xl py-2 px-3 gap-2.5 text-xs font-semibold text-red-600 dark:text-red-400 focus:text-red-500 focus:bg-red-500/10"
                       >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Logout
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -953,125 +1170,40 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
               </div>
             </header>
 
-            <div ref={notificationPanelRef} className="relative mt-2">
-              <div
-                onClick={handleNotificationBarClick}
-                className={`notifications-bar cursor-pointer glass-card text-foreground py-2 px-4 flex items-center justify-between rounded-xl shadow-sm border border-white/20 dark:border-white/10 ${isMobile && usesMobileSideNav ? "ml-12" : ""}`}
-              >
-                <span className="font-medium text-sm truncate">
-                  {notifications.notifications.length > 0 ? renderNotification(notifications.notifications[0].notification) : "No Notifications"}
-                </span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 shrink-0 ml-2 ${isNotificationsOpen ? "rotate-180" : ""}`}
-                />
-              </div>
-
-              {isNotificationsOpen && (
+            {notifications.notifications.length > 0 && (
+              <div ref={notificationPanelRef} className="relative mt-2 px-4 sm:px-6 md:px-8">
                 <div
-                  className={`notifications-bar absolute right-0 top-full mt-2 z-50 glass-panel rounded-2xl p-2 shadow-2xl ${isMobile && usesMobileSideNav ? "left-12" : "left-0"}`}
-                  onMouseEnter={handleMouseEnterNotifications}
-                  onMouseLeave={handleMouseLeaveNotifications}
+                  onClick={handleNotificationBarClick}
+                  className={`notifications-bar cursor-pointer glass-card text-foreground py-2 px-4 flex items-center justify-between rounded-xl shadow-sm border border-white/20 dark:border-white/10 ${isMobile && usesMobileSideNav ? "ml-12" : ""}`}
                 >
-                  <div className="max-h-64 overflow-y-auto space-y-1">
-                    {notifications.notifications.length === 0 ? (
-                      <p className="p-4 text-sm text-muted-foreground text-center">
-                        {notifications.isLoading ? "Loading..." : "No new notifications"}
-                      </p>
-                    ) : (
-                      notifications.notifications.slice(1).map((note, index) => (
+                  <span className="font-medium text-sm truncate">
+                    {renderNotification(notifications.notifications[0].notification)}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 shrink-0 ml-2 ${isNotificationsOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
+
+                {isNotificationsOpen && (
+                  <div
+                    className={`notifications-bar absolute right-0 top-full mt-2 z-50 glass-panel rounded-2xl p-2 shadow-2xl ${isMobile && usesMobileSideNav ? "left-12" : "left-0"}`}
+                    onMouseEnter={handleMouseEnterNotifications}
+                    onMouseLeave={handleMouseLeaveNotifications}
+                  >
+                    <div className="max-h-64 overflow-y-auto space-y-1">
+                      {notifications.notifications.slice(1).map((note, index) => (
                         <div key={index} className="p-2.5 rounded-xl bg-white/10 dark:bg-white/5 hover:bg-white/20 dark:hover:bg-white/10 border border-white/10 text-sm cursor-pointer transition-all duration-200">
                           {renderNotification(note.notification)}
                         </div>
-                      ))
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          <AnimatePresence>
-            {isMobile && activeMobileToast && (
-              <motion.div
-                key={`mobile-toast-${activeMobileToast.id}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.35, ease: "easeInOut" }}
-                className={`absolute inset-0 z-40 p-3 px-4 flex items-center justify-between border-b shadow-md ${
-                  activeMobileToast.variant === "destructive"
-                    ? "bg-red-950 text-red-100 border-red-800"
-                    : activeMobileToast.variant === "success"
-                    ? "bg-emerald-950 text-emerald-100 border-emerald-800"
-                    : activeMobileToast.variant === "info"
-                    ? "bg-blue-950 text-blue-100 border-blue-800"
-                    : "bg-slate-900 text-white border-slate-700"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-                  <div className="rounded-full p-1.5 bg-white/10 shrink-0">
-                    {activeMobileToast.variant === "destructive" ? (
-                      <AlertCircle className="h-4 w-4 text-red-400" />
-                    ) : activeMobileToast.variant === "success" ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    ) : (
-                      <Info className="h-4 w-4 text-blue-400" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1 py-0.5">
-                    {activeMobileToast.title && (
-                      <h4 className="font-semibold text-xs leading-snug whitespace-normal break-words">
-                        {activeMobileToast.title}
-                      </h4>
-                    )}
-                    {activeMobileToast.description && (
-                      <p className="text-[11px] opacity-90 leading-tight whitespace-normal break-words mt-0.5">
-                        {activeMobileToast.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => dismiss(activeMobileToast.id)}
-                  className="h-7 w-7 p-0 text-current hover:bg-white/20 shrink-0 rounded-full"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </motion.div>
+                )}
+              </div>
             )}
-          </AnimatePresence>
-        </div>
 
-        <main className="flex-1 flex flex-col overflow-hidden">
-          <div className={`flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 sm:p-6 ${isMobile && usesMobileSideNav ? "pl-14" : ""}`}>
-            {children}
-          </div>
-          <footer className={`flex-shrink-0 p-6 pt-4 border-t border-border bg-background/80 backdrop-blur-sm ${isMobile && !usesMiniMobileNav && !usesMobileSideNav ? 'pb-28' : ''}`}>
-            <div className={`pt-4 ${isMobile ? 'text-center -mt-4' : 'flex items-center justify-between'}`}>
-              <p className={`text-sm text-muted-foreground ${isMobile ? 'mb-2' : ''}`}>
-                {new Date().getFullYear()} Srmapi Portal.
-              </p>
-
-              {isMobile && (
-                <div className="flex space-x-1 justify-center text-xs text-muted-foreground">
-                  <a href="/privacy" className="hover:underline">
-                    Privacy Policy,
-                  </a>
-                  <a href="/terms" className="hover:underline">
-                    Terms and conditions
-                  </a>
-                </div>
-              )}
-
-              <p className="text-xs text-muted-foreground">
-                Version 5.7.0 • Last updated: 21-Aug-2026
-              </p>
-            </div>
-          </footer>
+        <main className={`flex-1 min-w-0 p-4 sm:p-6 ${isMobile && usesMobileSideNav ? "pl-14" : ""} ${isMobile && !usesMobileSideNav && !usesMiniMobileNav ? "pb-24 sm:pb-28" : "pb-12"}`}>
+          {children}
         </main>
 
         {isMobile && (
@@ -1083,46 +1215,115 @@ const DashboardContent: React.FC<DashboardLayoutProps> = ({ children }) => {
               </>
             ) : usesSidebarMobileNav ? (
               <MobileSidebarNav items={menuItems} selectedPath={selectedMobileNav} isSubPathActive={isSubPathActive} onClick={handleMobileNavClick} />
-            ) : (
-            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-border rounded-3xl bg-background/95 backdrop-blur-sm">
-              <div
-                ref={mobileNavScrollRef}
-                onScroll={handleMobileNavScroll}
-                className={usesDoubleRowMobileNav
-                  ? "grid h-20 grid-flow-col grid-rows-2 auto-cols-[68px] gap-px overflow-x-auto no-scrollbar p-1"
-                  : "flex h-20 overflow-x-auto no-scrollbar px-2"
-                }
-              >
-                {menuItems.map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => handleMobileNavClick(item)}
-                    className={`relative flex items-center justify-center rounded-lg transition-all duration-200
-                          ${usesDoubleRowMobileNav ? "min-w-0 flex-col gap-0 px-0.5 py-0" : "mx-1 my-1 min-w-[70px] flex-col p-1"}
-                          ${selectedMobileNav === item.path || isSubPathActive(item.path)
-                        ? "text-primary font-semibold bg-primary/15 border border-primary/30 shadow-md"
-                        : "text-foreground/70 hover:text-foreground hover:bg-accent/10 border border-transparent"
-                      }`}
+            ) : (() => {
+              const primaryMobilePaths = ["/dashboard", "/attendance", "/markattendance", "/timetable"];
+              const primaryMobileItems = [
+                menuItems.find((m) => m.path === "/dashboard"),
+                menuItems.find((m) => m.path === "/attendance"),
+                menuItems.find((m) => m.path === "/markattendance"),
+                menuItems.find((m) => m.path === "/timetable"),
+              ].filter(Boolean) as MenuItem[];
+
+              const moreMobileItems = menuItems.filter(
+                (m) => !primaryMobilePaths.includes(m.path)
+              );
+              const isMoreActive = isMoreDrawerOpen || moreMobileItems.some((m) => isSubPathActive(m.path));
+
+              return (
+                <>
+                  <div 
+                    style={{
+                      backdropFilter: "blur(24px) saturate(190%)",
+                      WebkitBackdropFilter: "blur(24px) saturate(190%)",
+                    }}
+                    className="fixed bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 w-[92vw] sm:w-auto sm:max-w-md z-40 h-[3.4rem] rounded-full liquid-dock glass-dock shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] overflow-hidden border border-white/60 dark:border-white/15 select-none transition-all duration-300 transform-gpu"
                   >
-                    {item.highlight ? (
-                      <span className="absolute top-0 right-0 flex items-center justify-center">
-                        <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-blue-600 opacity-75"></span>
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-600"></span>
-                      </span>
-                    ) : item.subItems ? (
-                      <span className="absolute top-0 right-0 flex items-center justify-center">
-                        <ChevronUp className="h-2.5 w-2.5 text-foreground/60" />
-                      </span>
-                    ) : null}
-                    <item.icon className={`shrink-0 ${usesDoubleRowMobileNav ? "h-3.5 w-3.5" : "h-4 w-4 mb-0.5"}`} />
-                    <span className={`truncate text-center block ${usesDoubleRowMobileNav ? "max-w-[62px] text-[8px] leading-tight" : "max-w-[70px] text-[10px]"}`}>
-                      {usesDoubleRowMobileNav ? item.shortTitle ?? item.title : item.title}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            )}
+                    <div className="flex h-full items-center justify-around w-full px-2 sm:px-4">
+                      {primaryMobileItems.map((item) => {
+                        const active = selectedMobileNav === item.path || isSubPathActive(item.path);
+                        return (
+                          <button
+                            key={item.path}
+                            data-active={active ? "true" : undefined}
+                            onClick={(e) => {
+                              (e.currentTarget as HTMLElement)?.blur();
+                              handleMobileNavClick(item);
+                            }}
+                            className="group relative flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 active:scale-95 select-none cursor-pointer"
+                          >
+                            {/* 🔵 Circular icon highlight when active */}
+                            <div
+                              className={`relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-300 ${
+                                active
+                                  ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-600 text-white scale-105"
+                                  : "text-slate-600 dark:text-slate-300 group-hover:bg-black/5 dark:group-hover:bg-white/10"
+                              }`}
+                            >
+                              <item.icon
+                                className={`h-4 w-4 transition-transform ${
+                                  active ? "stroke-[2.1]" : "stroke-[1.7]"
+                                }`}
+                              />
+                            </div>
+
+                            {/* Label */}
+                            <span
+                              className={`text-[9.5px] leading-none mt-1 truncate max-w-[58px] text-center transition-colors ${
+                                active
+                                  ? "text-blue-600 dark:text-blue-400 font-bold"
+                                  : "text-slate-500 dark:text-slate-400 font-medium"
+                              }`}
+                            >
+                              {item.shortTitle ?? item.title}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                      {/* 5th Button: More */}
+                      <button
+                        data-active={isMoreActive ? "true" : undefined}
+                        onClick={(e) => {
+                          (e.currentTarget as HTMLElement)?.blur();
+                          setIsMoreDrawerOpen(true);
+                        }}
+                        className="group relative flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 active:scale-95 select-none cursor-pointer"
+                      >
+                        <div
+                          className={`relative flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-full transition-all duration-300 ${
+                            isMoreActive
+                              ? "bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-600 text-white scale-105"
+                              : "text-slate-600 dark:text-slate-300 group-hover:bg-black/5 dark:group-hover:bg-white/10"
+                          }`}
+                        >
+                          <MoreHorizontal
+                            className={`h-4 w-4 transition-transform ${
+                              isMoreActive ? "stroke-[2.1]" : "stroke-[1.7]"
+                            }`}
+                          />
+                        </div>
+
+                        <span
+                          className={`text-[9.5px] leading-none mt-1 truncate max-w-[58px] text-center transition-colors ${
+                            isMoreActive
+                              ? "text-blue-600 dark:text-blue-400 font-bold"
+                              : "text-slate-500 dark:text-slate-400 font-medium"
+                          }`}
+                        >
+                          More
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <MobileMoreDrawer
+                    isOpen={isMoreDrawerOpen}
+                    onClose={() => setIsMoreDrawerOpen(false)}
+                    items={moreMobileItems}
+                  />
+                </>
+              );
+            })()}
 
             <MobileSubMenuDrawer
               isOpen={mobileSubMenuDrawer.isOpen}

@@ -1,5 +1,4 @@
 import { MongoClient } from "mongodb"
-import re2 from "re2"
 import { writeFile, mkdir } from "fs/promises"
 import { dirname, resolve } from "path"
 

@@ -1,33 +1,23 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import {
   GraduationCap,
   BookOpen,
-  Calendar,
   Clock,
   ExternalLink,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
-  FileText,
-  Loader2,
   RefreshCw,
-  Layers,
-  ChevronRight,
   ShieldCheck,
   Zap,
   Unlink,
   Check,
-  Bell,
   Megaphone,
   BookCheck,
-  FileCode,
   FolderOpen,
-  Download,
   Award,
-  BookMarked,
-  Lightbulb,
-  Copy,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,9 +107,19 @@ export default function ClassroomPage() {
       const res = await API.get("/google/connect?returnTo=/classroom");
       if (res.data?.authUrl) {
         window.location.href = res.data.authUrl;
+      } else {
+        toast({
+          title: "Classroom Sync Not Configured",
+          description: res.data?.message || "Google OAuth credentials are not configured on this server.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      toast({ title: "Error", description: "Failed to initiate Google connection.", variant: "destructive" });
+    } catch (err: any) {
+      toast({
+        title: "Connection Notice",
+        description: err.response?.data?.message || err.message || "Failed to initiate Google connection.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -171,65 +171,64 @@ export default function ClassroomPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full pb-10">
-      {/* 🎓 Top Header Card */}
-      <div className="glass-card rounded-3xl p-6 sm:p-8 border border-white/10 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-amber-500/10 via-orange-500/5 to-transparent blur-3xl pointer-events-none" />
-
-        <div className="space-y-2 max-w-2xl relative z-10">
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full pb-28">
+      {/* 🎓 Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-xs font-mono">
-              Current Semester Filtered 🎯
-            </Badge>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Google Classroom
+            </h1>
             {isConnected ? (
-              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-300 border-emerald-500/30 text-xs gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Connected: {userEmail || "Google Account"}
-              </Badge>
+              <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3" />
+                <span>Connected</span>
+              </span>
             ) : (
-              <Badge variant="outline" className="bg-white/5 text-muted-foreground border-white/10 text-xs">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                 Not Connected
-              </Badge>
+              </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-            Google Classroom & AI Study Hub
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Live classes • Coursework & Lab deadlines • PDF slides & Drive materials • Gemini 2.5 1-Click AI exam question predictor.
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            {isConnected ? userEmail : "Live classes, assignments, lecture slides & Gemini exam question predictor"}
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 relative z-10 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {isConnected ? (
             <>
               <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => fetchClassroomData(true)}
                 disabled={syncing || loading}
-                className="rounded-2xl h-10 px-4 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-lg shadow-amber-500/20 gap-1.5"
+                className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 border border-border/70"
               >
-                <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Syncing..." : "Sync Classroom 🔄"}
+                <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+                <span>{syncing ? "Syncing..." : "Sync"}</span>
               </Button>
 
               <Button
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={handleDisconnectGoogle}
                 disabled={disconnecting}
-                className="rounded-2xl h-10 px-3 text-xs font-semibold border-rose-500/30 text-rose-300 hover:bg-rose-500/10 gap-1.5"
+                className="h-8 px-2.5 rounded-xl text-xs font-medium text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 gap-1"
               >
                 <Unlink className="h-3.5 w-3.5" />
-                Disconnect
+                <span>Disconnect</span>
               </Button>
             </>
           ) : (
             <Button
+              size="sm"
               onClick={handleConnectGoogle}
-              className="rounded-2xl h-10 px-5 text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black shadow-lg shadow-amber-500/20 gap-2"
+              className="h-8 px-4 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-sm gap-1.5"
             >
-              <Zap className="h-4 w-4 fill-black" />
-              Connect Google Classroom 🚀
+              <Zap className="h-3.5 w-3.5" />
+              <span>Connect Classroom</span>
             </Button>
           )}
 
@@ -237,139 +236,202 @@ export default function ClassroomPage() {
             href="https://classroom.google.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="h-10 px-4 rounded-2xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-foreground flex items-center gap-1.5 transition-all"
+            className="h-8 px-3 rounded-xl text-xs font-medium text-muted-foreground hover:text-foreground border border-border/70 inline-flex items-center gap-1 transition-colors"
           >
-            Open Web ↗
+            <span>Open Web</span>
+            <ExternalLink className="h-3 w-3" />
           </a>
         </div>
       </div>
 
       {/* ⚠️ If Not Connected */}
       {!isConnected && !loading && (
-        <div className="glass-card rounded-3xl p-8 border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-black/20 to-transparent text-center space-y-4 max-w-xl mx-auto">
-          <div className="p-4 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-400 w-fit mx-auto">
-            <GraduationCap className="h-10 w-10" />
+        <div className="py-12 px-6 rounded-2xl border border-border/60 bg-muted/20 text-center flex flex-col items-center max-w-md mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-3">
+            <GraduationCap className="h-6 w-6" />
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Sync Your Google Classroom</h3>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed max-w-md mx-auto">
-              Connect your student Google account to view active classes, coursework deadlines, uploaded PDF materials, and get 1-Click AI exam question predictions!
-            </p>
-          </div>
+          <h3 className="text-base font-bold text-foreground">Sync Google Classroom</h3>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Link your university Google account to view active course materials, deadlines, and get AI exam question predictions.
+          </p>
           <Button
+            size="sm"
             onClick={handleConnectGoogle}
-            className="h-11 px-6 rounded-2xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black shadow-lg shadow-amber-500/20 gap-2"
+            className="mt-4 h-9 px-5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-sm gap-1.5"
           >
-            <Zap className="h-4 w-4 fill-black" />
-            Connect Google Classroom Now
+            <Zap className="h-3.5 w-3.5" />
+            <span>Connect Now</span>
           </Button>
         </div>
       )}
 
       {/* Connected Workspace */}
       {isConnected && (
-        <>
+        <div className="flex flex-col gap-4">
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/5 border border-white/10 max-w-xl flex-wrap">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/50 border border-border/60 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveTab("classes")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-w-[100px] ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "classes"
-                  ? "bg-amber-500 text-black shadow-md"
+                  ? "bg-background text-foreground shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <BookOpen className="h-4 w-4" />
-              Classes ({courses.length})
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Classes ({courses.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab("assignments")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-w-[100px] ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "assignments"
-                  ? "bg-amber-500 text-black shadow-md"
+                  ? "bg-background text-foreground shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <BookCheck className="h-4 w-4" />
-              Assignments ({assignments.length})
+              <BookCheck className="h-3.5 w-3.5" />
+              <span>Assignments ({assignments.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab("materials")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-w-[120px] ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "materials"
-                  ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md font-bold"
-                  : "text-purple-400 hover:text-purple-300"
+                  ? "bg-background text-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Sparkles className="h-4 w-4" />
-              PDFs & Slides ({materials.length})
+              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+              <span>PDFs & Slides ({materials.length})</span>
             </button>
 
             <button
               onClick={() => setActiveTab("announcements")}
-              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-w-[90px] ${
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
                 activeTab === "announcements"
-                  ? "bg-amber-500 text-black shadow-md"
+                  ? "bg-background text-foreground shadow-xs font-bold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Megaphone className="h-4 w-4" />
-              Notices ({announcements.length})
+              <Megaphone className="h-3.5 w-3.5" />
+              <span>Notices ({announcements.length})</span>
             </button>
           </div>
 
           {/* 📚 TAB 1: Classes */}
           {activeTab === "classes" && (
-            <div className="space-y-4">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Active Enrolled Classes ({courses.length})
-              </h2>
-
+            <div className="flex flex-col gap-2">
               {courses.length === 0 ? (
-                <div className="glass-card rounded-3xl p-12 text-center border border-white/10 space-y-3">
-                  <BookOpen className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <h3 className="text-base font-bold text-foreground">No active semester Google Classroom courses</h3>
-                  <p className="text-xs text-muted-foreground">Make sure you are enrolled in classes on classroom.google.com.</p>
+                <div className="py-10 text-center text-xs text-muted-foreground">
+                  No active courses found on classroom.google.com.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
                   {courses.map((course) => (
                     <div
                       key={course.id}
-                      className="glass-card rounded-3xl p-5 border border-white/10 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-4 group shadow-lg shadow-black/20"
+                      className="flex items-center justify-between gap-3 p-4 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
                     >
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/30 text-[11px] font-mono">
-                            {course.section || "Active Class"}
-                          </Badge>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-semibold border border-emerald-500/20">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                            {course.section || "Class"}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
                             {course.materials.length} Materials
                           </span>
                         </div>
-
-                        <h3 className="text-sm font-bold text-foreground group-hover:text-amber-300 transition-colors line-clamp-2">
+                        <h3 className="text-sm font-semibold text-foreground truncate">
                           {course.name}
                         </h3>
                         {course.descriptionHeading && (
-                          <p className="text-xs text-muted-foreground line-clamp-1">{course.descriptionHeading}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {course.descriptionHeading}
+                          </p>
                         )}
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/10 text-xs">
-                        <span className="text-muted-foreground text-[11px]">
-                          {course.room || "SRMAP"}
-                        </span>
-                        {course.alternateLink && (
+                      {course.alternateLink && (
+                        <a
+                          href={course.alternateLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-8 px-3 rounded-xl text-xs font-semibold bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 transition-colors shrink-0"
+                        >
+                          <span>Open</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 📝 TAB 2: Assignments */}
+          {activeTab === "assignments" && (
+            <div className="flex flex-col gap-2">
+              {assignments.length === 0 ? (
+                <div className="py-10 text-center text-xs text-muted-foreground">
+                  Zero pending coursework! All tasks are completed.
+                </div>
+              ) : (
+                <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
+                  {assignments.map((assign) => (
+                    <div
+                      key={assign.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
+                            {assign.courseName}
+                          </span>
+                          {assign.submissionState === "TURNED_IN" || assign.submissionState === "RETURNED" ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                              Turned In ✅
+                            </span>
+                          ) : assign.isOverdue ? (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/15 text-red-600 dark:text-red-400">
+                              Overdue ⚠️
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                              Due: {assign.dueFormatted}
+                            </span>
+                          )}
+                        </div>
+
+                        <h4 className="text-sm font-semibold text-foreground">{assign.title}</h4>
+                        {assign.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                            {assign.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                        {assign.attachments && assign.attachments.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenAISummarizer(assign.attachments![0])}
+                            className="h-8 px-2.5 rounded-xl text-xs font-semibold text-blue-600 dark:text-blue-400 gap-1 border border-blue-500/20"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            <span>AI Solver</span>
+                          </Button>
+                        )}
+                        {assign.alternateLink && (
                           <a
-                            href={course.alternateLink}
+                            href={assign.alternateLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-8 px-3 rounded-xl font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-foreground flex items-center gap-1 transition-all"
+                            className="h-8 px-3 rounded-xl text-xs font-semibold bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 transition-colors"
                           >
-                            Open Class
+                            <span>Turn In</span>
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         )}
@@ -381,152 +443,50 @@ export default function ClassroomPage() {
             </div>
           )}
 
-          {/* 📝 TAB 2: Assignments */}
-          {activeTab === "assignments" && (
-            <div className="space-y-4">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Coursework & Deadlines ({assignments.length})
-              </h2>
-
-              {assignments.length === 0 ? (
-                <div className="glass-card rounded-3xl p-12 text-center border border-white/10 space-y-4 max-w-md mx-auto">
-                  <div className="p-4 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 w-fit mx-auto">
-                    <CheckCircle2 className="h-8 w-8" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-foreground">Zero Pending Coursework!</h3>
-                    <p className="text-xs text-muted-foreground mt-1">All tasks are turned in or none assigned.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {assignments.map((assign) => (
-                    <div
-                      key={assign.id}
-                      className="glass-card rounded-2xl p-4 border border-white/10 hover:border-amber-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline" className="bg-amber-500/10 text-amber-300 border-amber-500/30 text-[10px] font-mono">
-                            {assign.courseName}
-                          </Badge>
-                          {assign.submissionState === "TURNED_IN" || assign.submissionState === "RETURNED" ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
-                              <Check className="h-3 w-3" />
-                              {assign.submissionState === "RETURNED" ? `Graded ${assign.assignedGrade !== undefined ? `(${assign.assignedGrade} pts)` : "✅"}` : "Turned In ✅"}
-                            </span>
-                          ) : assign.isOverdue ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30">
-                              Missing / Overdue ⚠️
-                            </span>
-                          ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-bold border border-amber-500/30">
-                              Assigned ⏳
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground font-mono flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Due: {assign.dueFormatted}
-                          </span>
-                        </div>
-
-                        <h4 className="text-sm font-bold text-foreground">{assign.title}</h4>
-                        {assign.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">{assign.description}</p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end sm:self-auto">
-                        {assign.attachments && assign.attachments.length > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleOpenAISummarizer(assign.attachments![0])}
-                            className="h-8 rounded-xl text-xs font-semibold border-purple-500/30 text-purple-300 hover:bg-purple-500/10 gap-1.5"
-                          >
-                            <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                            AI Solver
-                          </Button>
-                        )}
-                        {assign.alternateLink && (
-                          <a
-                            href={assign.alternateLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="h-8 px-4 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-black flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20"
-                          >
-                            Turn In ↗
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 📂 TAB 3: PDFs & Course Materials (With 1-Click AI Summarizer) */}
+          {/* 📂 TAB 3: PDFs & Course Materials */}
           {activeTab === "materials" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                  Classroom PDFs, Lecture Slides & Drive Files ({materials.length})
-                </h2>
-                <Badge variant="outline" className="bg-purple-500/15 text-purple-300 border-purple-500/30 text-[11px] gap-1 font-mono">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Gemini 2.5 Exam Predictor Ready
-                </Badge>
-              </div>
-
+            <div className="flex flex-col gap-2">
               {materials.length === 0 ? (
-                <div className="glass-card rounded-3xl p-12 text-center border border-white/10 space-y-3">
-                  <FolderOpen className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <h3 className="text-base font-bold text-foreground">No course materials or PDFs found</h3>
-                  <p className="text-xs text-muted-foreground">Uploaded PPTs, Drive attachments, and PDF manuals will appear here.</p>
+                <div className="py-10 text-center text-xs text-muted-foreground">
+                  No lecture slides or PDF materials found.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
                   {materials.map((mat) => (
                     <div
                       key={mat.id}
-                      className="glass-card rounded-3xl p-5 border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between space-y-4 group shadow-lg shadow-black/20"
+                      className="flex items-center justify-between gap-3 p-4 hover:bg-black/[0.015] dark:hover:bg-white/[0.015] transition-colors"
                     >
-                      <div className="space-y-2.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <Badge className="bg-purple-500/15 text-purple-300 border-purple-500/30 text-[10px] font-mono">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                             {mat.type}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground font-mono">
-                            {new Date(mat.uploadedAt).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                          </span>
+                          <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold truncate">
+                            {mat.courseName}
                           </span>
                         </div>
-
-                        <div>
-                          <span className="text-[11px] text-amber-300 font-semibold block">{mat.courseName}</span>
-                          <h4 className="text-sm font-bold text-foreground group-hover:text-purple-300 transition-colors line-clamp-2 mt-0.5">
-                            {mat.title}
-                          </h4>
-                        </div>
+                        <h4 className="text-sm font-semibold text-foreground truncate mt-0.5">
+                          {mat.title}
+                        </h4>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Button
                           size="sm"
                           onClick={() => handleOpenAISummarizer(mat)}
-                          className="flex-1 h-8 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white gap-1.5 shadow-md shadow-purple-500/20"
+                          className="h-8 px-3 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white gap-1 shadow-sm"
                         >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          AI Summary ✨
+                          <Sparkles className="h-3 w-3" />
+                          <span>AI Summary</span>
                         </Button>
 
                         <a
                           href={mat.alternateLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="h-8 px-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-foreground flex items-center gap-1 transition-all"
+                          className="h-8 px-2.5 rounded-xl text-xs font-semibold bg-muted/60 hover:bg-muted text-foreground flex items-center gap-1 transition-colors"
                         >
-                          Open
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       </div>
@@ -539,58 +499,56 @@ export default function ClassroomPage() {
 
           {/* 📢 TAB 4: Announcements */}
           {activeTab === "announcements" && (
-            <div className="space-y-4">
-              <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Classroom Announcements ({announcements.length})
-              </h2>
-
+            <div className="flex flex-col gap-2">
               {announcements.length === 0 ? (
-                <div className="glass-card rounded-3xl p-12 text-center border border-white/10 space-y-3">
-                  <Megaphone className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <h3 className="text-base font-bold text-foreground">No recent announcements</h3>
+                <div className="py-10 text-center text-xs text-muted-foreground">
+                  No recent notices posted.
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
                   {announcements.map((ann) => (
-                    <div key={ann.id} className="glass-card rounded-2xl p-4 border border-white/10 space-y-2">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/30 text-[10px] font-mono">
+                    <div key={ann.id} className="p-4 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-muted text-muted-foreground">
                           {ann.courseName}
-                        </Badge>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          {new Date(ann.creationTime).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-mono">
+                          {new Date(ann.creationTime).toLocaleDateString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </span>
                       </div>
-                      <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line">{ann.text}</p>
+                      <p className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line">
+                        {ann.text}
+                      </p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* ✨ Gemini AI PDF & Material Summary Modal */}
       <Dialog open={isAIModalOpen} onOpenChange={setIsAIModalOpen}>
-        <DialogContent className="max-w-2xl w-[94vw] sm:w-full border-white/15 p-6 rounded-3xl backdrop-blur-2xl shadow-2xl max-h-[85vh] overflow-y-auto space-y-5">
-          <DialogHeader className="text-left pb-3 border-b border-white/10">
+        <DialogContent className="max-w-2xl w-[94vw] sm:w-full border-border/60 p-6 rounded-3xl shadow-2xl max-h-[85vh] overflow-y-auto space-y-4">
+          <DialogHeader className="text-left pb-2 border-b border-border/40">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400">
-                  <Sparkles className="h-5 w-5" />
-                </div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-blue-500" />
                 <div>
                   <DialogTitle className="text-base font-bold text-foreground">
-                    Gemini 2.5 Exam Predictor & Notes
+                    Gemini AI Exam Notes & Summary
                   </DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                    {selectedMaterial?.title} • {selectedMaterial?.courseName}
+                    {selectedMaterial?.title}
                   </DialogDescription>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 {(["End-Sem", "Mid-Sem", "CLA"] as const).map((scope) => (
                   <button
                     key={scope}
@@ -598,10 +556,10 @@ export default function ClassroomPage() {
                       setExamScope(scope);
                       if (selectedMaterial) generateAISummary(selectedMaterial, scope);
                     }}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
                       examScope === scope
-                        ? "bg-purple-500 text-white font-bold"
-                        : "bg-white/5 text-muted-foreground hover:bg-white/10"
+                        ? "bg-blue-600 text-white font-bold"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {scope}
@@ -612,20 +570,20 @@ export default function ClassroomPage() {
           </DialogHeader>
 
           {summarizing ? (
-            <div className="py-16 flex flex-col items-center justify-center text-center space-y-3">
-              <Loader2 className="h-10 w-10 text-purple-400 animate-spin" />
-              <h4 className="text-sm font-bold text-foreground">Analyzing Classroom Material with Gemini 2.5...</h4>
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-2">
+              <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+              <h4 className="text-sm font-semibold text-foreground">Analyzing Slides & PDFs...</h4>
               <p className="text-xs text-muted-foreground max-w-sm">
-                Synthesizing key formulas, extracting core concepts, and predicting 2M & 10M examination questions.
+                Extracting core formulas, key concepts, and exam questions.
               </p>
             </div>
           ) : aiResult ? (
-            <div className="space-y-5 text-xs">
+            <div className="space-y-4 text-xs">
               {/* Core Concepts */}
-              <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2">
-                <h4 className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+              <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 space-y-2">
+                <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                   <BookOpen className="h-4 w-4" />
-                  5-Minute Revision Takeaways:
+                  Key Revision Takeaways
                 </h4>
                 <ul className="space-y-1.5 pl-4 list-disc text-foreground/90 leading-relaxed">
                   {(aiResult.keyTakeaways || []).map((t, i) => (
@@ -634,49 +592,21 @@ export default function ClassroomPage() {
                 </ul>
               </div>
 
-              {/* Predicted 2-Mark Questions */}
+              {/* Predicted Questions */}
               {aiResult.predictedShortQuestions && aiResult.predictedShortQuestions.length > 0 && (
-                <div className="space-y-2.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <Award className="h-4 w-4 text-emerald-400" />
-                    Predicted 2-Mark Short Questions:
+                <div className="space-y-2">
+                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px]">
+                    Predicted Short Questions
                   </h4>
                   <div className="space-y-2">
                     {aiResult.predictedShortQuestions.map((q, i) => (
-                      <div key={i} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-emerald-300">{q.question}</span>
-                          <Badge className="text-[10px] bg-emerald-500/15 text-emerald-300 border-emerald-500/30">
-                            {q.marks}M
-                          </Badge>
+                      <div key={i} className="p-3 rounded-xl bg-muted/40 border border-border/40 space-y-1">
+                        <div className="flex items-center justify-between font-semibold">
+                          <span>{q.question}</span>
+                          <span className="text-[10px] text-blue-600 font-mono">{q.marks}M</span>
                         </div>
-                        <p className="text-muted-foreground leading-relaxed pt-0.5 font-mono text-[11px]">
+                        <p className="text-muted-foreground text-[11px]">
                           <strong>Ans: </strong>{q.answer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Predicted 10-Mark Questions */}
-              {aiResult.predictedLongQuestions && aiResult.predictedLongQuestions.length > 0 && (
-                <div className="space-y-2.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <Award className="h-4 w-4 text-amber-400" />
-                    Predicted 10-Mark Core Analytical Questions:
-                  </h4>
-                  <div className="space-y-2.5">
-                    {aiResult.predictedLongQuestions.map((q, i) => (
-                      <div key={i} className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/5 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-amber-300">{q.question}</span>
-                          <Badge className="text-[10px] bg-amber-500/15 text-amber-300 border-amber-500/30">
-                            {q.marks}M
-                          </Badge>
-                        </div>
-                        <p className="text-muted-foreground leading-relaxed pt-1 whitespace-pre-line">
-                          <strong className="text-foreground">Model Answer: </strong>{q.modelAnswer}
                         </p>
                       </div>
                     ))}
@@ -686,15 +616,15 @@ export default function ClassroomPage() {
 
               {/* Direct PDF Link */}
               {selectedMaterial?.alternateLink && (
-                <div className="pt-2 flex justify-between items-center border-t border-white/10">
+                <div className="pt-2 flex justify-between items-center border-t border-border/40">
                   <span className="text-[11px] text-muted-foreground">Original Document on Google Drive</span>
                   <a
                     href={selectedMaterial.alternateLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-8 px-3 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 text-foreground inline-flex items-center gap-1"
+                    className="h-8 px-3 rounded-xl text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground inline-flex items-center gap-1"
                   >
-                    Open Original PDF ↗
+                    Open PDF ↗
                   </a>
                 </div>
               )}

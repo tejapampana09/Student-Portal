@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
+    const user = await initDb.db("college_db").collection("users").findOne(
       { username: auth.payload.username },
       { projection: { leetcodeAuth: 1 } }
     );
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     const { action, username, usernameOrEmail, password, sessionCookie, csrfToken, slug, questionId, code, language } = body;
 
     const initDb = await useMongo();
-    const usersCollection = initDb.db("college_db").collection<any>("users");
+    const usersCollection = initDb.db("college_db").collection("users");
     const user = await usersCollection.findOne({ username: auth.payload.username });
 
     // Action 1: Instant LeetCode Username Connect & Profile Sync (Zero Password / Zero Cookie)

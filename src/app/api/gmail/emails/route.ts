@@ -7,9 +7,29 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  if (!process.env.MONGO_URI) {
+    return NextResponse.json({
+      success: true,
+      connected: false,
+      isConnected: false,
+      emails: [],
+    });
+  }
+
   try {
-    const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne({ username: auth.payload.username });
+    let initDb: any;
+    try {
+      initDb = await useMongo();
+    } catch {
+      return NextResponse.json({
+        success: true,
+        connected: false,
+        isConnected: false,
+        emails: [],
+      });
+    }
+
+    const user = await initDb.db("college_db").collection("users").findOne({ username: auth.payload.username });
 
     if (!user || !user.gmail || !user.gmail.refreshToken) {
       return NextResponse.json({
@@ -36,6 +56,11 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error in Gmail emails API:", error);
-    return errorResponse(error?.message || "Failed to fetch emails", {}, 500);
+    return NextResponse.json({
+      success: true,
+      connected: false,
+      isConnected: false,
+      emails: [],
+    });
   }
 }

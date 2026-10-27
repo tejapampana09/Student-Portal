@@ -95,31 +95,45 @@ export function verifyToken(token: string) {
 export async function createAuthSession(username: string, admin: boolean) {
     const sessionId = crypto.randomUUID();
     const token = createToken({ username, sessionId, admin });
-    const initDb = await useMongo();
-    await initDb.db("college_db").collection(SESSION_COLLECTION).insertOne({
-        sessionId,
-        username,
-        tokenHash: tokenHash(token),
-        createdAt: new Date(),
-        revokedAt: null,
-    });
+    try {
+        if (process.env.MONGO_URI) {
+            const initDb = await useMongo();
+            await initDb.db("college_db").collection(SESSION_COLLECTION).insertOne({
+                sessionId,
+                username,
+                tokenHash: tokenHash(token),
+                createdAt: new Date(),
+                revokedAt: null,
+            });
+        }
+    } catch (e) {
+        console.warn("[AuthSession] MongoDB session tracking bypassed:", (e as any)?.message);
+    }
     return { token, sessionId };
 }
 
 export async function revokeAuthSession(token: string): Promise<void> {
-    const initDb = await useMongo();
-    await initDb.db("college_db").collection(SESSION_COLLECTION).updateOne(
-        { tokenHash: tokenHash(token), revokedAt: null },
-        { $set: { revokedAt: new Date() } }
-    );
+    try {
+        if (process.env.MONGO_URI) {
+            const initDb = await useMongo();
+            await initDb.db("college_db").collection(SESSION_COLLECTION).updateOne(
+                { tokenHash: tokenHash(token), revokedAt: null },
+                { $set: { revokedAt: new Date() } }
+            );
+        }
+    } catch (e) {}
 }
 
 export async function revokeAllAuthSessions(username: string): Promise<void> {
-    const initDb = await useMongo();
-    await initDb.db("college_db").collection(SESSION_COLLECTION).updateMany(
-        { username, revokedAt: null },
-        { $set: { revokedAt: new Date() } }
-    );
+    try {
+        if (process.env.MONGO_URI) {
+            const initDb = await useMongo();
+            await initDb.db("college_db").collection(SESSION_COLLECTION).updateMany(
+                { username, revokedAt: null },
+                { $set: { revokedAt: new Date() } }
+            );
+        }
+    } catch (e) {}
 }
 
 export async function requireAuthResponse(req: NextRequest): Promise<{ payload: any; token?: string } | NextResponse> {
@@ -138,14 +152,14 @@ export async function requireAuthResponseAdmin(req: NextRequest): Promise<{ payl
 }
 
 export async function isBlocked(username: string): Promise<boolean> {
-    if (!username) return false;
+    if (!username || !process.env.MONGO_URI) return false;
     try {
         const initDb = await useMongo();
         const dbBlocked = initDb.db("college_db").collection("blocked");
         const blockedUser = await dbBlocked.findOne({ username: username.toUpperCase() });
         return !!blockedUser;
     } catch (err) {
-        console.error("Error checking blocked user:", err);
+        console.warn("[isBlocked] MongoDB check skipped:", (err as any)?.message);
         return false;
     }
 }
@@ -155,36 +169,44 @@ export async function enforceRateLimit(
   limit: number,
   windowMs: number
 ): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
-  const now = new Date();
-  const initDb = await useMongo();
-  const col = initDb.db("college_db").collection(RATE_LIMIT_COLLECTION);
+  try {
+    if (!process.env.MONGO_URI) {
+      return { allowed: true, retryAfterSeconds: 0 };
+    }
+    const now = new Date();
+    const initDb = await useMongo();
+    const col = initDb.db("college_db").collection(RATE_LIMIT_COLLECTION);
 
-  // Atomically clear expired records if past window
-  await col.deleteOne({ key, expiresAt: { $lte: now } });
+    // Atomically clear expired records if past window
+    await col.deleteOne({ key, expiresAt: { $lte: now } });
 
-  // Atomically increment or insert
-  const doc = await col.findOneAndUpdate(
-    { key },
-    {
-      $inc: { count: 1 },
-      $setOnInsert: {
-        key,
-        createdAt: now,
-        expiresAt: new Date(now.getTime() + windowMs),
+    // Atomically increment or insert
+    const doc = await col.findOneAndUpdate(
+      { key },
+      {
+        $inc: { count: 1 },
+        $setOnInsert: {
+          key,
+          createdAt: now,
+          expiresAt: new Date(now.getTime() + windowMs),
+        },
       },
-    },
-    { upsert: true, returnDocument: "after" }
-  );
+      { upsert: true, returnDocument: "after" }
+    );
 
-  if (!doc) return { allowed: true, retryAfterSeconds: 0 };
+    if (!doc) return { allowed: true, retryAfterSeconds: 0 };
 
-  if (doc.count > limit) {
-    const expiresAtMs = doc.expiresAt ? new Date(doc.expiresAt).getTime() : now.getTime() + windowMs;
-    const retryAfterSeconds = Math.max(1, Math.ceil((expiresAtMs - now.getTime()) / 1000));
-    return { allowed: false, retryAfterSeconds };
+    if (doc.count > limit) {
+      const expiresAtMs = doc.expiresAt ? new Date(doc.expiresAt).getTime() : now.getTime() + windowMs;
+      const retryAfterSeconds = Math.max(1, Math.ceil((expiresAtMs - now.getTime()) / 1000));
+      return { allowed: false, retryAfterSeconds };
+    }
+
+    return { allowed: true, retryAfterSeconds: 0 };
+  } catch (err) {
+    console.warn("[RateLimit] MongoDB unavailable, bypassing check:", (err as any)?.message);
+    return { allowed: true, retryAfterSeconds: 0 };
   }
-
-  return { allowed: true, retryAfterSeconds: 0 };
 }
 
 export function errorResponse(message?: string, data: Record<string, any> = {}, status: number = 400): NextResponse {

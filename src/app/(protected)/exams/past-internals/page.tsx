@@ -3,11 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import API from "@/lib/api/axiosClient";
 import SessionCard from "@/components/utils/SessionCard";
-import { useToast } from "@/hooks/utils/useToast";
 import { Button } from "@/components/ui/button";
 import { useSessionValidator } from "@/hooks/auth/useSessionValidator";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Calendar, ChevronDown, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 interface SemesterItem {
   semester: number;
@@ -52,7 +50,6 @@ const parseMarkValue = (value: string): number => {
 };
 
 const PastInternalsPage: React.FC = () => {
-  const { toast } = useToast();
   const { sessionValid, sessionId } = useSessionValidator();
 
   const [semesters, setSemesters] = useState<SemesterItem[]>([]);
@@ -98,31 +95,26 @@ const PastInternalsPage: React.FC = () => {
     setError("");
 
     try {
-      const res = await API.post<PastInternalsResponse>("/srmapi/exams/past-internals", { sessionId });
+      const res = await API.post<PastInternalsResponse>("/srmapi/exams/past-internals", {
+        sessionId,
+      });
+
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to fetch semesters");
       }
 
-      const semesterList = res.data.past_internals.semesters || [];
-      setSemesters(semesterList);
-      setLastFetched(res.data.past_internals.last_fetched || "");
+      const payload = res.data.past_internals;
+      setSemesters(payload.semesters || []);
+      setLastFetched(payload.last_fetched || "");
 
-      if (semesterList.length === 0) {
-        setSelectedSemester(null);
-        setRows([]);
-        return;
+      const initialSemester = payload.selected_semester ?? payload.semesters?.[0]?.semester ?? null;
+      setSelectedSemester(initialSemester);
+
+      if (initialSemester) {
+        await fetchSemesterRows(initialSemester);
       }
-
-      const nextSelected = selectedSemester && semesterList.some((item) => item.semester === selectedSemester)
-        ? selectedSemester
-        : semesterList[0].semester;
-
-      setSelectedSemester(nextSelected);
-      await fetchSemesterRows(nextSelected);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err.message || "Failed to fetch past internals";
-      setError(msg);
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      setError(err?.response?.data?.message || err.message || "Failed to load past internals");
     } finally {
       setIsLoadingSemesters(false);
     }
@@ -134,17 +126,21 @@ const PastInternalsPage: React.FC = () => {
     setError("");
 
     try {
-      const res = await API.post<PastInternalsResponse>("/srmapi/exams/past-internals", { sessionId, semester });
+      const res = await API.post<PastInternalsResponse>("/srmapi/exams/past-internals", {
+        sessionId,
+        semester,
+      });
+
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to fetch marks");
       }
-      setRows(res.data.past_internals.rows || []);
-      setLastFetched(res.data.past_internals.last_fetched || "");
+
+      const payload = res.data.past_internals;
+      setRows(payload.rows || []);
+      setLastFetched(payload.last_fetched || "");
+      setSelectedSemester(payload.selected_semester ?? semester);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err.message || "Failed to fetch semester marks";
-      setError(msg);
-      setRows([]);
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      setError(err?.response?.data?.message || err.message || "Failed to fetch semester rows");
     } finally {
       setIsLoadingRows(false);
     }
@@ -156,157 +152,139 @@ const PastInternalsPage: React.FC = () => {
     }
   }, [sessionValid]);
 
-  const handleSemesterSelect = async (semester: number) => {
-    setSelectedSemester(semester);
-    setExpandedSubjects({});
-    await fetchSemesterRows(semester);
-  };
-
-  const toggleSubject = (subjectId: string) => {
-    setExpandedSubjects((prev) => ({ ...prev, [subjectId]: !prev[subjectId] }));
+  const toggleSubject = (id: string) => {
+    setExpandedSubjects((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {lastFetched && <p className="text-sm text-muted-foreground">Last fetched: {lastFetched}</p>}
+    <div className="flex flex-col gap-4 pb-28 max-w-4xl mx-auto w-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Past Internals
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {lastFetched ? `Updated: ${lastFetched}` : "Previous semesters continuous evaluation records"}
+          </p>
+        </div>
+
         {sessionValid && (
           <Button
+            variant="ghost"
+            size="sm"
             onClick={fetchSemesters}
             disabled={isLoadingSemesters || isLoadingRows}
-            className="flex items-center gap-2"
+            className="h-8 gap-1.5 text-xs rounded-xl"
           >
-            <RefreshCw
-              className={isLoadingSemesters || isLoadingRows ? "h-4 w-4 animate-spin" : "h-4 w-4"}
-            />
-            Refetch
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingSemesters ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
           </Button>
         )}
       </div>
 
-      {!sessionValid && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Required</CardTitle>
-            <CardDescription>Initiate a session to view past internals</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SessionCard />
-          </CardContent>
-        </Card>
-      )}
+      {!sessionValid && <SessionCard />}
 
       {error && sessionValid && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6 flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-          </CardContent>
-        </Card>
-      )}
-
-      {sessionValid && !isLoadingSemesters && semesters.length === 0 && !error && (
-        <Card>
-          <CardContent className="pt-6 text-center text-muted-foreground">
-            No past internal semesters are available for this account.
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-red-500 dark:text-red-400 text-xs">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
       )}
 
       {sessionValid && semesters.length > 0 && (
-        <Card>
-          <CardContent className="flex flex-wrap gap-2 mt-4">
+        <div className="space-y-4">
+          {/* Semester Selector Pill Bar */}
+          <div className="flex flex-wrap gap-1.5">
             {semesters.map((item) => (
-              <Button
+              <button
                 key={item.semester}
-                variant={selectedSemester === item.semester ? "default" : "outline"}
-                onClick={() => handleSemesterSelect(item.semester)}
+                onClick={() => fetchSemesterRows(item.semester)}
                 disabled={isLoadingRows}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+                  selectedSemester === item.semester
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {item.label}
-              </Button>
+              </button>
             ))}
-          </CardContent>
-        </Card>
-      )}
+          </div>
 
-      {sessionValid && selectedSemester && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-5 w-5" />
-              Semester {selectedSemester} Mark Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingRows ? (
-              <div className="text-sm text-muted-foreground">Loading semester marks...</div>
-            ) : groupedRows.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                No mark rows found for the selected semester.
-              </div>
-            ) : (
-              <div>
-                <div className="space-y-2">
-                  {groupedRows.map((row) => {
-                    const isExpanded = !!expandedSubjects[row.id];
-                    return (
-                      <div key={row.id} className="rounded-md border bg-background px-3 py-2">
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className="font-medium text-foreground">{row.code}</span>
-                              <span>Sem {row.semester}</span>
-                            </div>
-                            <p className="mt-0.5 text-sm leading-snug">{row.description}</p>
-                          </div>
-
-                          <p className="text-sm font-semibold sm:text-right">
-                            {row.total_mark_obtained.toFixed(2)}
-                            <span className="ml-1 font-normal text-muted-foreground">
-                              / {row.total_max_mark.toFixed(2)}
-                            </span>
-                          </p>
-                        </div>
-
-                        {row.components.length > 1 ? (
-                          <div className="mt-2 border-t pt-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleSubject(row.id)}
-                              className="flex w-full items-center justify-between text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                              <span>Breakdown ({row.components.length})</span>
-                              <ChevronDown
-                                className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                              />
-                            </button>
-
-                            {isExpanded && (
-                              <div className="mt-2 space-y-1">
-                                {row.components.map((component, componentIndex) => (
-                                  <div
-                                    key={`${row.id}-${component.subject_type}-${componentIndex}`}
-                                    className="flex items-start justify-between text-xs"
-                                  >
-                                    <span className="text-muted-foreground">{component.subject_type}</span>
-                                    <span className="font-medium">
-                                      {component.mark_obtained} / {component.max_mark}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+          {/* Grouped Rows List */}
+          {isLoadingRows ? (
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between px-4 py-3.5 animate-pulse">
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-2.5 w-20 bg-muted rounded" />
+                    <div className="h-3.5 w-44 bg-muted rounded" />
+                  </div>
+                  <div className="h-4 w-14 bg-muted rounded" />
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              ))}
+            </div>
+          ) : groupedRows.length === 0 ? (
+            <div className="p-8 rounded-2xl border border-border/60 bg-card text-center text-muted-foreground text-xs max-w-sm mx-auto">
+              No mark records found for Semester {selectedSemester}.
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+              {groupedRows.map((row) => {
+                const isExpanded = !!expandedSubjects[row.id];
+                return (
+                  <div key={row.id} className="transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
+                    {/* Main Row */}
+                    <div
+                      onClick={() => row.components.length > 1 && toggleSubject(row.id)}
+                      className={`flex items-center justify-between gap-3 px-4 py-3.5 ${
+                        row.components.length > 1 ? "cursor-pointer" : ""
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-mono font-semibold text-muted-foreground/70 uppercase">
+                          {row.code}
+                        </span>
+                        <p className="text-sm font-semibold text-foreground leading-snug truncate mt-0.5">
+                          {row.description}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <p className="text-sm font-bold font-mono text-foreground">
+                          {row.total_mark_obtained.toFixed(1)}
+                          <span className="text-xs text-muted-foreground font-normal"> / {row.total_max_mark.toFixed(1)}</span>
+                        </p>
+                        {row.components.length > 1 && (
+                          <div className="text-muted-foreground">
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sub components breakdown */}
+                    {isExpanded && row.components.length > 1 && (
+                      <div className="bg-black/[0.02] dark:bg-white/[0.02] px-4 py-3 border-t border-border/40">
+                        <div className="divide-y divide-border/30 rounded-xl border border-border/40 overflow-hidden bg-card">
+                          {row.components.map((comp, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 text-xs">
+                              <span className="text-muted-foreground">{comp.subject_type}</span>
+                              <span className="font-mono font-bold text-foreground">
+                                {comp.mark_obtained} / {comp.max_mark}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

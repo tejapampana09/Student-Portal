@@ -4,14 +4,9 @@ import React from "react";
 
 export default function AuroraBackground() {
   return (
-    <div className="fixed inset-0 pointer-events-none -z-50 overflow-hidden" aria-hidden="true">
-      {/* 🖼️ User Custom Wallpaper */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat app-custom-wallpaper"
-        style={{ backgroundImage: "url('/wallpaper.png?v=2')" }}
-      />
-      {/* 🪟 Subtle ambient translucent tone for text readability */}
-      <div className="absolute inset-0 bg-black/15 dark:bg-black/30" />
+    <div className="fixed inset-0 pointer-events-none -z-50 overflow-hidden select-none" aria-hidden="true">
+      {/* 🍏 Pure Clean Apple White Canvas - Crystal Clean, No Blobs */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#ffffff] via-[#fafbfc] to-[#f4f6f8] dark:bg-gradient-to-b dark:from-[#090d16] dark:via-[#0c1220] dark:to-[#080c14] transition-colors duration-500" />
     </div>
   );
 }

@@ -56,7 +56,7 @@ export interface StudentDataContextType {
   error: any;
   fetchFreshData: (override?: { sessionId?: string; sessionTime?: string }) => Promise<void>;
   initializeStudentData: () => Promise<any>;
-  initiateSession: () => Promise<{ sessionId?: string; sessionTime?: string; } | null>;
+  initiateSession: (password?: string) => Promise<{ sessionId?: string; sessionTime?: string; } | null>;
   loadCachedDataPrompt: boolean;
   useCachedData: () => void;
 }

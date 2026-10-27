@@ -93,9 +93,31 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lProfile.data, fetchFreshData, updateActiveAccount]);
 
-  const initiateSession = useCallback(async (): Promise<{ sessionId?: string; sessionTime?: string; } | null> => {
+  const initiateSession = useCallback(async (password?: string): Promise<{ sessionId?: string; sessionTime?: string; } | null> => {
     try {
-      const res = await API.get('/srmapi/initiate/session');
+      let effectivePassword = password;
+      if (!effectivePassword && typeof window !== "undefined") {
+        try {
+          effectivePassword = sessionStorage.getItem("srm_portal_key") || undefined;
+        } catch {}
+      }
+
+      const res = effectivePassword
+        ? await API.post('/srmapi/initiate/session', { password: effectivePassword })
+        : await API.get('/srmapi/initiate/session');
+
+
+      if (!res.data?.success) {
+        return null;
+      }
+
+      if (effectivePassword && typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("srm_portal_key", effectivePassword);
+        } catch {}
+      }
+
+
       const { sessionId: newSessionId, sessionTime: newSessionTime } = res.data;
 
       updateActiveAccount({ sessionId: newSessionId, sessionTime: newSessionTime, hasCachedData: false });
@@ -107,7 +129,7 @@ export const StudentDataProvider = ({ children }: { children: ReactNode }) => {
       if (errMsg.includes("SRM server is unreachable")) {
         setLoadCachedDataPrompt(true);
       }
-      console.error("Session initiation failed:", err);
+      console.warn("Session initiation failed:", errMsg);
       return null;
     }
   }, [updateActiveAccount, fetchFreshData]);

@@ -5,6 +5,7 @@ import { userBlockedResponse, paramatersNotMatched } from "@/server/utils/respon
 import { createAuthSession, enforceRateLimit, errorResponse, isAdmin, isBlocked } from "@/server/utils/functions";
 
 export async function POST(req: NextRequest) {
+    console.log("--> [LOGIN ROUTE] POST request received!");
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
     const rate = await enforceRateLimit(`login:ip:${ip}`, 30, 15 * 60 * 1000);
     if (!rate.allowed) {

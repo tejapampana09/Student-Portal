@@ -1,13 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, BookOpen, Calendar, CalendarCheck, Clock, RefreshCw } from "lucide-react";
+import { AlertCircle, CalendarCheck, Clock, RefreshCw } from "lucide-react";
 import API from "@/lib/api/axiosClient";
 import { useToast } from "@/hooks/utils/useToast";
 import { cn } from "@/shared/utils/functions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import SessionCard from "@/components/utils/SessionCard";
 
 interface AttendanceItem {
@@ -24,20 +21,6 @@ type AttendanceCheckCardProps = {
   refreshKey?: number;
 };
 
-const SkeletonCard = () => (
-  <Card className="animate-pulse">
-    <CardHeader className="pb-4">
-      <div className="flex items-center gap-4">
-        <div className="h-10 w-10 rounded-lg border bg-muted" />
-        <div className="space-y-2">
-          <div className="h-4 w-36 rounded bg-muted" />
-          <div className="h-3 w-24 rounded bg-muted" />
-        </div>
-      </div>
-    </CardHeader>
-  </Card>
-);
-
 export default function AttendanceCheckCard({ sessionValid, sessionId, refreshKey = 0 }: AttendanceCheckCardProps) {
   const { toast } = useToast();
   const [data, setData] = useState<AttendanceItem[]>([]);
@@ -47,7 +30,6 @@ export default function AttendanceCheckCard({ sessionValid, sessionId, refreshKe
 
   const fetchAttendance = async () => {
     if (!sessionValid || !sessionId) return;
-
     setIsLoading(true);
     setError("");
     try {
@@ -66,90 +48,95 @@ export default function AttendanceCheckCard({ sessionValid, sessionId, refreshKe
 
   useEffect(() => {
     if (sessionValid) fetchAttendance();
-    else {
-      setData([]);
-      setLastFetched("");
-      setError("");
-    }
+    else { setData([]); setLastFetched(""); setError(""); }
   }, [sessionValid, sessionId, refreshKey]);
 
   const isPresent = (status: string) => status.toUpperCase() === "P";
 
   return (
-    <Card className="min-w-0 max-w-full overflow-hidden">
-      <CardHeader className="min-w-0 px-4 sm:px-6">
-        <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="min-w-0">
-            <CardTitle className="break-words">Check Attendance</CardTitle>
-            <CardDescription className="break-words">Today&apos;s attendance from the active SRM session.</CardDescription>
-          </div>
-          {sessionValid && (
-            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3 xl:flex-nowrap">
-              {lastFetched && <span className="min-w-0 break-words text-xs text-muted-foreground">Updated: {lastFetched}</span>}
-              <Button className="shrink-0" variant="outline" size="sm" onClick={fetchAttendance} disabled={isLoading}>
-                <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
-                Refresh
-              </Button>
-            </div>
+    <div className="flex flex-col gap-3">
+
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Today&apos;s Attendance</p>
+          {lastFetched && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">Updated: {lastFetched}</p>
           )}
         </div>
-      </CardHeader>
-
-      <CardContent className="min-w-0 space-y-4 px-4 sm:px-6">
-        {!sessionValid && <SessionCard />}
-
-        {error && sessionValid && (
-          <div className="flex items-center gap-2 rounded-md border border-destructive p-4 text-sm text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-          </div>
+        {sessionValid && (
+          <Button variant="ghost" size="sm" onClick={fetchAttendance} disabled={isLoading} className="h-8 gap-1.5 text-xs">
+            <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
         )}
+      </div>
 
-        {isLoading && <div className="space-y-3">{Array.from({ length: 3 }).map((_, index) => <SkeletonCard key={index} />)}</div>}
+      {/* No session */}
+      {!sessionValid && <SessionCard />}
 
-        <AnimatePresence>
-          {sessionValid && !isLoading && data.length > 0 && (
-            <div className="space-y-3">
-              {data.map((item, index) => (
-                <motion.div
-                  key={`${item.date}-${item.hour}-${index}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, delay: index * 0.03 }}
-                >
-                  <div className="flex min-w-0 flex-col gap-3 rounded-lg border p-3 sm:p-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="rounded-lg border border-primary/20 bg-primary/10 p-2">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{item.subject}</p>
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {item.date} &middot; {item.day}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" />{item.hour}</span>
-                      <Badge variant="outline" className={cn("rounded-full px-3 py-1", isPresent(item.status) ? "border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-400" : "border-red-300 bg-red-100 text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-700")}>
-                        {isPresent(item.status) ? "Present" : "Absent"}
-                      </Badge>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+      {/* Error */}
+      {error && sessionValid && (
+        <div className="flex items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Loading skeleton rows */}
+      {isLoading && (
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 py-3 border-b border-border/50 animate-pulse">
+              <div className="h-3 w-3 rounded-full bg-muted shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 w-3/4 rounded bg-muted" />
+                <div className="h-2.5 w-1/2 rounded bg-muted" />
+              </div>
+              <div className="h-5 w-14 rounded-full bg-muted" />
             </div>
-          )}
-        </AnimatePresence>
+          ))}
+        </div>
+      )}
 
-        {sessionValid && !isLoading && data.length === 0 && !error && (
-          <div className="space-y-2 py-4 text-center">
-            <CalendarCheck className="mx-auto h-10 w-10 text-muted-foreground/60" strokeWidth={1.5} />
-            <p className="text-sm text-muted-foreground">No attendance records available.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* List */}
+      {sessionValid && !isLoading && data.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+          {data.map((item, index) => (
+            <div key={`${item.date}-${item.hour}-${index}`} className="flex items-center gap-3 px-4 py-3">
+              {/* Status dot */}
+              <span className={`h-2 w-2 rounded-full shrink-0 ${isPresent(item.status) ? "bg-emerald-500" : "bg-red-500"}`} />
+
+              {/* Subject + meta */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{item.subject}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />{item.hour}
+                  <span className="opacity-40">·</span>
+                  {item.date} {item.day}
+                </p>
+              </div>
+
+              {/* Badge */}
+              <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full shrink-0 ${
+                isPresent(item.status)
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : "bg-red-500/15 text-red-600 dark:text-red-400"
+              }`}>
+                {isPresent(item.status) ? "Present" : "Absent"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty */}
+      {sessionValid && !isLoading && data.length === 0 && !error && (
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <CalendarCheck className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+          <p className="text-sm text-muted-foreground">No attendance records for today.</p>
+        </div>
+      )}
+    </div>
   );
 }

@@ -8,10 +8,18 @@ export async function GET(req: NextRequest) {
     const auth = await requireAuthResponse(req);
     if (auth instanceof NextResponse) return auth;
     try {
-        const initDb = await useMongo();
-        const db = initDb.db("college_db").collection<any>("users");
+        if (!process.env.MONGO_URI) {
+            return NextResponse.json({ success: true, history: [] });
+        }
+        let initDb: any;
+        try {
+            initDb = await useMongo();
+        } catch {
+            return NextResponse.json({ success: true, history: [] });
+        }
+        const db = initDb.db("college_db").collection("users");
         const user = await db.findOne({ username: auth.payload.username }, { projection: { attendanceHistory: 1 } });
-        if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
+        if (!user) return NextResponse.json({ success: true, history: [] });
 
         const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
         const sortedHistory = (user.attendanceHistory || [])
@@ -32,8 +40,18 @@ export async function POST(req: NextRequest) {
         const auth = await requireAuthResponse(req);
         if (auth instanceof NextResponse) return auth;
 
-        const initDb = await useMongo();
-        const db = initDb.db("college_db").collection<any>("users");
+        if (!process.env.MONGO_URI) {
+            return errorResponse("Attendance history unavailable without DB", { action: "none" }, 404);
+        }
+
+        let initDb: any;
+        try {
+            initDb = await useMongo();
+        } catch {
+            return errorResponse("Database unavailable", { action: "none" }, 503);
+        }
+
+        const db = initDb.db("college_db").collection("users");
         const user = await db.findOne({ username: auth.payload.username }, { projection: { attendanceHistory: 1 } });
         if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
 
@@ -52,19 +70,15 @@ export async function POST(req: NextRequest) {
                     { $set: { "attendanceHistory.$.data": encryptData(decryptedData) } }
                 );
             }
-
-            const parsedData = typeof decryptedData === "string"
-                ? JSON.parse(decryptedData.trim().startsWith("[") ? decryptedData : `[${decryptedData}]`)
-                : decryptedData;
-            return NextResponse.json({ success: true, data: parsedData, date: entry.date });
-        } catch (decryptError) {
-            if (decryptError instanceof Error && decryptError.message === "PASSWORD_REQUIRED") {
-                return NextResponse.json({ success: false, code: "PASSWORD_REQUIRED", message: "Please enter your password to view this attendance data" }, { status: 401 });
+            return NextResponse.json({ success: true, data: decryptedData });
+        } catch (decryptErr: any) {
+            if (decryptErr.message === "PASSWORD_REQUIRED") {
+                return errorResponse("Password required for legacy data", { action: "request_password" }, 400);
             }
-            return NextResponse.json({ success: false, code: "INVALID_PASSWORD", message: "Unable to decrypt attendance data." }, { status: 401 });
+            return errorResponse("Failed to decrypt attendance data", { action: "none" }, 500);
         }
     } catch (err) {
-        console.log("Error From /api/srmapi/attendance/history POST:", err);
+        console.log("Error From /srmapi/attendance/history POST:", err);
         return errorResponse(undefined, {}, 500);
     }
 }

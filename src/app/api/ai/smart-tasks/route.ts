@@ -11,11 +11,20 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
-      { username: auth.payload.username },
-      { projection: { data: 1, courseraCourses: 1, codingProfiles: 1, smartTasks: 1, solvedDsaProblems: 1 } }
-    );
+    let initDb: any = null;
+    let user: any = null;
+
+    if (process.env.MONGO_URI) {
+      try {
+        initDb = await useMongo();
+        user = await initDb.db("college_db").collection("users").findOne(
+          { username: auth.payload.username },
+          { projection: { data: 1, courseraCourses: 1, codingProfiles: 1, smartTasks: 1, solvedDsaProblems: 1 } }
+        );
+      } catch (dbErr) {
+        console.warn("[smart-tasks] Mongo unavailable:", (dbErr as any)?.message);
+      }
+    }
 
     if (user?.smartTasks && Array.isArray(user.smartTasks) && user.smartTasks.length > 0) {
       return NextResponse.json({ success: true, tasks: user.smartTasks });
@@ -63,14 +72,19 @@ export async function GET(req: NextRequest) {
       leetcodeStreak: 3,
     });
 
-    await initDb.db("college_db").collection("users").updateOne(
-      { username: auth.payload.username },
-      { $set: { smartTasks: tasks } }
-    );
+    if (initDb) {
+      try {
+        await initDb.db("college_db").collection("users").updateOne(
+          { username: auth.payload.username },
+          { $set: { smartTasks: tasks } }
+        );
+      } catch {}
+    }
 
     return NextResponse.json({ success: true, tasks });
   } catch (error: any) {
-    return errorResponse("Failed to generate smart tasks", {}, 500);
+    console.error("[smart-tasks] Error generating tasks:", error);
+    return NextResponse.json({ success: true, tasks: [] });
   }
 }
 
@@ -81,26 +95,43 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, tasks, task, taskTitle } = body;
-    const initDb = await useMongo();
-    const usersCollection = initDb.db("college_db").collection("users");
+
+    let initDb: any = null;
+    let usersCollection: any = null;
+
+    if (process.env.MONGO_URI) {
+      try {
+        initDb = await useMongo();
+        usersCollection = initDb.db("college_db").collection("users");
+      } catch (dbErr) {
+        console.warn("[smart-tasks] Mongo unavailable for POST:", (dbErr as any)?.message);
+      }
+    }
 
     if (action === "save_all") {
-      await usersCollection.updateOne(
-        { username: auth.payload.username },
-        { $set: { smartTasks: tasks } },
-        { upsert: true }
-      );
+      if (usersCollection) {
+        await usersCollection.updateOne(
+          { username: auth.payload.username },
+          { $set: { smartTasks: tasks } },
+          { upsert: true }
+        );
+      }
       return NextResponse.json({ success: true, message: "Tasks updated" });
     }
 
     if (action === "toggle") {
-      const user = await usersCollection.findOne({ username: auth.payload.username });
-      const currentTasks: any[] = user?.smartTasks || [];
-      const updated = currentTasks.map((t: any) => (t.id === task.id ? { ...t, completed: !t.completed } : t));
-      await usersCollection.updateOne(
-        { username: auth.payload.username },
-        { $set: { smartTasks: updated } }
-      );
+      let updated: any[] = [];
+      if (usersCollection) {
+        const user = await usersCollection.findOne({ username: auth.payload.username });
+        const currentTasks: any[] = user?.smartTasks || [];
+        updated = currentTasks.map((t: any) => (t.id === task.id ? { ...t, completed: !t.completed } : t));
+        await usersCollection.updateOne(
+          { username: auth.payload.username },
+          { $set: { smartTasks: updated } }
+        );
+      } else {
+        updated = [task];
+      }
       return NextResponse.json({ success: true, tasks: updated });
     }
 
@@ -110,12 +141,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "regenerate") {
-      const user = await usersCollection.findOne({ username: auth.payload.username });
       let studentData: any = null;
-      if (user?.data) {
-        try {
-          studentData = decryptData(user.data);
-        } catch {}
+      if (usersCollection) {
+        const user = await usersCollection.findOne({ username: auth.payload.username });
+        if (user?.data) {
+          try {
+            studentData = decryptData(user.data);
+          } catch {}
+        }
       }
 
       const currentDay = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date());
@@ -140,28 +173,30 @@ export async function POST(req: NextRequest) {
         return pct < 75;
       });
 
-      const potd = getStriverProblemOfTheDay(user?.solvedDsaProblems || []);
+      const potd = getStriverProblemOfTheDay([]);
 
-      const newTasks = await generateSmartDayPlan({
+      const freshTasks = await generateSmartDayPlan({
         studentName: studentData?.profile?.studentName || auth.payload.username,
         currentDay,
         todayClasses,
         lowAttendance,
-        courseraCourses: user?.courseraCourses || [],
+        courseraCourses: [],
         striverPotd: potd,
         leetcodeStreak: 3,
       });
 
-      await usersCollection.updateOne(
-        { username: auth.payload.username },
-        { $set: { smartTasks: newTasks } }
-      );
+      if (usersCollection) {
+        await usersCollection.updateOne(
+          { username: auth.payload.username },
+          { $set: { smartTasks: freshTasks } }
+        );
+      }
 
-      return NextResponse.json({ success: true, tasks: newTasks });
+      return NextResponse.json({ success: true, tasks: freshTasks });
     }
 
-    return errorResponse("Invalid action");
+    return errorResponse("Invalid action", {}, 400);
   } catch (error: any) {
-    return errorResponse("Failed to update smart tasks", {}, 500);
+    return errorResponse("Failed to process smart task request", {}, 500);
   }
 }

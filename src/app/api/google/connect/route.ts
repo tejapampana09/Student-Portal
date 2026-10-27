@@ -27,6 +27,21 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  // Gracefully check if OAuth credentials and DB are available
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return NextResponse.json({
+      success: false,
+      message: "Google OAuth credentials are not configured in environment (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).",
+    });
+  }
+
+  if (!process.env.MONGO_URI) {
+    return NextResponse.json({
+      success: false,
+      message: "Database connection (MONGO_URI) is not configured for OAuth session storage.",
+    });
+  }
+
   try {
     const origin = getCanonicalOrigin(req);
     const redirectUri = `${origin}/api/google/callback`;
@@ -53,6 +68,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, authUrl });
   } catch (error: any) {
     console.error("Error generating Google Auth URL:", error);
-    return errorResponse("Failed to generate Google Auth URL", {}, 500);
+    return NextResponse.json({
+      success: false,
+      message: error?.message || "Failed to generate Google Auth URL",
+    });
   }
 }

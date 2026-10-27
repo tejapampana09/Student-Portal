@@ -7,9 +7,27 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  if (!process.env.MONGO_URI) {
+    return NextResponse.json({
+      success: true,
+      enabled: false,
+      publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    });
+  }
+
   try {
-    const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
+    let initDb: any;
+    try {
+      initDb = await useMongo();
+    } catch {
+      return NextResponse.json({
+        success: true,
+        enabled: false,
+        publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+      });
+    }
+
+    const user = await initDb.db("college_db").collection("users").findOne(
       { username: auth.payload.username },
       { projection: { pushSubscription: 1 } }
     );
@@ -20,13 +38,21 @@ export async function GET(req: NextRequest) {
       publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
     });
   } catch (error: any) {
-    return errorResponse("Failed to fetch push status", {}, 500);
+    return NextResponse.json({
+      success: true,
+      enabled: false,
+      publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+    });
   }
 }
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
+
+  if (!process.env.MONGO_URI) {
+    return errorResponse("Push notifications require database configuration.", {}, 503);
+  }
 
   try {
     const body = await req.json();

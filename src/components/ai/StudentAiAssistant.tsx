@@ -196,11 +196,11 @@ export default function StudentAiAssistant() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 sm:bottom-6 right-5 z-40 group flex items-center gap-2.5 p-3.5 sm:px-4 sm:py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 border border-white/30 backdrop-blur-xl"
+          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2.5 p-2.5 sm:px-3.5 sm:py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 border border-white/30 backdrop-blur-xl"
           aria-label="Open SRMAP AI Copilot & Voice Assistant"
         >
           <div className="relative flex items-center">
-            <Sparkles className="h-5 w-5 animate-pulse text-amber-300" />
+            <Sparkles className="h-4 w-4 animate-pulse text-amber-300" />
             <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
           </div>
           <span className="hidden sm:inline font-bold text-sm tracking-wide">AI Copilot</span>
@@ -212,7 +212,7 @@ export default function StudentAiAssistant() {
 
       {/* 🪟 AI Copilot & Voice Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col rounded-3xl border border-white/25 dark:border-white/15 bg-white/85 dark:bg-slate-950/90 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col rounded-3xl border border-white/25 dark:border-white/15 bg-white/85 dark:bg-slate-950/90 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-white/15 bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-purple-600/15">
             <div className="flex items-center gap-2.5">

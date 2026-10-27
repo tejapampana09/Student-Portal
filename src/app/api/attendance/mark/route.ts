@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     const cleanCode = code.trim().toUpperCase();
 
     const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
+    const user = await initDb.db("college_db").collection("users").findOne(
       { username: auth.payload.username },
       { projection: { sessionId: 1, session_time: 1 } }
     );

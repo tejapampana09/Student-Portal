@@ -1,15 +1,15 @@
 {
-  "name": "SRMAP Student Portal",
-  "short_name": "SRMAP Portal",
-  "description": "Next-Gen Apple Liquid Glass academic portal with attendance tracking, real GPA calculator, and timetable for SRM University AP.",
-  "id": "/",
-  "start_url": "/",
+  "name": "Student Corner - SRM AP",
+  "short_name": "Student Corner",
+  "description": "Student portal for SRM University AP students to track attendance, calculate CGPA, view timetable, and access resources.",
+  "id": "srmap-student-corner",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "display_override": ["standalone", "window-controls-overlay", "browser"],
-  "background_color": "#0a0d14",
-  "theme_color": "#0a0d14",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
   "categories": ["education", "productivity"],
   "icons": [
     {
@@ -41,6 +41,52 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mark Attendance",
+      "short_name": "Mark",
+      "description": "Quickly submit attendance code",
+      "url": "/markattendance",
+      "icons": [{ "src": "/icons/192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Attendance Tracker",
+      "short_name": "Attendance",
+      "description": "View subject attendance percentages",
+      "url": "/attendance",
+      "icons": [{ "src": "/icons/192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Today's Timetable",
+      "short_name": "Timetable",
+      "description": "View daily schedule and class timings",
+      "url": "/timetable",
+      "icons": [{ "src": "/icons/192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Classroom",
+      "short_name": "Classroom",
+      "description": "Access classroom and course materials",
+      "url": "/classroom",
+      "icons": [{ "src": "/icons/192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile.jpg",
+      "sizes": "384x814",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Student Corner Mobile Dashboard"
+    },
+    {
+      "src": "/screenshots/pc.jpg",
+      "sizes": "1393x795",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Student Corner Desktop Portal"
     }
   ]
 }

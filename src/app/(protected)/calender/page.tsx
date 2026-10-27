@@ -1,10 +1,7 @@
 "use client";
-import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useRef } from "react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import calendarData from "@/static/academic_calendar.json";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
 
 interface CalendarEvent {
   id: number;
@@ -20,17 +17,8 @@ interface Holiday {
   day: string;
 }
 
-interface CalendarData {
-  oddSemesterData: CalendarEvent[];
-  evenSemesterData: CalendarEvent[];
-  summerTermData: CalendarEvent[];
-  oddSemesterHolidays: Holiday[];
-  evenSemesterHolidays: Holiday[];
-  importantNotes: string[];
-}
-
 const AcademicCalendar = () => {
-  const [activeTab, setActiveTab] = useState("odd");
+  const [activeTab, setActiveTab] = useState<"odd" | "even" | "summer">("odd");
   const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const currentDate = new Date();
 
@@ -38,6 +26,7 @@ const AcademicCalendar = () => {
     const [day, month, year] = dateString.split(".");
     return new Date(`${year}-${month}-${day}`);
   };
+
   const formatDate = (dateString: string): string => {
     return parseDate(dateString).toLocaleDateString("en-US", {
       day: "numeric",
@@ -52,274 +41,161 @@ const AcademicCalendar = () => {
     const endDate = parts[1] ? parseDate(parts[1]) : parseDate(parts[0]);
     return endDate < currentDate;
   };
-  const isPassed = (date: string): boolean => date.includes(" - ") ? isDateRangePassed(date) : isDatePassed(date);
+  const isPassed = (date: string): boolean =>
+    date.includes(" - ") ? isDateRangePassed(date) : isDatePassed(date);
+
+  const tabEvents: CalendarEvent[] =
+    activeTab === "odd"
+      ? calendarData.oddSemesterData
+      : activeTab === "even"
+      ? calendarData.evenSemesterData
+      : calendarData.summerTermData;
+
+  const tabHolidays: Holiday[] =
+    activeTab === "odd"
+      ? calendarData.oddSemesterHolidays
+      : activeTab === "even"
+      ? calendarData.evenSemesterHolidays
+      : [];
 
   useEffect(() => {
-    if (!calendarData) return;
-
-    const tabMap: Record<string, CalendarEvent[]> = {
-      odd: calendarData.oddSemesterData,
-      even: calendarData.evenSemesterData,
-      summer: calendarData.summerTermData,
-    };
-
-    const currentTabData = tabMap[activeTab] ?? [];
-    const currentEventIndex = currentTabData.findIndex(
-      (item) => !isPassed(item.date)
-    );
-
-    if (
-      currentEventIndex !== -1 &&
-      scrollRefs.current[`${activeTab}-${currentEventIndex}`]
-    ) {
+    const currentEventIndex = tabEvents.findIndex((item) => !isPassed(item.date));
+    if (currentEventIndex !== -1 && scrollRefs.current[`${activeTab}-${currentEventIndex}`]) {
       setTimeout(() => {
-        scrollRefs.current[`${activeTab}-${currentEventIndex}`]?.scrollIntoView(
-          { behavior: "smooth", block: "center" }
-        );
+        scrollRefs.current[`${activeTab}-${currentEventIndex}`]?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
       }, 300);
     }
-  }, [activeTab, calendarData]);
-
-  const renderEventCard = (
-    item: CalendarEvent,
-    index: number,
-    type: string
-  ) => {
-    const passed = isPassed(item.date);
-    return (
-      <div
-        key={item.id}
-        ref={(el) => {
-          scrollRefs.current[`${type}-${index}`] = el;
-        }}
-        className={`p-3 border rounded-lg ${
-          passed ? "bg-green-50 border-green-200 dark:text-black" : ""
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-          <div className="flex-1">
-            <h4 className="font-medium text-sm sm:text-base">{item.details}</h4>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              {item.day}
-            </p>
-          </div>
-          <Badge
-            variant={passed ? "default" : "outline"}
-            className={`whitespace-nowrap text-xs sm:text-sm ${
-              passed
-                ? "bg-green-500 dark:text-white hover:bg-green-600"
-                : ""
-            }`}
-          >
-            {item.date.includes(" - ")
-              ? item.date
-                  .split(" - ")
-                  .map((d) => formatDate(d))
-                  .join(" - ")
-              : formatDate(item.date)}
-          </Badge>
-        </div>
-      </div>
-    );
-  };
-
-  const renderHolidayCard = (holiday: Holiday) => {
-    const passed = isDatePassed(holiday.date);
-    return (
-      <div
-        key={holiday.id}
-        className={`p-3 border rounded-lg ${
-          passed ? "bg-green-50 border-green-200 dark:text-black" : ""
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-          <div className="flex-1">
-            <h4 className="font-medium text-sm sm:text-base">
-              {holiday.occasion}
-            </h4>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              {holiday.day}
-            </p>
-          </div>
-          <Badge
-            variant={passed ? "default" : "outline"}
-            className={`whitespace-nowrap text-xs sm:text-sm ${
-              passed
-                ? "bg-green-500 dark:text-white hover:bg-green-600"
-                : ""
-            }`}
-          >
-            {formatDate(holiday.date)}
-          </Badge>
-        </div>
-      </div>
-    );
-  };
-
-  if (!calendarData) {
-    return (
-      <div className="w-full flex items-center justify-center py-20 text-muted-foreground text-sm">
-        Loading calendar data…
-      </div>
-    );
-  }
+  }, [activeTab]);
 
   return (
-    <div className="w-full">
-      <div className="mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">
-          Academic Calendar AY 2025-26
-        </h2>
-        <p className="text-muted-foreground text-xs sm:text-sm md:text-base">
-          SRM University-AP, Andhra Pradesh – Applicable to all programs of UG,
-          PG &amp; PhD
+    <div className="flex flex-col gap-4 pb-28 max-w-4xl mx-auto w-full">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          Academic Calendar
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          AY 2025-26 schedule & official university holidays
         </p>
       </div>
 
-      <Tabs
-        value={activeTab}
-        className="w-full"
-        onValueChange={setActiveTab}
-      >
-        <TabsList className="grid w-full grid-cols-3 mb-4 sm:mb-6">
-          <TabsTrigger value="odd" className="text-xs sm:text-sm">
-            Odd
-          </TabsTrigger>
-          <TabsTrigger value="even" className="text-xs sm:text-sm">
-            Even
-          </TabsTrigger>
-          <TabsTrigger value="summer" className="text-xs sm:text-sm">
-            Summer
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="odd">
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-            <Card className="overflow-hidden">
-              <CardHeader className="p-3 sm:p-4 md:p-6">
-                <CardTitle className="text-base sm:text-lg md:text-xl">
-                  Odd Semester Schedule
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Academic Year 2025-26
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <ScrollArea className="h-[300px] sm:h-[400px] md:h-[500px] pr-3">
-                  <div className="space-y-2 sm:space-y-3">
-                    {calendarData.oddSemesterData.map((item, index) =>
-                      renderEventCard(item, index, "odd")
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardHeader className="p-3 sm:p-4 md:p-6">
-                <CardTitle className="text-base sm:text-lg md:text-xl">
-                  Holidays – Odd Semester
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  AY 2025-26
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <ScrollArea className="h-[300px] sm:h-[400px] md:h-[500px] pr-3">
-                  <div className="space-y-2 sm:space-y-3">
-                    {calendarData.oddSemesterHolidays.map((holiday) =>
-                      renderHolidayCard(holiday)
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="even">
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
-            <Card className="overflow-hidden">
-              <CardHeader className="p-3 sm:p-4 md:p-6">
-                <CardTitle className="text-base sm:text-lg md:text-xl">
-                  Even Semester Schedule
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Academic Year 2025-26
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <ScrollArea className="h-[300px] sm:h-[400px] md:h-[500px] pr-3">
-                  <div className="space-y-2 sm:space-y-3">
-                    {calendarData.evenSemesterData.map((item, index) =>
-                      renderEventCard(item, index, "even")
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden">
-              <CardHeader className="p-3 sm:p-4 md:p-6">
-                <CardTitle className="text-base sm:text-lg md:text-xl">
-                  Holidays – Even Semester
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  AY 2025-26
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-3 sm:p-4 md:p-6">
-                <ScrollArea className="h-[300px] sm:h-[400px] md:h-[500px] pr-3">
-                  <div className="space-y-2 sm:space-y-3">
-                    {calendarData.evenSemesterHolidays.map((holiday) =>
-                      renderHolidayCard(holiday)
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="summer">
-          <Card className="overflow-hidden">
-            <CardHeader className="p-3 sm:p-4 md:p-6">
-              <CardTitle className="text-base sm:text-lg md:text-xl">
-                Summer Term Schedule (Optional)
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Academic Year 2025-26
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 md:p-6">
-              <ScrollArea className="h-[250px] sm:h-[300px] md:h-[350px] pr-3">
-                <div className="space-y-2 sm:space-y-3">
-                  {calendarData.summerTermData.map((item, index) =>
-                    renderEventCard(item, index, "summer")
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <div className="mt-4 sm:mt-6">
-        <Card>
-          <CardHeader className="p-3 sm:p-4 md:p-6">
-            <CardTitle className="text-base sm:text-lg md:text-xl">
-              Important Notes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 sm:p-4 md:p-6">
-            <ul className="list-disc pl-4 sm:pl-5 space-y-1 sm:space-y-2 text-xs sm:text-sm md:text-base">
-              {calendarData.importantNotes.map((note, idx) => (
-                <li key={idx}>{note}</li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      {/* Semester Switcher Tabs */}
+      <div className="flex items-center gap-1.5 rounded-2xl bg-black/5 dark:bg-white/5 p-1 w-full sm:w-auto self-start">
+        {(["odd", "even", "summer"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-xl capitalize transition-all ${
+              activeTab === tab
+                ? "bg-foreground text-background shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab} Semester
+          </button>
+        ))}
       </div>
+
+      {/* Events & Holidays Split List */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Academic Events List */}
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Schedule of Events ({tabEvents.length})
+          </p>
+          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40 max-h-[560px] overflow-y-auto">
+            {tabEvents.map((item, index) => {
+              const passed = isPassed(item.date);
+              return (
+                <div
+                  key={item.id}
+                  ref={(el) => {
+                    scrollRefs.current[`${activeTab}-${index}`] = el;
+                  }}
+                  className={`flex items-start justify-between gap-3 px-4 py-3 transition-colors ${
+                    passed ? "opacity-60 bg-black/[0.01] dark:bg-white/[0.01]" : ""
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-xs font-semibold leading-snug ${passed ? "text-muted-foreground" : "text-foreground"}`}>
+                      {item.details}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.day}</p>
+                  </div>
+                  <span
+                    className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap ${
+                      passed
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold"
+                    }`}
+                  >
+                    {item.date.includes(" - ")
+                      ? item.date.split(" - ").map((d) => formatDate(d)).join(" - ")
+                      : formatDate(item.date)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Holidays List */}
+        {tabHolidays.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              University Holidays ({tabHolidays.length})
+            </p>
+            <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40 max-h-[560px] overflow-y-auto">
+              {tabHolidays.map((holiday) => {
+                const passed = isDatePassed(holiday.date);
+                return (
+                  <div
+                    key={holiday.id}
+                    className={`flex items-start justify-between gap-3 px-4 py-3 transition-colors ${
+                      passed ? "opacity-60 bg-black/[0.01] dark:bg-white/[0.01]" : ""
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-semibold leading-snug ${passed ? "text-muted-foreground" : "text-foreground"}`}>
+                        {holiday.occasion}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{holiday.day}</p>
+                    </div>
+                    <span
+                      className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md shrink-0 whitespace-nowrap ${
+                        passed
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold"
+                      }`}
+                    >
+                      {formatDate(holiday.date)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Important Notes */}
+      {calendarData.importantNotes && calendarData.importantNotes.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Important Guidelines & Notes
+          </p>
+          <ul className="list-disc pl-4 space-y-1 text-xs text-muted-foreground">
+            {calendarData.importantNotes.map((note, idx) => (
+              <li key={idx} className="leading-relaxed">
+                {note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

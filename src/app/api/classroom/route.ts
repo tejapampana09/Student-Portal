@@ -9,9 +9,21 @@ export async function GET(req: NextRequest) {
 
   const refresh = req.nextUrl.searchParams.get("refresh") === "true";
 
+  if (!process.env.MONGO_URI) {
+    return NextResponse.json({
+      success: true,
+      isConnected: false,
+      userEmail: "",
+      courses: [],
+      allAssignments: [],
+      allAnnouncements: [],
+      allMaterials: [],
+    });
+  }
+
   try {
     const initDb = await useMongo();
-    const userCollection = initDb.db("college_db").collection<any>("users");
+    const userCollection = initDb.db("college_db").collection("users");
     const user = await userCollection.findOne({ username: auth.payload.username });
 
     const rawToken = user?.google?.refreshToken || user?.gmail?.refreshToken;

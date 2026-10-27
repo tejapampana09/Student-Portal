@@ -32,21 +32,30 @@ export async function GET(req: NextRequest) {
 
   try {
     const username = auth.payload.username;
-    const initDb = await useMongo();
-    const db = initDb.db("college_db");
-    const userCol = db.collection("users");
-    const notifCol = db.collection("notifications");
+    let dbSettings: Partial<Record<SyncedSettingsKey, any>> = {};
+    let notifications: any[] = [];
 
-    const existingUser = await userCol.findOne({
-      username: { $regex: new RegExp(`^${username}$`, "i") },
-    });
+    if (process.env.MONGO_URI) {
+      try {
+        const initDb = await useMongo();
+        const db = initDb.db("college_db");
+        const userCol = db.collection("users");
+        const notifCol = db.collection("notifications");
 
-    const dbSettings = filterAllowedSettings(existingUser?.settings || {});
+        const existingUser = await userCol.findOne({
+          username: { $regex: new RegExp(`^${username}$`, "i") },
+        });
 
-    const notifications = await notifCol
-      .find({}, { projection: { _id: 0, notificationBy: 0 } })
-      .sort({ createdAt: -1 })
-      .toArray();
+        dbSettings = filterAllowedSettings(existingUser?.settings || {});
+
+        notifications = await notifCol
+          .find({}, { projection: { _id: 0, notificationBy: 0 } })
+          .sort({ createdAt: -1 })
+          .toArray();
+      } catch (dbErr) {
+        console.warn("[Sync GET] MongoDB unavailable, continuing without remote cache:", (dbErr as any)?.message);
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -73,33 +82,41 @@ export async function POST(req: NextRequest) {
     }
 
     const incomingSettings = filterAllowedSettings(body.settings || body);
+    let filteredFinal = incomingSettings;
+    let notifications: any[] = [];
 
-    const initDb = await useMongo();
-    const db = initDb.db("college_db");
-    const userCol = db.collection("users");
-    const notifCol = db.collection("notifications");
+    if (process.env.MONGO_URI) {
+      try {
+        const initDb = await useMongo();
+        const db = initDb.db("college_db");
+        const userCol = db.collection("users");
+        const notifCol = db.collection("notifications");
 
-    const existingUser = await userCol.findOne({
-      username: { $regex: new RegExp(`^${username}$`, "i") },
-    });
+        const existingUser = await userCol.findOne({
+          username: { $regex: new RegExp(`^${username}$`, "i") },
+        });
 
-    const currentDbSettings = existingUser?.settings || {};
-    const finalSettings = { ...currentDbSettings, ...incomingSettings };
+        const currentDbSettings = existingUser?.settings || {};
+        const finalSettings = { ...currentDbSettings, ...incomingSettings };
 
-    if (Object.keys(incomingSettings).length > 0) {
-      await userCol.updateOne(
-        { username: existingUser?.username || username },
-        { $set: { settings: finalSettings } },
-        { upsert: true }
-      );
+        if (Object.keys(incomingSettings).length > 0) {
+          await userCol.updateOne(
+            { username: existingUser?.username || username },
+            { $set: { settings: finalSettings } },
+            { upsert: true }
+          );
+        }
+
+        filteredFinal = filterAllowedSettings(finalSettings);
+
+        notifications = await notifCol
+          .find({}, { projection: { _id: 0, notificationBy: 0 } })
+          .sort({ createdAt: -1 })
+          .toArray();
+      } catch (dbErr) {
+        console.warn("[Sync POST] MongoDB unavailable, continuing without remote sync:", (dbErr as any)?.message);
+      }
     }
-
-    const filteredFinal = filterAllowedSettings(finalSettings);
-
-    const notifications = await notifCol
-      .find({}, { projection: { _id: 0, notificationBy: 0 } })
-      .sort({ createdAt: -1 })
-      .toArray();
 
     return NextResponse.json({
       success: true,

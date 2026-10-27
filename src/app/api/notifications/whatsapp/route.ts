@@ -12,9 +12,25 @@ export async function GET(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  if (!process.env.MONGO_URI) {
+    return NextResponse.json({
+      success: true,
+      whatsapp: { enabled: false, phone: "" },
+    });
+  }
+
   try {
-    const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
+    let initDb: any;
+    try {
+      initDb = await useMongo();
+    } catch {
+      return NextResponse.json({
+        success: true,
+        whatsapp: { enabled: false, phone: "" },
+      });
+    }
+
+    const user = await initDb.db("college_db").collection("users").findOne(
       { username: auth.payload.username },
       { projection: { whatsapp: 1 } }
     );
@@ -24,7 +40,10 @@ export async function GET(req: NextRequest) {
       whatsapp: user?.whatsapp || { enabled: false, phone: "" },
     });
   } catch (error: any) {
-    return errorResponse("Failed to fetch WhatsApp preferences", {}, 500);
+    return NextResponse.json({
+      success: true,
+      whatsapp: { enabled: false, phone: "" },
+    });
   }
 }
 
@@ -32,13 +51,17 @@ export async function POST(req: NextRequest) {
   const auth = await requireAuthResponse(req);
   if (auth instanceof NextResponse) return auth;
 
+  if (!process.env.MONGO_URI) {
+    return errorResponse("WhatsApp notifications require database configuration.", {}, 503);
+  }
+
   try {
     const body = await req.json();
     const { action, phone, enabled } = body;
 
     const initDb = await useMongo();
     const collegeDb = initDb.db("college_db");
-    const usersCollection = collegeDb.collection<any>("users");
+    const usersCollection = collegeDb.collection("users");
 
     if (action === "test") {
       if (!phone) return errorResponse("Phone number is required for test message", {}, 400);

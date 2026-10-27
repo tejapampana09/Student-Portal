@@ -5,9 +5,7 @@ import React, { useEffect, useState } from "react";
 import API from "@/lib/api/axiosClient";
 import SessionCard from "@/components/utils/SessionCard";
 import { useSessionValidator } from "@/hooks/auth/useSessionValidator";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp, BookOpen, Calendar, RefreshCw, AlertCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, ChevronUp, RefreshCw, AlertCircle } from "lucide-react";
 
 interface Exam {
   name: string;
@@ -48,30 +46,7 @@ interface ProcessedSubject {
   assessments: ProcessedAssessment[];
 }
 
-const SkeletonCard = () => (
-  <Card className="animate-pulse">
-    <CardHeader className="pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <div className="p-2 rounded-lg border bg-muted h-10 w-10" />
-
-          <div className="space-y-2">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-3 w-40 bg-muted rounded" />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="h-5 w-20 bg-muted rounded" />
-          <div className="h-4 w-4 bg-muted rounded" />
-        </div>
-      </div>
-    </CardHeader>
-  </Card>
-);
-
 const InternalMarks: React.FC = () => {
-  const { toast } = useToast();
   const { sessionValid, sessionId } = useSessionValidator();
 
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
@@ -100,149 +75,158 @@ const InternalMarks: React.FC = () => {
     }));
   };
 
-  const fetchInternalMarks = async () => {
-    if (!sessionValid) return;
+  const fetchInternals = async () => {
+    if (!sessionId) return;
     setIsLoading(true);
     setError("");
+
     try {
-      const res = await API.post<InternalMarksResponse>("/srmapi/exams/internals", { sessionId });
-      if (!res.data.success) {
-        throw new Error(res.data.message || "Failed to fetch internal marks");
+      const response = await API.post<InternalMarksResponse>("/srmapi/exams/internals", { sessionId });
+      if (response.data.success) {
+        setData(processSubjects(response.data.internals.subjects));
+        setLastFetched(response.data.internals.last_fetched);
+      } else {
+        setError(response.data.message || "Failed to fetch internals");
       }
-      setData(processSubjects(res.data.internals.subjects));
-      setLastFetched(res.data.internals.last_fetched);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err.message || "Failed to fetch internal marks";
-      setError(msg);
-      toast({ title: "Error", description: msg, variant: "destructive" });
+      setError(err?.response?.data?.message || "Failed to fetch internals");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (sessionValid) {
-      fetchInternalMarks();
+    if (sessionValid && sessionId) {
+      fetchInternals();
     }
-  }, [sessionValid]);
+  }, [sessionValid, sessionId]);
 
   const toggleSubject = (code: string) => {
-    const updated = new Set(expandedSubjects);
-    updated.has(code) ? updated.delete(code) : updated.add(code);
-    setExpandedSubjects(updated);
+    setExpandedSubjects((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        {lastFetched && (
-          <p className="text-sm text-muted-foreground">Last fetched: {lastFetched}</p>
-        )}
+    <div className="flex flex-col gap-4 pb-28 max-w-4xl mx-auto w-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Internal Marks
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {lastFetched ? `Updated: ${lastFetched}` : "Continuous internal evaluations"}
+          </p>
+        </div>
+
         {sessionValid && (
-          <Button onClick={fetchInternalMarks} disabled={isLoading} className="flex items-center gap-2">
-            <RefreshCw className={isLoading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-            Refetch
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchInternals}
+            disabled={isLoading}
+            className="h-8 gap-1.5 text-xs rounded-xl"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
           </Button>
         )}
       </div>
 
-      {!sessionValid && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Required</CardTitle>
-            <CardDescription>Initiate a session to view internal marks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <SessionCard />
-          </CardContent>
-        </Card>
-      )}
+      {!sessionValid && <SessionCard />}
 
       {error && sessionValid && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6 flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-          </CardContent>
-        </Card>
+        <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 flex items-center gap-2 text-red-500 dark:text-red-400 text-xs">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
       )}
 
       {isLoading && (
-        <div className="space-y-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3.5 animate-pulse">
+              <div className="space-y-1.5 flex-1">
+                <div className="h-2.5 w-20 bg-muted rounded" />
+                <div className="h-3.5 w-44 bg-muted rounded" />
+              </div>
+              <div className="h-4 w-14 bg-muted rounded" />
+            </div>
           ))}
         </div>
       )}
 
-      <AnimatePresence>
-        {sessionValid && !isLoading && data.length > 0 && (
-          <div className="space-y-4">
-            {data.map((subject) => (
-              <motion.div
-                key={subject.code}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-              >
-                <Card className="hover:shadow-lg transition">
-                  <CardHeader className="cursor-pointer" onClick={() => toggleSubject(subject.code)}>
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
-                          <BookOpen className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg font-semibold">{subject.code}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{subject.name}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-primary">
-                          {subject.totalMarksObtained}
-                          <span className="text-muted-foreground text-sm">/{subject.totalMaxMarks}</span>
-                        </span>
-                        {expandedSubjects.has(subject.code) ? <ChevronUp /> : <ChevronDown />}
-                      </div>
-                    </div>
-                  </CardHeader>
+      {sessionValid && !isLoading && data.length > 0 && (
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden divide-y divide-border/40">
+          {data.map((subject) => {
+            const isExpanded = expandedSubjects.has(subject.code);
+            const percentage =
+              subject.totalMaxMarks > 0 ? (subject.totalMarksObtained / subject.totalMaxMarks) * 100 : 0;
+            return (
+              <div key={subject.code} className="transition-colors hover:bg-black/[0.01] dark:hover:bg-white/[0.01]">
+                {/* Clickable Row */}
+                <div
+                  onClick={() => toggleSubject(subject.code)}
+                  className="flex items-center justify-between gap-3 px-4 py-3.5 cursor-pointer"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-mono text-muted-foreground/70 uppercase tracking-wide">
+                      {subject.code}
+                    </p>
+                    <p className="text-sm font-semibold text-foreground leading-snug truncate">
+                      {subject.name}
+                    </p>
+                  </div>
 
-                  {expandedSubjects.has(subject.code) && (
-                    <CardContent className="border-t space-y-3">
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-sm font-bold font-mono text-foreground">
+                        {subject.totalMarksObtained}
+                        <span className="text-xs text-muted-foreground font-normal"> / {subject.totalMaxMarks}</span>
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        {percentage.toFixed(1)}% Score
+                      </p>
+                    </div>
+                    <div className="text-muted-foreground">
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-breakdown */}
+                {isExpanded && (
+                  <div className="bg-black/[0.02] dark:bg-white/[0.02] px-4 py-3 border-t border-border/40">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Component Breakdown
+                    </p>
+                    <div className="divide-y divide-border/30 rounded-xl border border-border/40 overflow-hidden bg-card">
                       {subject.assessments.map((a, i) => (
-                        <motion.div
-                          key={i}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="p-4 rounded-lg border bg-muted/30 mt-4"
-                        >
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            <Calendar className="h-3 w-3" />
-                            {a.type}
+                        <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
+                          <span className="font-medium text-foreground truncate pr-2">{a.type}</span>
+                          <div className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground shrink-0">
+                            {a.conducted && <span>Conducted: <strong className="text-foreground">{a.conducted}</strong></span>}
+                            {a.converted && <span>Converted: <strong className="text-blue-500 dark:text-blue-400 font-bold">{a.converted}</strong></span>}
                           </div>
-                          <div className="text-xs mt-1">
-                            {a.conducted && <div>Conducted: <b>{a.conducted}</b></div>}
-                            {a.converted && <div>Converted: <b>{a.converted}</b></div>}
-                          </div>
-                        </motion.div>
+                        </div>
                       ))}
-                    </CardContent>
-                  )}
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </AnimatePresence>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {sessionValid && !isLoading && data.length === 0 && !error && (
-        <Card>
-          <CardContent className="pt-6 text-center text-muted-foreground">
-            No internal marks available.
-          </CardContent>
-        </Card>
+        <div className="p-8 rounded-2xl border border-border/60 bg-card text-center text-muted-foreground text-xs max-w-sm mx-auto">
+          No internal marks published yet for this semester.
+        </div>
       )}
     </div>
   );

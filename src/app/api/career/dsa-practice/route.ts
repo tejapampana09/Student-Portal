@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const initDb = await useMongo();
-    const user = await initDb.db("college_db").collection<any>("users").findOne(
+    const user = await initDb.db("college_db").collection("users").findOne(
       { username: auth.payload.username },
       { projection: { solvedDsaProblems: 1 } }
     );

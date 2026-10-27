@@ -17,11 +17,20 @@ export async function POST(req: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     try {
-        const initDb = await useMongo();
-        const db = initDb.db("college_db").collection<any>("users");
         const time = getTime();
-        const user = await db.findOne({ username: auth.payload.username });
-        if (!user) return errorResponse(UNAUTHORIZED, { action: "logout" });
+        let initDb: any = null;
+        let db: any = null;
+        let user: any = null;
+
+        if (process.env.MONGO_URI) {
+            try {
+                initDb = await useMongo();
+                db = initDb.db("college_db").collection("users");
+                user = await db.findOne({ username: auth.payload.username });
+            } catch (dbErr) {
+                console.warn("[srmapi/fetch] MongoDB access skipped/failed:", (dbErr as any)?.message);
+            }
+        }
 
         // Auto-resolve active session and portal password from body OR stored DB
         let activeSessionId = sessionId;
@@ -37,7 +46,7 @@ export async function POST(req: NextRequest) {
         let result = activeSessionId ? await fetchFromWebsite(activeSessionId) : null;
 
         // Auto-heal: If session expired on university server, re-login transparently to fetch fresh data
-        if (!result && portalPassword) {
+        if (!result && portalPassword && db && user) {
             console.log(`[srmapi/fetch] Session expired for ${user.username}, auto-authenticating for fresh data...`);
             const freshLogin = await login(user.username, portalPassword);
             if (freshLogin.success && freshLogin.sessionId) {
@@ -51,63 +60,67 @@ export async function POST(req: NextRequest) {
         }
 
         if (result && Array.isArray(result.attendance) && result.attendance.length > 0) {
-            const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
-            const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
+            if (db && user) {
+                const today = DateTime.now().setZone("Asia/Kolkata").toFormat("dd-MM-yyyy");
+                const hasTodayEntry = user.attendanceHistory?.some((h: any) => h.date === today);
 
-            const updateOps: Promise<any>[] = [
-                db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } })
-            ];
+                const updateOps: Promise<any>[] = [
+                    db.updateOne({ username: auth.payload.username }, { $set: { data: encryptData(result), session_time: time } })
+                ];
 
-            if (!hasTodayEntry && result.attendance) {
-                updateOps.push(
-                    db.updateOne({ username: auth.payload.username }, {
-                        $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
-                    })
-                );
-            }
+                if (!hasTodayEntry && result.attendance) {
+                    updateOps.push(
+                        db.updateOne({ username: auth.payload.username }, {
+                            $push: { attendanceHistory: { $each: [{ date: today, data: encryptData(result.attendance) }], $slice: -10 } } as any
+                        })
+                    );
+                }
 
-            // Run database cache saves concurrently
-            void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
+                // Run database cache saves concurrently
+                void Promise.all(updateOps).catch((err) => console.error("Error saving cached data:", err));
 
-            // 🔔 Real-time Web Push Alert for Low Attendance
-            if (user.pushSubscription && Array.isArray(result.attendance)) {
-                const lowSubjects = result.attendance.filter((a: any) => parseFloat(a.attendance_percentage || "0") < 75);
-                if (lowSubjects.length > 0) {
-                    void (async () => {
+                // 🔔 Real-time Web Push Alert for Low Attendance
+                if (user.pushSubscription && Array.isArray(result.attendance)) {
+                    const lowSubjects = result.attendance.filter((a: any) => parseFloat(a.attendance_percentage || "0") < 75);
+                    if (lowSubjects.length > 0) {
+                        void (async () => {
+                            try {
+                                const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
+                                await sendWebPushNotification(user.pushSubscription, {
+                                    title: `⚠️ Attendance Alert: ${lowSubjects.length} Subject(s) Below 75%`,
+                                    body: `${lowSubjects.map((s: any) => `${s.subject_code || s.subject_name}: ${s.attendance_percentage}%`).join(", ")}. Tap to calculate safe bunks.`,
+                                    url: "/attendance",
+                                });
+                            } catch (pushErr) {
+                                console.error("Failed to dispatch low attendance push alert:", pushErr);
+                            }
+                        })();
+                    }
+                }
+
+                // Background timetable indexer
+                if (initDb) {
+                    (async () => {
                         try {
-                            const { sendWebPushNotification } = await import("@/server/notifications/webPushService");
-                            await sendWebPushNotification(user.pushSubscription, {
-                                title: `⚠️ Attendance Alert: ${lowSubjects.length} Subject(s) Below 75%`,
-                                body: `${lowSubjects.map((s: any) => `${s.subject_code || s.subject_name}: ${s.attendance_percentage}%`).join(", ")}. Tap to calculate safe bunks.`,
-                                url: "/attendance",
-                            });
-                        } catch (pushErr) {
-                            console.error("Failed to dispatch low attendance push alert:", pushErr);
+                            const settingsDb = initDb.db("college_db").collection("settings");
+                            const appSettings = await settingsDb.findOne({ id: "app-settings" });
+                            if (appSettings?.timetableCollection === false) return;
+                            const emptyClassesDb = initDb.db("college_db").collection("empty_classes");
+                            const emptyClassesData = fetchTimetable(result);
+                            const dataHash = crypto.createHash("sha256").update(JSON.stringify(emptyClassesData)).digest("hex");
+                            const lastCollectedUser = await emptyClassesDb.findOne({ id: "last-collected-timetable" });
+                            if (lastCollectedUser?.hash === dataHash) return;
+                            await emptyClassesDb.updateOne(
+                                { id: "last-collected-timetable" },
+                                { $set: { hash: dataHash, data: emptyClassesData, time: DateTime.now().setZone("Asia/Kolkata").toISO() } },
+                                { upsert: true }
+                            );
+                        } catch (timetableError) {
+                            console.error("Timetable indexer error:", timetableError);
                         }
                     })();
                 }
             }
-
-            // Background timetable indexer
-            (async () => {
-                try {
-                    const settingsDb = initDb.db("college_db").collection("settings");
-                    const appSettings = await settingsDb.findOne({ id: "app-settings" });
-                    if (appSettings?.timetableCollection === false) return;
-                    const emptyClassesDb = initDb.db("college_db").collection("empty_classes");
-                    const emptyClassesData = fetchTimetable(result);
-                    const dataHash = crypto.createHash("sha256").update(JSON.stringify(emptyClassesData)).digest("hex");
-                    const lastCollectedUser = await emptyClassesDb.findOne({ id: "last-collected-timetable" });
-                    if (lastCollectedUser?.hash === dataHash) return;
-                    await emptyClassesDb.updateOne(
-                        { id: "last-collected-timetable" },
-                        { $set: { hash: dataHash, data: emptyClassesData, time: DateTime.now().setZone("Asia/Kolkata").toISO() } },
-                        { upsert: true }
-                    );
-                } catch (timetableError) {
-                    console.error("Timetable indexer error:", timetableError);
-                }
-            })();
 
             return NextResponse.json({
                 success: true,
@@ -135,9 +148,13 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        return errorResponse(INVALID_CREDENTIALS);
-    } catch (err) {
+        return errorResponse(INVALID_CREDENTIALS, { action: "logout" });
+    } catch (err: any) {
         console.error("Error From /backendUtils/fetchData:- ", err);
-        return errorResponse(undefined, {}, 500);
+        const msg = err?.message || "Failed to fetch student data";
+        if (msg.includes("SRM server is unreachable")) {
+            return errorResponse(msg, {}, 503);
+        }
+        return errorResponse(msg, {}, 500);
     }
 }
