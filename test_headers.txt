@@ -1,9 +1,0 @@
-HTTP/1.1 200 
-Strict-Transport-Security: max-age=0
-X-Content-Type-Options: nosniff
-X-XSS-Protection: 1; mode=block
-Set-Cookie: JSESSIONID=03FBAEF0127599155FCA76706A78CDC7; Path=/srmapstudentcorner; Secure; HttpOnly
-Content-Type: image/png
-Transfer-Encoding: chunked
-Date: Tue, 27 Oct 2026 20:01:17 GMT
-
