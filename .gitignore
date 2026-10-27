@@ -40,3 +40,5 @@ empty_classrooms.json
 .DS_Store
 Thumbs.dbuser-data.sh
 mapping.json
+.vercel
+.env*
