@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div className="flex h-screen w-full items-center justify-center p-4 select-none">
       <Image
-        src="/icons/round_corner_logo.png"
+        src="/icons/portal_logo.png"
         alt="Loading"
         width={80}
         height={80}

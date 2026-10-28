@@ -13,8 +13,8 @@ import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import usePasswordToggle from "@/hooks/utils/usePasswordToggle";
 import { toast } from "@/hooks/utils/useToast";
 import { CachedDataPrompt } from "@/components/utils/CachedDataPrompt";
-import Logo from "../../../../public/icons/round_corner_logo.png";
-import Logo_White from "../../../../public/icons/round_corner_logo.png";
+import Logo from "../../../../public/icons/portal_logo.png";
+import Logo_White from "../../../../public/icons/portal_logo.png";
 import { handleRegNumberChange } from "@/shared/utils/functions";
 
 const Login = () => {

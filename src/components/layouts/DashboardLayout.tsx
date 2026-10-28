@@ -11,7 +11,7 @@ import { useStudentData } from "@/context/StudentContext";
 import { toast, useToast } from "@/hooks/utils/useToast";
 import { useNotifications } from "@/hooks/utils/useNotification";
 import { whatsapp } from "@/shared/utils/functions";
-import Logo_White from "../../../public/icons/round_corner_logo.png";
+import Logo_White from "../../../public/icons/portal_logo.png";
 import { useLocalStorageContext } from "@/context/LocalStorageContext";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";

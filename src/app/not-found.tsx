@@ -2,7 +2,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import Logo from "../../public/icons/round_corner_logo.png";
+import Logo from "../../public/icons/portal_logo.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, ArrowLeft } from "lucide-react";
 

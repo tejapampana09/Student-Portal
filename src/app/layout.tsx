@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     siteName: "Student Corner - SRM AP",
     images: [
       {
-        url: "/icons/round_corner_logo.png",
+        url: "/icons/portal_logo.png",
         width: 1024,
         height: 1024,
         alt: "SRMAP API Logo",
@@ -81,11 +81,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/round_corner_logo.png?v=2", sizes: "any" },
+      { url: "/icons/portal_logo.png?v=2", sizes: "any" },
       { url: "/icons/192x192.png?v=2", sizes: "192x192", type: "image/png" },
       { url: "/icons/512x512.png?v=2", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: "/icons/round_corner_logo.png?v=2",
+    shortcut: "/icons/portal_logo.png?v=2",
     apple: "/icons/apple-touch-icon.png?v=2",
   },
 };
@@ -161,8 +161,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
-        <link rel="shortcut icon" type="image/png" href="/icons/round_corner_logo.png?v=2" />
+        <link rel="icon" type="image/png" href="/icons/portal_logo.png?v=2" />
+        <link rel="shortcut icon" type="image/png" href="/icons/portal_logo.png?v=2" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=2" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

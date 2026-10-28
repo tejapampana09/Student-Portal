@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/context/ThemeContext";
-import Logo from "../../public/icons/round_corner_logo.png";
+import Logo from "../../public/icons/portal_logo.png";
 import ReportIssue from "@/components/page/settings/ReportIssue";
 import { ErrorFallbackProps } from "@/components/utils/ErrorBoundary";
 import { Sun, Moon, Home, AlertCircle, Bug } from "lucide-react";
