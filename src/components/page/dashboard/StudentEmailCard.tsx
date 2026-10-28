@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Mail, RefreshCw, ExternalLink, Unlink, Sparkles, CheckCircle2, Inbox } from "lucide-react";
+import { Mail, RefreshCw, ExternalLink, Unlink, Sparkles, CheckCircle2, Inbox, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/utils/useToast";
 import API from "@/lib/api/axiosClient";
@@ -21,6 +21,7 @@ export default function StudentEmailCard() {
   const [connected, setConnected] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [emails, setEmails] = useState<EmailItem[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<EmailItem | null>(null);
 
   const fetchEmails = async () => {
     try {
@@ -181,7 +182,7 @@ export default function StudentEmailCard() {
               emails.map((m) => (
                 <div
                   key={m.id}
-                  onClick={() => openInGmail(m.subject)}
+                  onClick={() => setSelectedEmail(m)}
                   className="py-2.5 transition-colors cursor-pointer group hover:bg-black/[0.015] dark:hover:bg-white/[0.015]"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -208,6 +209,75 @@ export default function StudentEmailCard() {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {/* 📬 In-App Email Preview Modal (No external redirects) */}
+        {selectedEmail && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setSelectedEmail(null)}
+          >
+            <div 
+              className="bg-background/95 border border-white/20 dark:border-white/10 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl relative space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-blue-500 truncate">
+                      {selectedEmail.from}
+                    </span>
+                    {selectedEmail.isImportant && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-500 uppercase tracking-wider shrink-0 font-mono">
+                        Official Circular
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm sm:text-base font-bold text-foreground mt-1.5 leading-snug">
+                    {selectedEmail.subject}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                    Received: {selectedEmail.date}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedEmail(null)}
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground shrink-0"
+                  aria-label="Close Email Preview"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Message Content Preview */}
+              <div className="bg-black/5 dark:bg-white/5 rounded-xl p-4 text-xs sm:text-sm text-foreground/90 leading-relaxed border border-white/10 max-h-72 overflow-y-auto whitespace-pre-wrap font-sans">
+                {selectedEmail.snippet || "No additional text content preview available for this message."}
+              </div>
+
+              {/* Bottom Actions */}
+              <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSelectedEmail(null)}
+                  className="text-xs rounded-xl"
+                >
+                  Close Preview
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => openInGmail(selectedEmail.subject)}
+                  className="text-xs rounded-xl text-blue-500 hover:text-blue-600 gap-1.5"
+                >
+                  <span>Open in Gmail App</span>
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

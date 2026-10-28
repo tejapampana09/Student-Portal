@@ -60,7 +60,7 @@ Output ONLY raw JSON.
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
       });
 
@@ -167,7 +167,7 @@ Return a raw JSON array:
 Output ONLY raw JSON.
 `;
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
       });
 
@@ -209,7 +209,7 @@ Output ONLY raw JSON.
 `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         contents: prompt,
       });
 

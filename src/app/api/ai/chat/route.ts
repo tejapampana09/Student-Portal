@@ -129,21 +129,52 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `
 You are the official SRMAP Campus Copilot AI for SRM University AP students.
-Provide accurate, concise, and student-friendly assistance.
+Provide accurate, helpful, friendly, and comprehensive assistance.
+You can answer ANY question the student asks — including course concepts, coding problems, study strategies, campus directions, faculty info, timetable, attendance, or general knowledge.
 Current India Time: ${DateTime.now().setZone("Asia/Kolkata").toFormat("yyyy-MM-dd HH:mm")} (${DateTime.now().setZone("Asia/Kolkata").weekdayLong})
 
-Context Data (Strictly minimized):
+Context Data (Academic & Student records):
 ${JSON.stringify(minimizedContext, null, 2)}
+
+CRITICAL FORMATTING INSTRUCTIONS (STRICT COMPLIANCE REQUIRED):
+1. NEVER use any asterisks or stars (do NOT use **, *, or *** anywhere in your response).
+2. Do NOT use markdown bold syntax like **word**. Instead, write words cleanly or use emojis (📅, ⏰, 📍, 📚, 💡).
+3. For bullet lists, use the bullet character • or numbers (1., 2.), NEVER asterisks (*).
+4. Format responses cleanly with neat paragraph spacing and line breaks.
+5. Answer questions clearly and directly without any raw markdown stars.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        { role: "user", parts: [{ text: `${systemPrompt}\n\nStudent Question: ${query}` }] }
-      ],
-    });
+    let answer = "";
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\nStudent Question: ${query}` }] }
+        ],
+      });
+      answer = response.text || "";
+    } catch (modelErr: any) {
+      console.warn("Falling back to gemini-flash-lite-latest:", modelErr?.message);
+      const fallbackResponse = await ai.models.generateContent({
+        model: "gemini-flash-lite-latest",
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\nStudent Question: ${query}` }] }
+        ],
+      });
+      answer = fallbackResponse.text || "";
+    }
 
-    const answer = response.text || "I could not generate an answer. Please try asking again.";
+    // Clean any accidental asterisks from the output
+    answer = answer
+      .replace(/\*\*\*(.*?)\*\*\*/g, "$1")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/(^|[^\*])\*(?!\*)(.*?)\*/g, "$1$2")
+      .replace(/^\s*\*\s+/gm, "• ")
+      .trim();
+
+    if (!answer) {
+      answer = "I could not generate an answer right now. Please try asking again.";
+    }
 
     return NextResponse.json({
       success: true,

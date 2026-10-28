@@ -20,6 +20,16 @@ const QUICK_PROMPTS = [
   { text: "Can I bunk any class tomorrow?", icon: HelpCircle },
 ];
 
+function cleanAiStars(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\*\*\*(.*?)\*\*\*/g, "$1")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/(^|[^\*])\*(?!\*)(.*?)\*/g, "$1$2")
+    .replace(/^\s*\*\s+/gm, "• ")
+    .trim();
+}
+
 export default function StudentAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -35,7 +45,7 @@ export default function StudentAiAssistant() {
       {
         id: "welcome",
         role: "assistant",
-        content: "Hi! I am your **SRMAP AI Copilot & Voice Assistant** 🎓.\n\nAsk me anything by typing or tapping the 🎙️ **Microphone** below (e.g. *'Where is my next class?'*, *'How much attendance do I have?'*, or *'What are my tasks today?'*).",
+        content: "Hi! I am your SRMAP AI Copilot & Voice Assistant 🎓.\n\nAsk me anything by typing or tapping the 🎙️ Microphone below (e.g. 'Where is my next class?', 'How much attendance do I have?', or 'What are my tasks today?').",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ];
@@ -280,7 +290,7 @@ export default function StudentAiAssistant() {
                       : "bg-white/60 dark:bg-white/10 text-foreground border border-white/20 dark:border-white/10 rounded-bl-none shadow-sm backdrop-blur-md"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <p className="whitespace-pre-wrap">{cleanAiStars(m.content)}</p>
                   <div className="flex items-center justify-between gap-2 pt-0.5 opacity-60 text-[9px]">
                     <span>{m.timestamp}</span>
                     {m.role === "assistant" && (
