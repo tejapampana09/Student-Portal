@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Send, Bot, User, Trash2, ArrowDown, Mic, MicOff, Compass, BookOpen, Calendar, HelpCircle, Volume2, VolumeX, Loader2, Play } from "lucide-react";
+import { Sparkles, X, Send, Bot, User, Trash2, Mic, MicOff, Compass, BookOpen, Calendar, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/utils/useToast";
 import API from "@/lib/api/axiosClient";
@@ -33,7 +33,6 @@ function cleanAiStars(text: string): string {
 export default function StudentAiAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [voiceSpeechEnabled, setVoiceSpeechEnabled] = useState(true);
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window !== "undefined") {
       try {
@@ -45,7 +44,7 @@ export default function StudentAiAssistant() {
       {
         id: "welcome",
         role: "assistant",
-        content: "Hi! I am your SRMAP AI Copilot & Voice Assistant 🎓.\n\nAsk me anything by typing or tapping the 🎙️ Microphone below (e.g. 'Where is my next class?', 'How much attendance do I have?', or 'What are my tasks today?').",
+        content: "Hi! I am your SRMAP Campus AI Copilot 🎓.\n\nAsk me anything by typing or tapping the 🎙️ mic below — attendance, next class, exams, study doubts, coding questions, or general queries!",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ];
@@ -68,25 +67,7 @@ export default function StudentAiAssistant() {
     }
   }, [messages, isOpen]);
 
-  const speak = (text: string) => {
-    if (!voiceSpeechEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    // Clean markdown symbols for natural speech
-    const clean = text
-      .replace(/\*\*/g, "")
-      .replace(/\*/g, "")
-      .replace(/#/g, "")
-      .replace(/`/g, "")
-      .replace(/\[.*?\]\(.*?\)/g, "")
-      .trim();
-
-    const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // Voice Input Speech Recognition setup
+  // Voice Input Speech Recognition setup (Voice-to-Text ONLY)
   useEffect(() => {
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -99,8 +80,7 @@ export default function StudentAiAssistant() {
         const transcript = event.results[0][0].transcript;
         setInput(transcript);
         setIsListening(false);
-        // Auto-send query on voice capture
-        handleSend(transcript, true);
+        handleSend(transcript);
       };
 
       recognitionRef.current.onerror = () => {
@@ -111,7 +91,7 @@ export default function StudentAiAssistant() {
         setIsListening(false);
       };
     }
-  }, [messages, voiceSpeechEnabled]);
+  }, [messages]);
 
   const toggleVoice = () => {
     if (!recognitionRef.current) {
@@ -133,7 +113,7 @@ export default function StudentAiAssistant() {
     }
   };
 
-  const handleSend = async (queryText?: string, fromVoice = false) => {
+  const handleSend = async (queryText?: string) => {
     const text = (queryText || input).trim();
     if (!text || loading) return;
 
@@ -167,9 +147,6 @@ export default function StudentAiAssistant() {
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
         setMessages((prev) => [...prev, aiMsg]);
-        if (fromVoice || voiceSpeechEnabled) {
-          speak(res.data.answer);
-        }
       } else {
         toast({ title: "AI Assistant", description: res.data?.message || "Failed to fetch response" });
       }
@@ -181,7 +158,7 @@ export default function StudentAiAssistant() {
         {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: `⚠️ **Error**: ${msg}`,
+          content: `⚠️ Error: ${msg}`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
@@ -194,7 +171,7 @@ export default function StudentAiAssistant() {
     const welcome: Message = {
       id: "welcome",
       role: "assistant",
-      content: "Chat history cleared. How can I assist you with your academic schedule, attendance, or tasks?",
+      content: "Chat history cleared. How can I assist you with your schedule, attendance, doubts, or tasks today?",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
     setMessages([welcome]);
@@ -202,41 +179,46 @@ export default function StudentAiAssistant() {
 
   return (
     <>
-      {/* 🔮 Unified Floating AI Copilot & Voice Button */}
+      {/* 🔮 Floating AI Copilot Trigger Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2.5 p-2.5 sm:px-3.5 sm:py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300 border border-white/30 backdrop-blur-xl"
-          aria-label="Open SRMAP AI Copilot & Voice Assistant"
+          className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-40 group flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-600 text-white shadow-xl hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-300 border border-white/20 backdrop-blur-xl"
+          aria-label="Open SRMAP AI Copilot"
         >
-          <div className="relative flex items-center">
-            <Sparkles className="h-4 w-4 animate-pulse text-amber-300" />
-            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
+          <div className="relative flex items-center justify-center">
+            <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-400" />
           </div>
-          <span className="hidden sm:inline font-bold text-sm tracking-wide">AI Copilot</span>
-          <div className="hidden sm:flex items-center pl-1 border-l border-white/20 text-xs font-semibold text-purple-200">
+          <span className="font-semibold text-xs sm:text-sm tracking-wide">Campus AI</span>
+          <div className="flex items-center pl-1.5 border-l border-white/20 text-blue-200">
             <Mic className="h-3.5 w-3.5" />
           </div>
         </button>
       )}
 
-      {/* 🪟 AI Copilot & Voice Chat Window */}
+      {/* 🪟 Sleek Modern AI Copilot Chat Window */}
       {isOpen && (
-        <div className="fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[82vh] h-[580px] flex flex-col rounded-3xl border border-white/25 dark:border-white/15 bg-white/85 dark:bg-slate-950/90 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-20 sm:bottom-6 right-3 sm:right-6 z-50 w-[94vw] sm:w-[420px] max-h-[84vh] h-[580px] flex flex-col rounded-3xl border border-black/10 dark:border-white/15 bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-250">
+          
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-white/15 bg-gradient-to-r from-blue-600/15 via-indigo-600/10 to-purple-600/15">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-black/5 dark:border-white/10 bg-gradient-to-r from-blue-600/10 via-sky-600/10 to-indigo-600/10">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md">
-                <Sparkles className="h-4 w-4 text-amber-300" />
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-blue-600 to-sky-500 flex items-center justify-center text-white shadow-sm">
+                <Bot className="h-4 w-4" />
               </div>
               <div>
-                <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  SRMAP Copilot & Voice
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-500 font-semibold">
-                    Gemini 2.5
+                <div className="flex items-center gap-1.5 leading-none">
+                  <h3 className="font-bold text-xs sm:text-sm text-foreground">
+                    Campus Copilot
+                  </h3>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 font-semibold font-mono">
+                    3.1 Lite
                   </span>
-                </h3>
-                <p className="text-[11px] text-muted-foreground">Ask attendance, timetable & tasks</p>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Instant answers for academics & campus
+                </p>
               </div>
             </div>
 
@@ -244,18 +226,9 @@ export default function StudentAiAssistant() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setVoiceSpeechEnabled(!voiceSpeechEnabled)}
-                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-                title={voiceSpeechEnabled ? "Voice Speech Enabled (Mute)" : "Voice Speech Muted (Unmute)"}
-              >
-                {voiceSpeechEnabled ? <Volume2 className="h-3.5 w-3.5 text-purple-400" /> : <VolumeX className="h-3.5 w-3.5" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
                 onClick={clearChat}
-                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
-                title="Clear Chat"
+                className="h-7 w-7 rounded-xl text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                title="Clear Chat History"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -263,7 +236,8 @@ export default function StudentAiAssistant() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(false)}
-                className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
+                className="h-7 w-7 rounded-xl text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                title="Close"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -271,99 +245,101 @@ export default function StudentAiAssistant() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {m.role === "assistant" && (
-                  <div className="h-7 w-7 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">
-                    <Bot className="h-4 w-4" />
+                  <div className="h-7 w-7 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="h-3.5 w-3.5" />
                   </div>
                 )}
 
                 <div
-                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed space-y-1 ${
+                  className={`max-w-[84%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed space-y-1 shadow-sm ${
                     m.role === "user"
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-none shadow-md"
-                      : "bg-white/60 dark:bg-white/10 text-foreground border border-white/20 dark:border-white/10 rounded-bl-none shadow-sm backdrop-blur-md"
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-sm"
+                      : "bg-black/[0.03] dark:bg-white/[0.06] text-foreground border border-black/5 dark:border-white/10 rounded-bl-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{cleanAiStars(m.content)}</p>
-                  <div className="flex items-center justify-between gap-2 pt-0.5 opacity-60 text-[9px]">
+                  <div className="whitespace-pre-wrap font-sans text-xs">
+                    {cleanAiStars(m.content)}
+                  </div>
+                  <div className="flex items-center justify-end pt-0.5 opacity-50 text-[9px]">
                     <span>{m.timestamp}</span>
-                    {m.role === "assistant" && (
-                      <button
-                        onClick={() => speak(m.content)}
-                        className="hover:opacity-100 flex items-center gap-0.5 text-[9px] font-semibold"
-                      >
-                        <Play className="h-2 w-2 fill-current" /> Speak
-                      </button>
-                    )}
                   </div>
                 </div>
 
                 {m.role === "user" && (
-                  <div className="h-7 w-7 rounded-xl bg-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
-                    <User className="h-4 w-4" />
+                  <div className="h-7 w-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="h-3.5 w-3.5" />
                   </div>
                 )}
               </div>
             ))}
 
             {loading && (
-              <div className="flex gap-2.5 items-center text-xs text-muted-foreground bg-white/40 dark:bg-white/5 p-3 rounded-2xl w-fit border border-white/10">
+              <div className="flex gap-2 items-center text-xs text-muted-foreground bg-black/[0.03] dark:bg-white/[0.05] px-3.5 py-2.5 rounded-2xl w-fit border border-black/5 dark:border-white/10">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-                <span>Thinking & analyzing your academic record...</span>
+                <span>Thinking...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Quick Prompts Carousel */}
-          <div className="px-3 py-1.5 border-t border-white/10 flex gap-1.5 overflow-x-auto no-scrollbar bg-black/5 dark:bg-white/5">
+          <div className="px-3 py-1.5 border-t border-black/5 dark:border-white/10 flex gap-1.5 overflow-x-auto no-scrollbar bg-black/[0.02] dark:bg-white/[0.02]">
             {QUICK_PROMPTS.map((p, i) => (
               <button
                 key={i}
                 onClick={() => handleSend(p.text)}
                 disabled={loading}
-                className="shrink-0 text-[11px] px-2.5 py-1 rounded-full bg-white/60 dark:bg-white/10 hover:bg-blue-500 hover:text-white border border-white/20 transition-all flex items-center gap-1 text-muted-foreground hover:border-transparent"
+                className="shrink-0 text-[10px] sm:text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-white/10 hover:bg-blue-600 hover:text-white border border-black/5 dark:border-white/10 transition-all flex items-center gap-1 text-muted-foreground hover:border-transparent active:scale-95"
               >
                 <p.icon className="h-3 w-3" />
-                {p.text}
+                <span>{p.text}</span>
               </button>
             ))}
           </div>
 
-          {/* Input Footer with Microphone */}
-          <div className="p-3 border-t border-white/15 bg-background/50 flex items-center gap-2">
+          {/* Clean Input Footer with Mic & Send */}
+          <div className="p-2.5 sm:p-3 border-t border-black/5 dark:border-white/10 bg-background/80 flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder={isListening ? "Listening... Speak now 🎙️" : "Ask attendance, next class, tasks..."}
-              className="flex-1 bg-white/50 dark:bg-black/40 border border-white/20 dark:border-white/10 rounded-2xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              placeholder={isListening ? "Listening... Speak now 🎙️" : "Ask anything..."}
+              className="flex-1 bg-black/[0.04] dark:bg-white/[0.06] border border-black/5 dark:border-white/10 rounded-2xl px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
 
+            {/* Voice Input Button (Mic ONLY) */}
             <Button
               size="icon"
+              type="button"
               variant="ghost"
               onClick={toggleVoice}
               className={`h-9 w-9 rounded-2xl transition-all ${
-                isListening ? "bg-red-500 text-white animate-pulse shadow-red-500/50 scale-105" : "text-muted-foreground hover:text-foreground hover:bg-white/10"
+                isListening
+                  ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-500/50 scale-105"
+                  : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
               }`}
-              title="Speak with Voice"
+              title="Voice Input (Speech-to-Text)"
+              aria-label="Voice Input"
             >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-purple-400" />}
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4 text-blue-500" />}
             </Button>
 
+            {/* Send Button */}
             <Button
               size="icon"
+              type="button"
               onClick={() => handleSend()}
               disabled={!input.trim() || loading}
-              className="h-9 w-9 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md disabled:opacity-50"
+              className="h-9 w-9 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm disabled:opacity-40 transition-transform active:scale-95"
+              aria-label="Send message"
             >
               <Send className="h-3.5 w-3.5" />
             </Button>
