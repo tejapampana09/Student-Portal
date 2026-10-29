@@ -11,6 +11,7 @@ Based on main commit `6cc3b9ee9d80a093494e46030d6cbb7fd5e690ed`.
 - MongoDB is required for authentication, session creation, revocation, and rate limiting. Failures cannot return successful authentication or successful logout. DB verification failures return 503 without a logout directive.
 - New JWTs and persisted sessions expire after seven days. **Existing sessions without an expiry are intentionally invalidated at rollout; users must sign in again.**
 - Rate counters use MongoDB's unique `_id` and an atomic window reset/increment, shared across app instances. Store errors deny requests.
+- The lockfile upgrades Next.js to 16.4.3, Axios to 1.21.0, sharp to 0.35.5, and vulnerable transitive dependencies. A Zod 4.6.6 override keeps Serwist 9.x on its existing major version while applying the security fix.
 - `.env.example` contains empty secret fields. Supply independently generated deployment secrets; CI dummy values must never be used in production.
 - `npm test` executes real TypeScript handlers with mocked database/network adapters. CI enforces these tests and blocks on high/critical dependency audit findings.
 

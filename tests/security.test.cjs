@@ -258,3 +258,44 @@ test('force refresh bypasses even a fresh authenticated cache', async () => {
   const result = await sessionHandler(async () => ({ success: true, sessionId: 'fresh-session' }))({ username: owner, password: 'stored', allowCachedSession: true, forceRefresh: true });
   assert.equal(result.sessionId, 'fresh-session');
 });
+
+test('blocked-account lookup failure returns 503 without a logout action', async () => {
+  process.env.MONGO_URI = 'test';
+  const f = functions(async () => { throw new Error('offline'); }, async () => ({ valid: true, payload: { username: owner } }));
+  for (const guard of [f.requireAuthResponse, f.requireAuthResponseAdmin]) {
+    const res = await guard(request({}));
+    assert.equal(res.status, 503);
+    assert.equal((await res.json()).action, undefined);
+  }
+});
+
+test('rate limiting applies shared counter results at the limit boundary', async () => {
+  process.env.MONGO_URI = 'test';
+  for (const count of [10, 11]) {
+    const f = functions(async () => ({ db: () => ({ collection: () => ({ findOneAndUpdate: async () => ({ count, expiresAt: new Date(Date.now() + 30_000) }) }) }) }));
+    const result = await f.enforceRateLimit('test', 10, 60_000);
+    assert.equal(result.allowed, count <= 10);
+    if (!result.allowed) assert.ok(result.retryAfterSeconds > 0);
+  }
+});
+
+test('login never issues tokens from a failed cached-data response', async () => {
+  const { POST } = load('src/app/api/auth/login/route.ts', {
+    ...server,
+    '@/validators/auth/login': { isValidRegNumber: () => [true] },
+    '@/server/auth/handleUserSession': { handleUserSession: async () => ({ success: false, hasCachedData: true, message: 'offline' }) },
+    '@/server/utils/responses': { paramatersNotMatched: () => errorResponse('parameters'), userBlockedResponse: deny },
+    '@/server/utils/functions': {
+      errorResponse, createAuthSession: deny, isAdmin: () => false, isBlocked: async () => false,
+      enforceRateLimit: async () => ({ allowed: true }),
+    },
+  });
+  const res = await POST(request({ username: owner, password: 'wrong', wantCachedData: true }));
+  assert.equal(res.status, 400);
+  assert.equal((await res.json()).accessToken, undefined);
+});
+
+test('renewal never sends a malformed decrypted session upstream', async () => {
+  const { POST } = route(attendance, { user: { session_id: { unsafe: 'value' } } });
+  assert.equal((await POST(request({ code: 'A123456' }))).status, 503);
+});

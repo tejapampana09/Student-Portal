@@ -79,6 +79,7 @@
   "overrides": {
     "postcss": "$postcss",
     "sharp": "^0.35.0",
-    "browserslist": "4.28.8"
+    "browserslist": "4.28.8",
+    "zod": "4.6.6"
   }
 }
