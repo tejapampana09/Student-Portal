@@ -31,5 +31,6 @@ export async function fetchFeedbackSubjects(sessionId: string): Promise<FetchSub
         subjects,
         feedbackType,
         mcontrollerValue,
+        isSessionExpired: String(subjectResponse.data || "").includes("StudentLoginPage") || String(subjectResponse.data || "").includes("Session Expired"),
     };
 }

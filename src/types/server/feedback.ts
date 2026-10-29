@@ -9,6 +9,7 @@ export interface FetchSubjectsResult {
     subjects: Subject[];
     feedbackType: string | number | string[];
     mcontrollerValue: string;
+    isSessionExpired?: boolean;
 }
 
 export interface FeedbackResponse {

@@ -17,7 +17,8 @@ export async function submitFeedback(sessionId: string, comment: string, optionN
         { value: '25', label: 'Strongly agree', pointvalue: '5.00' }
     ];
 
-    if (optionNo < 1 || optionNo > answerOptions.length) {
+    const numOption = Number(optionNo) || 5;
+    if (numOption < 1 || numOption > answerOptions.length) {
         return { success: false, message: 'Answer option number should be between 1-5 only!' };
     }
 
@@ -60,7 +61,7 @@ export async function submitFeedback(sessionId: string, comment: string, optionN
                 if (!questionId) return;
 
                 const answerInputs = questionElem.find('input.answers');
-                const selectedOption = answerOptions[optionNo - 1];
+                const selectedOption = answerOptions[numOption - 1];
 
                 if (selectedOption && answerInputs.length > 0) {
                     const selectedAnswer = answerInputs

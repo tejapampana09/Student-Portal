@@ -25,7 +25,7 @@ interface Subject {
 const Feedback = () => {
   const { toast } = useToast();
   const { sessionValid, sessionId } = useSessionValidator();
-  const { settings, updateSettings } = useLocalStorageContext();
+  const { settings, updateSettings, updateProfile } = useLocalStorageContext();
   const router = useRouter();
 
   const [selectedOption, setSelectedOption] = useState("5");
@@ -59,22 +59,43 @@ const Feedback = () => {
   }, [settings.feedbackExplanationSeen]);
 
   const loadSubjects = async (showToast: boolean = true) => {
-    if (!sessionId) return;
     setLoadingSubjects(true);
     try {
       const res = await API.post("/srmapi/feedback/subjects", { sessionId });
+      if (res.data?.renewedSession) {
+        updateProfile({
+          sessionId: res.data.renewedSession.sessionId,
+          sessionTime: res.data.renewedSession.sessionTime,
+        });
+      }
       if (res.data.success && res.data.subjects) {
         setSubjects(res.data.subjects);
         setSelectedSubjectIds(res.data.subjects.map((s: Subject) => s.id));
+        if (showToast) {
+          toast({
+            title: "Subjects Loaded",
+            description: `Found ${res.data.subjects.length} course(s) pending feedback.`,
+          });
+        }
       } else {
+        setSubjects([]);
+        setSelectedSubjectIds([]);
         if (showToast)
           toast({
             title: "Notice",
-            description: res.data.message || "Feedback may have already been submitted.",
+            description: res.data.message || "Feedback may have already been submitted or window is closed.",
           });
       }
-    } catch (error) {
-      toast({ title: "Notice", description: "No pending feedback forms detected.", variant: "default" });
+    } catch (error: any) {
+      setSubjects([]);
+      setSelectedSubjectIds([]);
+      if (showToast) {
+        toast({
+          title: "Notice",
+          description: error?.response?.data?.message || "No pending feedback forms detected.",
+          variant: "default",
+        });
+      }
     } finally {
       setLoadingSubjects(false);
     }
@@ -136,15 +157,24 @@ const Feedback = () => {
       const res = await API.post("/srmapi/feedback/submit", {
         sessionId,
         option: selectedOption,
+        optionNo: selectedOption,
         comment,
         subjectIds: selectedSubjectIds,
+        selectedSubjectIds: selectedSubjectIds,
       });
+      if (res.data?.renewedSession) {
+        updateProfile({
+          sessionId: res.data.renewedSession.sessionId,
+          sessionTime: res.data.renewedSession.sessionTime,
+        });
+      }
       if (res.data.success) {
         setReponse(res.data.message);
         setSuccessDialogOpen(true);
+        setTimeout(() => loadSubjects(false), 1200);
       } else {
         toast({
-          title: "Error",
+          title: "Feedback Notice",
           description: res.data.message || "Failed to submit feedback.",
           variant: "destructive",
         });
@@ -249,24 +279,52 @@ const Feedback = () => {
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Target Courses ({selectedSubjectIds.length}/{subjects.length})
               </span>
-              {!loadingSubjects && subjects.length > 0 && (
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={toggleAllSubjects}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  onClick={() => loadSubjects(true)}
+                  disabled={loadingSubjects}
+                  className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
-                  {allSelected ? "Deselect All" : "Select All"}
+                  <RefreshCw className={`h-3 w-3 ${loadingSubjects ? "animate-spin" : ""}`} />
+                  <span>{loadingSubjects ? "Scanning..." : "Scan SRM"}</span>
                 </button>
-              )}
+                {!loadingSubjects && subjects.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={toggleAllSubjects}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  >
+                    {allSelected ? "Deselect All" : "Select All"}
+                  </button>
+                )}
+              </div>
             </div>
 
             {loadingSubjects ? (
-              <div className="py-8 text-center text-xs text-muted-foreground">
-                Scanning pending feedback subjects...
+              <div className="py-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                <span>Scanning SRM portal for pending feedback forms...</span>
               </div>
             ) : subjects.length === 0 ? (
-              <div className="py-6 px-4 rounded-2xl border border-border/60 bg-muted/20 text-center text-xs text-muted-foreground">
-                No pending feedback forms detected for this semester.
+              <div className="py-6 px-4 rounded-2xl border border-border/60 bg-muted/20 text-center flex flex-col items-center justify-center gap-2">
+                <CheckCircle2 className="h-6 w-6 text-emerald-500/80" />
+                <p className="text-xs font-medium text-foreground">
+                  No Pending Feedback Detected
+                </p>
+                <p className="text-[11px] text-muted-foreground max-w-sm">
+                  Either you have already completed feedback for all courses, or the SRM feedback submission window is currently not active.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadSubjects(true)}
+                  disabled={loadingSubjects}
+                  className="mt-1 h-7 text-xs rounded-xl gap-1.5"
+                >
+                  <RefreshCw className={`h-3 w-3 ${loadingSubjects ? "animate-spin" : ""}`} />
+                  <span>Check Again</span>
+                </Button>
               </div>
             ) : (
               <div className="divide-y divide-border/40 rounded-2xl border border-border/60 bg-card overflow-hidden">
