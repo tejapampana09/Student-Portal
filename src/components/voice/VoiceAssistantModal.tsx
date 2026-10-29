@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/utils/useToast";
 import API from "@/lib/api/axiosClient";
 import { useStudentData } from "@/context/StudentContext";
 import { getLiveClassStatus } from "@/shared/utils/liveClassTracker";
-import { cleanSpokenCode } from "@/app/api/voice/mark/route";
+import { cleanSpokenCode } from "@/shared/utils/voiceUtils";
 
 interface VoiceAssistantModalProps {
   isOpen: boolean;
