@@ -61,13 +61,6 @@ export async function isSessionAlive(sessionId: string): Promise<boolean> {
 async function migrateLegacyData(user: any, password: string, db: any) {
     const updates: Record<string, unknown> = {};
 
-    if (user.session_id) {
-        try {
-            const { value } = await decryptStoredValue(user.session_id, password);
-            updates.session_id = encryptData(value);
-        } catch { /* keep existing value until a fresh session is available */ }
-    }
-
     if (user.data) {
         try {
             const { value } = await decryptStoredValue(user.data, password);
@@ -98,7 +91,12 @@ async function migrateLegacyData(user: any, password: string, db: any) {
     if (Object.keys(updates).length) await db.updateOne({ username: user.username }, { $set: updates });
 }
 
-export async function handleUserSession({ username, password }: { username: string; password: string; }) {
+export async function handleUserSession({ username, password, allowCachedSession = false, forceRefresh = false }: {
+    username: string;
+    password: string;
+    allowCachedSession?: boolean;
+    forceRefresh?: boolean;
+}) {
     let db: any = null;
     let user: any = null;
     const time = getTime();
@@ -114,7 +112,7 @@ export async function handleUserSession({ username, password }: { username: stri
     }
 
     // ⚡ OPTIMIZED CRITICAL PATH: Local session reuse
-    if (user?.session_id) {
+    if (allowCachedSession && !forceRefresh && user?.session_id) {
         try {
             const { value: existingSessionId } = await decryptStoredValue(user.session_id, password);
             if (typeof existingSessionId === "string" && existingSessionId.trim().length > 0) {
@@ -158,7 +156,7 @@ export async function handleUserSession({ username, password }: { username: stri
     const result = await login(username, password);
 
     if (!result?.success) {
-        if (result?.message?.includes("SRM server is unreachable") && user) {
+        if (allowCachedSession && result?.message?.includes("SRM server is unreachable") && user) {
             try {
                 const { value } = await decryptStoredValue(user.session_id, password);
                 if (value) {

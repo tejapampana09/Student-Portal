@@ -1,113 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleUserSession } from "@/server/auth/handleUserSession";
-import { decryptData, requireAuthResponse } from "@/server/utils/functions";
+import { decryptData, errorResponse, enforceRateLimit, requireAuthResponse } from "@/server/utils/functions";
 import { useMongo } from "@/lib/database/useMongo";
 
 export async function POST(req: NextRequest) {
     const auth = await requireAuthResponse(req);
     if (auth instanceof NextResponse) return auth;
 
-    let body: any = {};
+    let body;
+    try { body = await req.json(); } catch { return errorResponse("Invalid JSON body"); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return errorResponse("Invalid request body");
+    const username = auth.payload.username.trim().toUpperCase();
+    const usernames = body.usernames ?? [username];
+    if (!Array.isArray(usernames) || usernames.length > 10 || usernames.some((u: unknown) => typeof u !== "string" || !u.trim())) {
+        return errorResponse("Invalid usernames");
+    }
+    // Reject the entire batch before any credential lookup or portal request.
+    // Each saved account must send its own authenticated request.
+    if (usernames.some((u: string) => u.trim().toUpperCase() !== username)) {
+        return errorResponse("You may only refresh your own account", {}, 403);
+    }
+    const rate = await enforceRateLimit(`session-refresh:${username}`, 10, 60_000);
+    if (!rate.allowed) return NextResponse.json({ success: false, message: "Too many requests. Please wait." }, {
+        status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) }
+    });
+
     try {
-        body = await req.json();
-    } catch {
-        body = {};
-    }
-
-    let usernames: string[] = Array.isArray(body.usernames) ? body.usernames : [];
-    const passwords: Record<string, string> = body.passwords && typeof body.passwords === "object" ? body.passwords : {};
-
-    // Default to currently authenticated username if none provided
-    if (usernames.length === 0 && auth.payload?.username) {
-        usernames = [auth.payload.username];
-    }
-
-    // Sanitize and deduplicate
-    const cleanUsernames = Array.from(
-        new Set(
-            usernames
-                .map((u) => String(u || "").trim().toUpperCase())
-                .filter(Boolean)
-        )
-    ).slice(0, 10);
-
-    if (cleanUsernames.length === 0) {
-        return NextResponse.json(
-            { success: false, message: "No valid usernames provided" },
-            { status: 400 }
+        const client = await useMongo();
+        const user = await client.db("college_db").collection("users").findOne(
+            { username }, { projection: { portal_password: 1 } }
         );
+        let password = "";
+        const supplied = body.passwords?.[username];
+        if (supplied !== undefined && typeof supplied !== "string") return errorResponse("Invalid password");
+        if (supplied) password = supplied;
+        else if (user?.portal_password) password = String(decryptData(user.portal_password));
+
+        const result = password
+            ? await handleUserSession({ username, password, allowCachedSession: true })
+            : { success: false, requiresPassword: true, message: "Saved portal credentials unavailable. Please log into this account." };
+        return NextResponse.json({
+            success: result.success,
+            results: [{ username, ...result }],
+            successCount: result.success ? 1 : 0,
+            totalCount: 1,
+        }, { headers: { "Cache-Control": "no-store" } });
+    } catch {
+        return errorResponse("Session refresh temporarily unavailable", {}, 503);
     }
-
-    let db: any = null;
-    try {
-        const initDb = await useMongo();
-        db = initDb.db("college_db").collection("users");
-    } catch (dbErr) {
-        console.warn("[Multi-Session] MongoDB unavailable:", (dbErr as any)?.message);
-    }
-
-    const promises = cleanUsernames.map(async (username) => {
-        try {
-            let password = passwords[username] || "";
-
-            // If password not passed in payload, attempt to load decrypted password from MongoDB
-            if (!password && db) {
-                const user = await db.findOne(
-                    { username },
-                    { projection: { portal_password: 1, session_id: 1, session_time: 1 } }
-                );
-
-                if (user?.portal_password) {
-                    try {
-                        password = String(decryptData(user.portal_password));
-                    } catch (decErr) {
-                        console.warn(`[Multi-Session] Decryption failed for ${username}:`, decErr);
-                    }
-                }
-            }
-
-            if (!password) {
-                return {
-                    username,
-                    success: false,
-                    requiresPassword: true,
-                    message: "Saved portal credentials unavailable. Please log into this account.",
-                };
-            }
-
-            const result = await handleUserSession({ username, password });
-            if (!result.success) {
-                return {
-                    username,
-                    success: false,
-                    message: result.message || "Failed to renew session with SRM server.",
-                };
-            }
-
-            return {
-                username,
-                success: true,
-                sessionId: result.sessionId,
-                sessionTime: result.sessionTime,
-                message: "Session renewed successfully!",
-            };
-        } catch (err: any) {
-            console.error(`[Multi-Session] Error for ${username}:`, err?.message || err);
-            return {
-                username,
-                success: false,
-                message: err?.message || "Failed to initiate session",
-            };
-        }
-    });
-
-    const results = await Promise.all(promises);
-    const successCount = results.filter((r) => r.success).length;
-
-    return NextResponse.json({
-        success: successCount > 0,
-        results,
-        successCount,
-        totalCount: results.length,
-    });
 }

@@ -81,7 +81,7 @@ export function decryptLegacyData(encryptedData: unknown, password: string): unk
 /** [DEPRECATED] All new data is strictly encrypted using AES-256-GCM only. */
 
 export function createToken(payload: object) {
-    return jwt.sign(payload, getAccessSecret(), { algorithm: "HS256" });
+    return jwt.sign(payload, getAccessSecret(), { algorithm: "HS256", expiresIn: "7d" });
 }
 
 export function verifyToken(token: string) {
@@ -95,58 +95,59 @@ export function verifyToken(token: string) {
 export async function createAuthSession(username: string, admin: boolean) {
     const sessionId = crypto.randomUUID();
     const token = createToken({ username, sessionId, admin });
-    try {
-        if (process.env.MONGO_URI) {
-            const initDb = await useMongo();
-            await initDb.db("college_db").collection(SESSION_COLLECTION).insertOne({
-                sessionId,
-                username,
-                tokenHash: tokenHash(token),
-                createdAt: new Date(),
-                revokedAt: null,
-            });
-        }
-    } catch (e) {
-        console.warn("[AuthSession] MongoDB session tracking bypassed:", (e as any)?.message);
-    }
+    if (!process.env.MONGO_URI) throw new Error("Session store unavailable");
+    const initDb = await useMongo();
+    const result = await initDb.db("college_db").collection(SESSION_COLLECTION).insertOne({
+        sessionId,
+        username,
+        tokenHash: tokenHash(token),
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        revokedAt: null,
+    });
+    if (!result.acknowledged) throw new Error("Session persistence failed");
     return { token, sessionId };
 }
 
 export async function revokeAuthSession(token: string): Promise<void> {
-    try {
-        if (process.env.MONGO_URI) {
-            const initDb = await useMongo();
-            await initDb.db("college_db").collection(SESSION_COLLECTION).updateOne(
-                { tokenHash: tokenHash(token), revokedAt: null },
-                { $set: { revokedAt: new Date() } }
-            );
-        }
-    } catch (e) {}
+    if (!process.env.MONGO_URI) throw new Error("Session store unavailable");
+    const initDb = await useMongo();
+    await initDb.db("college_db").collection(SESSION_COLLECTION).updateOne(
+        { tokenHash: tokenHash(token), revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+    );
 }
 
 export async function revokeAllAuthSessions(username: string): Promise<void> {
-    try {
-        if (process.env.MONGO_URI) {
-            const initDb = await useMongo();
-            await initDb.db("college_db").collection(SESSION_COLLECTION).updateMany(
-                { username, revokedAt: null },
-                { $set: { revokedAt: new Date() } }
-            );
-        }
-    } catch (e) {}
+    if (!process.env.MONGO_URI) throw new Error("Session store unavailable");
+    const initDb = await useMongo();
+    await initDb.db("college_db").collection(SESSION_COLLECTION).updateMany(
+        { username, revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+    );
 }
 
 export async function requireAuthResponse(req: NextRequest): Promise<{ payload: any; token?: string } | NextResponse> {
-    const { valid, payload, token } = await validUser(req);
+    const { valid, payload, token, unavailable } = await validUser(req);
+    if (unavailable) return errorResponse("Authentication temporarily unavailable", {}, 503);
     if (!valid || !payload) return errorResponse("Unauthorized!", { action: "logout" }, 401);
-    if (await isBlocked(payload.username)) return userBlockedResponse();
+    try {
+        if (await isBlocked(payload.username)) return userBlockedResponse();
+    } catch {
+        return errorResponse("Authentication temporarily unavailable", {}, 503);
+    }
     return { payload, token };
 }
 
 export async function requireAuthResponseAdmin(req: NextRequest): Promise<{ payload: any } | NextResponse> {
-    const { valid, payload } = await validUser(req);
+    const { valid, payload, unavailable } = await validUser(req);
+    if (unavailable) return errorResponse("Authentication temporarily unavailable", {}, 503);
     if (!valid || !payload) return errorResponse("Unauthorized!", { action: "logout" }, 401);
-    if (await isBlocked(payload.username)) return userBlockedResponse();
+    try {
+        if (await isBlocked(payload.username)) return userBlockedResponse();
+    } catch {
+        return errorResponse("Authentication temporarily unavailable", {}, 503);
+    }
     if (!isAdmin(payload.username)) return errorResponse("You don't have admin privilages!");
     return { payload };
 }
@@ -159,8 +160,7 @@ export async function isBlocked(username: string): Promise<boolean> {
         const blockedUser = await dbBlocked.findOne({ username: username.toUpperCase() });
         return !!blockedUser;
     } catch (err) {
-        console.warn("[isBlocked] MongoDB check skipped:", (err as any)?.message);
-        return false;
+        throw new Error("Account status unavailable");
     }
 }
 
@@ -171,30 +171,24 @@ export async function enforceRateLimit(
 ): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
   try {
     if (!process.env.MONGO_URI) {
-      return { allowed: true, retryAfterSeconds: 0 };
+      return { allowed: false, retryAfterSeconds: 60 };
     }
     const now = new Date();
     const initDb = await useMongo();
-    const col = initDb.db("college_db").collection(RATE_LIMIT_COLLECTION);
-
-    // Atomically clear expired records if past window
-    await col.deleteOne({ key, expiresAt: { $lte: now } });
-
-    // Atomically increment or insert
+    const col = initDb.db("college_db").collection<{ _id: string; count: number; expiresAt: Date }>(RATE_LIMIT_COLLECTION);
+    // Mongo's unique _id and one atomic update keep all instances on the same
+    // counter. Reset expired windows inside the update, never delete then upsert.
+    const activeWindow = { $gt: ["$expiresAt", now] };
     const doc = await col.findOneAndUpdate(
-      { key },
-      {
-        $inc: { count: 1 },
-        $setOnInsert: {
-          key,
-          createdAt: now,
-          expiresAt: new Date(now.getTime() + windowMs),
-        },
-      },
+      { _id: `rate:${tokenHash(key)}` },
+      [{ $set: {
+        count: { $cond: [activeWindow, { $add: ["$count", 1] }, 1] },
+        expiresAt: { $cond: [activeWindow, "$expiresAt", new Date(now.getTime() + windowMs)] },
+      } }],
       { upsert: true, returnDocument: "after" }
     );
 
-    if (!doc) return { allowed: true, retryAfterSeconds: 0 };
+    if (!doc) return { allowed: false, retryAfterSeconds: 60 };
 
     if (doc.count > limit) {
       const expiresAtMs = doc.expiresAt ? new Date(doc.expiresAt).getTime() : now.getTime() + windowMs;
@@ -204,8 +198,8 @@ export async function enforceRateLimit(
 
     return { allowed: true, retryAfterSeconds: 0 };
   } catch (err) {
-    console.warn("[RateLimit] MongoDB unavailable, bypassing check:", (err as any)?.message);
-    return { allowed: true, retryAfterSeconds: 0 };
+    console.error("[RateLimit] Store unavailable");
+    return { allowed: false, retryAfterSeconds: 60 };
   }
 }
 

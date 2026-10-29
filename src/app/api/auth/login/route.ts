@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    const body = await req.json();
-    let { username, password, wantCachedData } = body;
-    username = username?.toUpperCase() || "";
+    let body;
+    try { body = await req.json(); } catch { return errorResponse("Invalid JSON body"); }
+    if (!body || typeof body.username !== "string" || typeof body.password !== "string") return paramatersNotMatched();
+    const username = body.username.trim().toUpperCase();
+    const password = body.password;
 
     if (!username || !password) return paramatersNotMatched();
     const [isValid, errorMessage] = isValidRegNumber(username);
@@ -36,18 +38,6 @@ export async function POST(req: NextRequest) {
         const result = await handleUserSession({ username, password });
 
         if (!result.success) {
-            if ((result as any).hasCachedData) {
-                if (!wantCachedData) return errorResponse(result.message, { hasCachedData: true }, 400);
-                const authSession = await createAuthSession(username, isAdmin(username));
-                return NextResponse.json({
-                    success: true,
-                    message: "Success (Cached)",
-                    accessToken: authSession.token,
-                    sessionId: "",
-                    sessionTime: (result as any).cachedSessionTime,
-                    hasCachedData: true
-                });
-            }
             return errorResponse(result.message);
         }
 
