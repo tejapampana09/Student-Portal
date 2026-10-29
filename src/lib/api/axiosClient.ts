@@ -10,6 +10,10 @@ export function setLogoutHandler(handler: () => void) {
 
 const API = axios.create({ baseURL: "/api" });
 
+// Per-account calls supply Authorization explicitly and must not log out a
+// different active account when one saved account's token expires.
+export const accountAPI = axios.create({ baseURL: "/api" });
+
 API.interceptors.request.use((config) => {
   try {
     const stored = localStorage.getItem("profile") || "{}";

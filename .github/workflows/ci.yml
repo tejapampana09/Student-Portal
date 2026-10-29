@@ -30,9 +30,8 @@ jobs:
       - name: Strict TypeScript Compilation Check
         run: npx tsc --noEmit
 
-      - name: Security Vulnerability Gate
-        run: npm audit --audit-level=high
-        continue-on-error: true
+      - name: Security Regression Tests
+        run: npm test
 
       - name: Next.js Production Build
         run: npm run build
@@ -42,3 +41,6 @@ jobs:
           ACCESS_SECRET: "ci_build_dummy_access_secret_32_chars_long_key"
           DB_ENCRYPTION_KEY: "ci_build_dummy_encryption_key_32_chars_long"
           JWT_SECRET: "ci_build_dummy_jwt_secret_32_chars_long_key"
+
+      - name: Security Vulnerability Gate
+        run: npm audit --audit-level=high

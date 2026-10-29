@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        const result = await handleUserSession({ username: auth.payload.username, password });
+        const result = await handleUserSession({ username: auth.payload.username, password, allowCachedSession: true });
         if (!result.success) {
             return NextResponse.json({
                 success: false,
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const result = await handleUserSession({ username: auth.payload.username, password });
+        const result = await handleUserSession({ username: auth.payload.username, password, allowCachedSession: true });
         if (!result.success) {
             return NextResponse.json({
                 success: false,

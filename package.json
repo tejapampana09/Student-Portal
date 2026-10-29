@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "PORT=3000 next start",
     "lint": "eslint .",
-    "faculty": "cd scripts/faculty && node convertFacultyExcelToJson.js"
+    "faculty": "cd scripts/faculty && node convertFacultyExcelToJson.js",
+    "test": "node --test tests/*.test.cjs"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
@@ -78,6 +79,7 @@
   "overrides": {
     "postcss": "$postcss",
     "sharp": "^0.35.0",
-    "browserslist": "4.28.8"
+    "browserslist": "4.28.8",
+    "zod": "4.6.6"
   }
 }

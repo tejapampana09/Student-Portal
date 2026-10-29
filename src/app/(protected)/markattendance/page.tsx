@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/utils/useToast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2, Fingerprint, Users, RefreshCw, Zap, ShieldAlert, CheckCircle2 } from "lucide-react";
-import API from "@/lib/api/axiosClient";
+import { accountAPI } from "@/lib/api/axiosClient";
 import SessionCard from "@/components/utils/SessionCard";
 import { useSessionValidator } from "@/hooks/auth/useSessionValidator";
 import { extractErrorMessage, isSessionValid } from "@/shared/utils/functions";
@@ -101,11 +101,19 @@ const AttendanceCode = () => {
     setRefreshingUsernames(usernamesToRefresh);
 
     try {
-      const res = await API.post("/srmapi/initiate/multi-session", {
-        usernames: usernamesToRefresh,
-      });
+      const results = await Promise.all(usernamesToRefresh.map(async (username) => {
+        const account = savedAccounts.find((a: any) => a.username === username);
+        if (!account?.accessToken) return { username, success: false, message: "Please log into this account again." };
+        try {
+          const res = await accountAPI.post("/srmapi/initiate/multi-session", {
+            usernames: [username],
+          }, { headers: { Authorization: `Bearer ${account.accessToken}` } });
+          return res.data?.results?.[0] || { username, success: false };
+        } catch (err) {
+          return { username, success: false, message: extractErrorMessage(err) || "Session refresh failed" };
+        }
+      }));
 
-      const results = res.data?.results || [];
       const successfulUpdates: { username: string; sessionId: string; sessionTime: string }[] = [];
       let successCount = 0;
       let failedAccounts: string[] = [];
@@ -218,14 +226,13 @@ const AttendanceCode = () => {
       // Step 2: Execute parallel attendance submissions for all selected accounts
       const promises = targetAccounts.map(async (acc: any) => {
         const updatedAcc = currentAccounts.find((a: any) => a.username === acc.username) || acc;
-        const accSessionId = updatedAcc.sessionId || (updatedAcc.username === profile.activeAccountId ? sessionId : "");
 
         try {
-          const res = await API.post(`/srmapi/attendance/mark`, {
+          if (!updatedAcc.accessToken) throw new Error("Please log into this account again.");
+          const res = await accountAPI.post(`/srmapi/attendance/mark`, {
             code,
-            sessionid: accSessionId,
             username: acc.username,
-          });
+          }, { headers: { Authorization: `Bearer ${updatedAcc.accessToken}` } });
 
           // If backend auto-renewed the session during submission, capture it
           if (res.data?.renewedSession) {

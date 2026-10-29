@@ -1,9 +1,8 @@
 import axios from "axios";
 import { useMongo } from "@/lib/database/useMongo";
 import { NextRequest, NextResponse } from "next/server";
-import { UNAUTHORIZED } from "@/shared/utils/messages";
 import { httpsAgent } from "@/server/utils/httpAgents";
-import { requireAuthResponse, errorResponse, decryptData } from "@/server/utils/functions";
+import { requireAuthResponse, errorResponse, decryptData, enforceRateLimit } from "@/server/utils/functions";
 import { handleUserSession } from "@/server/auth/handleUserSession";
 
 const httpMarkClient = axios.create({
@@ -54,38 +53,38 @@ async function postAttendance(code: string, sessionId: string) {
 }
 
 export async function POST(req: NextRequest) {
-    let body: any = {};
-    try { body = await req.json(); } catch { }
-    let { sessionid, code, username } = body;
-
     const auth = await requireAuthResponse(req);
     if (auth instanceof NextResponse) return auth;
-
-    if (!code) {
-        return errorResponse("Attendance Code is required!");
+    let body;
+    try { body = await req.json(); } catch { return errorResponse("Invalid JSON body"); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return errorResponse("Invalid request body");
+    const { code, username } = body;
+    if (typeof code !== "string" || !/^[A-Za-z]\d{6}$/.test(code.trim())) {
+        return errorResponse("Invalid attendance code format (e.g. A123456)");
     }
-
-    const targetUsername = (username ? String(username) : auth.payload.username).toUpperCase();
+    const targetUsername = auth.payload.username.trim().toUpperCase();
+    if (username !== undefined && (typeof username !== "string" || username.trim().toUpperCase() !== targetUsername)) {
+        return errorResponse("You may only submit attendance for your own account", {}, 403);
+    }
+    const rate = await enforceRateLimit(`mark_att:${targetUsername}`, 10, 60_000);
+    if (!rate.allowed) return NextResponse.json({ success: false, message: "Too many requests. Please wait." }, {
+        status: 429, headers: { "Retry-After": String(rate.retryAfterSeconds) }
+    });
 
     try {
-        let db: any = null;
-        let userDoc: any = null;
-        try {
-            const initDb = await useMongo();
-            db = initDb.db('college_db').collection("users");
-            userDoc = await db.findOne({ username: targetUsername });
-        } catch (dbErr) {
-            console.warn("[Attendance Mark] DB connection failed:", dbErr);
-        }
-
-        let activeSessionId = sessionid;
+        const initDb = await useMongo();
+        const userDoc = await initDb.db("college_db").collection("users").findOne({ username: targetUsername });
+        // A caller-supplied portal session cannot establish account ownership.
+        const storedSessionId = userDoc?.session_id ? decryptData(userDoc.session_id) : "";
+        if (typeof storedSessionId !== "string") return errorResponse("Invalid stored portal session", {}, 503);
+        let activeSessionId: string = storedSessionId;
 
         // If session ID is missing or blank, attempt to retrieve or initiate via stored credentials
         if (!activeSessionId && userDoc?.portal_password) {
             try {
                 const password = String(decryptData(userDoc.portal_password));
-                const initRes = await handleUserSession({ username: targetUsername, password });
-                if (initRes.success && initRes.sessionId) {
+                const initRes = await handleUserSession({ username: targetUsername, password, allowCachedSession: true });
+                if (initRes.success && typeof initRes.sessionId === "string" && initRes.sessionId) {
                     activeSessionId = initRes.sessionId;
                 }
             } catch (initErr) {
@@ -105,8 +104,8 @@ export async function POST(req: NextRequest) {
             console.log(`[Attendance Mark] Session expired on SRM for ${targetUsername}. Attempting automatic renewal...`);
             try {
                 const password = String(decryptData(userDoc.portal_password));
-                const renewRes = await handleUserSession({ username: targetUsername, password });
-                if (renewRes.success && renewRes.sessionId) {
+                const renewRes = await handleUserSession({ username: targetUsername, password, forceRefresh: true });
+                if (renewRes.success && typeof renewRes.sessionId === "string" && renewRes.sessionId) {
                     console.log(`[Attendance Mark] Successfully renewed session for ${targetUsername}. Retrying attendance submission...`);
                     activeSessionId = renewRes.sessionId;
                     renewedSession = { sessionId: renewRes.sessionId, sessionTime: renewRes.sessionTime };
