@@ -53,7 +53,6 @@ async function postAttendance(code: string, sessionId: string) {
 }
 
 import { cleanSpokenCode } from "@/shared/utils/voiceUtils";
-export { cleanSpokenCode };
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
