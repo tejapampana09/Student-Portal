@@ -4,13 +4,15 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/utils/useToast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, X, Loader2, Fingerprint, Users, RefreshCw, Zap, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Check, X, Loader2, Fingerprint, Users, RefreshCw, Zap, ShieldAlert, CheckCircle2, Mic } from "lucide-react";
 import API from "@/lib/api/axiosClient";
 import SessionCard from "@/components/utils/SessionCard";
 import { useSessionValidator } from "@/hooks/auth/useSessionValidator";
 import { extractErrorMessage, isSessionValid } from "@/shared/utils/functions";
 import AttendanceCheckCard from "@/components/page/attendance/AttendanceCheckCard";
+import VoiceAssistantModal from "@/components/voice/VoiceAssistantModal";
 import { useLocalStorageContext } from "@/context/LocalStorageContext";
+import { useSearchParams } from "next/navigation";
 import { DateTime } from "luxon";
 
 interface MultiSubmissionResult {
@@ -30,6 +32,14 @@ const AttendanceCode = () => {
   const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
   const [refreshingUsernames, setRefreshingUsernames] = useState<string[]>([]);
   const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams?.get("voice") === "1") {
+      setIsVoiceOpen(true);
+    }
+  }, [searchParams]);
 
   // Multi-account list from localStorage
   const savedAccounts = useMemo(() => {
@@ -308,12 +318,24 @@ const AttendanceCode = () => {
           </p>
         </div>
 
-        {savedAccounts.length > 1 && (
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            <span>Multi-Account ({savedAccounts.length})</span>
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsVoiceOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/15 via-cyan-500/15 to-indigo-600/15 text-blue-600 dark:text-cyan-300 border border-blue-500/30 hover:border-blue-500/60 font-semibold text-xs transition-all shadow-xs active:scale-95"
+            title="Voice Assistant & Siri Shortcuts"
+          >
+            <Mic className="h-3.5 w-3.5" />
+            <span>Voice / Siri</span>
+          </button>
+
+          {savedAccounts.length > 1 && (
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              <span>Multi-Account ({savedAccounts.length})</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Code Entry Form or Session Card */}
@@ -558,6 +580,12 @@ const AttendanceCode = () => {
         sessionValid={sessionValid}
         sessionId={sessionId}
         refreshKey={attendanceRefreshKey}
+      />
+
+      {/* Voice Assistant Modal */}
+      <VoiceAssistantModal
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
       />
     </div>
   );

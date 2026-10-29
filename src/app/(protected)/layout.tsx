@@ -8,6 +8,7 @@ import DashboardLayout from "@/components/layouts/DashboardLayout";
 import FetchClient from "@/components/client/loading/FetchLoading";
 import SplashScreen from "@/components/client/loading/SplashScreen";
 import StudentAiAssistant from "@/components/ai/StudentAiAssistant";
+import DynamicIslandWidget from "@/components/widgets/DynamicIslandWidget";
 
 function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -45,6 +46,7 @@ function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNo
   return (
     <DashboardLayout>
       {children}
+      <DynamicIslandWidget />
       <StudentAiAssistant />
     </DashboardLayout>
   );

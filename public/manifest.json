@@ -39,6 +39,13 @@
   ],
   "shortcuts": [
     {
+      "name": "Voice Assistant",
+      "short_name": "Voice",
+      "description": "Speak to mark attendance or check next class",
+      "url": "/markattendance?voice=1",
+      "icons": [{ "src": "/icons/192x192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Mark Attendance",
       "short_name": "Mark",
       "description": "Quickly submit attendance code",
