@@ -75,15 +75,16 @@ export async function POST(req: NextRequest) {
         const initDb = await useMongo();
         const userDoc = await initDb.db("college_db").collection("users").findOne({ username: targetUsername });
         // A caller-supplied portal session cannot establish account ownership.
-        let activeSessionId = userDoc?.session_id ? decryptData(userDoc.session_id) : "";
-        if (typeof activeSessionId !== "string") return errorResponse("Invalid stored portal session", {}, 503);
+        const storedSessionId = userDoc?.session_id ? decryptData(userDoc.session_id) : "";
+        if (typeof storedSessionId !== "string") return errorResponse("Invalid stored portal session", {}, 503);
+        let activeSessionId: string = storedSessionId;
 
         // If session ID is missing or blank, attempt to retrieve or initiate via stored credentials
         if (!activeSessionId && userDoc?.portal_password) {
             try {
                 const password = String(decryptData(userDoc.portal_password));
                 const initRes = await handleUserSession({ username: targetUsername, password, allowCachedSession: true });
-                if (initRes.success && initRes.sessionId) {
+                if (initRes.success && typeof initRes.sessionId === "string" && initRes.sessionId) {
                     activeSessionId = initRes.sessionId;
                 }
             } catch (initErr) {
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
             try {
                 const password = String(decryptData(userDoc.portal_password));
                 const renewRes = await handleUserSession({ username: targetUsername, password, forceRefresh: true });
-                if (renewRes.success && renewRes.sessionId) {
+                if (renewRes.success && typeof renewRes.sessionId === "string" && renewRes.sessionId) {
                     console.log(`[Attendance Mark] Successfully renewed session for ${targetUsername}. Retrying attendance submission...`);
                     activeSessionId = renewRes.sessionId;
                     renewedSession = { sessionId: renewRes.sessionId, sessionTime: renewRes.sessionTime };
