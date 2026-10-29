@@ -38,6 +38,7 @@ type LocalStorageContextValue = {
   setActiveAccount: (accountId: string) => void;
   upsertAccount: (account: StoredAccount, activate?: boolean) => { ok: boolean; message?: string; accountId?: string };
   removeAccount: (accountId: string) => void;
+  updateAccountsSessions: (sessions: { username: string; sessionId: string; sessionTime: string }[]) => void;
 
   useStorage: <T extends StorageType>(key: T) => ReturnType<typeof useLocalStorage<T>>;
   cycleTheme: () => void;
@@ -333,6 +334,62 @@ export const LocalStorageProvider: React.FC<React.PropsWithChildren<unknown>> = 
     }, 50);
   };
 
+  const updateAccountsSessions: LocalStorageContextValue["updateAccountsSessions"] = (sessions) => {
+    profileStorage.update((prev) => {
+      const accounts = Array.isArray(prev.accounts) ? [...prev.accounts] : [];
+      let activeChanged = false;
+      let nextActive = {
+        sessionId: prev.sessionId,
+        sessionTime: prev.sessionTime,
+      };
+
+      sessions.forEach((up) => {
+        const norm = up.username.toUpperCase();
+        const idx = accounts.findIndex(
+          (a) => a.username?.toUpperCase() === norm || a.id?.toUpperCase() === norm
+        );
+        if (idx >= 0) {
+          accounts[idx] = {
+            ...accounts[idx],
+            sessionId: up.sessionId,
+            sessionTime: up.sessionTime,
+            hasCachedData: false,
+          };
+          if (
+            accounts[idx].id === prev.activeAccountId ||
+            accounts[idx].username?.toUpperCase() === prev.username?.toUpperCase()
+          ) {
+            activeChanged = true;
+            nextActive = {
+              sessionId: up.sessionId,
+              sessionTime: up.sessionTime,
+            };
+          }
+        }
+      });
+
+      const nextProfile = {
+        ...prev,
+        accounts,
+        ...(activeChanged
+          ? {
+              sessionId: nextActive.sessionId,
+              sessionTime: nextActive.sessionTime,
+              hasCachedData: false,
+            }
+          : {}),
+      };
+
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("profile", JSON.stringify(nextProfile));
+        }
+      } catch {}
+
+      return nextProfile;
+    });
+  };
+
   const value: LocalStorageContextValue = {
     settings: { ...DEFAULT_STORAGE.settings, ...settingsStorage.data },
     setSettings: settingsStorage.set,
@@ -353,6 +410,7 @@ export const LocalStorageProvider: React.FC<React.PropsWithChildren<unknown>> = 
     setActiveAccount,
     upsertAccount,
     removeAccount,
+    updateAccountsSessions,
 
     useStorage: useLocalStorage,
     cycleTheme,
