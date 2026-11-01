@@ -18,7 +18,7 @@ function ProtectedDashboardLayoutContent({ children }: { children: React.ReactNo
   const searchParams = useSearchParams();
 
   const [checked, setChecked] = useState(false);
-  const publicRoutes = ["/", "/privacy", "/privacy/mobile", "/terms", "/aboutus", "/bookmarklet"];
+  const publicRoutes = ["/", "/privacy", "/privacy/mobile", "/terms", "/aboutus", "/bookmarklet", "/extension"];
   const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {

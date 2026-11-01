@@ -49,10 +49,13 @@ export default function BookmarkletPage() {
         
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-500 border border-blue-500/20">
+          <Link
+            href="/extension"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/15 border border-emerald-500/25 transition-all"
+          >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Official Mobile & Desktop Utility</span>
-          </div>
+            <span>Prefer 100% Zero-Click Auto-Solve? Get Browser Extension →</span>
+          </Link>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
             SRM Captcha Auto-Solver
           </h1>

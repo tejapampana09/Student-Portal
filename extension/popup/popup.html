@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRM Captcha Auto-Solver</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <div class="header">
+      <div class="brand">
+        <img src="../icons/icon-48.png" alt="Logo" class="logo">
+        <div>
+          <h1 class="title">SRM Auto-Solver</h1>
+          <p class="subtitle">Student Corner AI</p>
+        </div>
+      </div>
+      <div class="status-badge" id="statusBadge">
+        <span class="dot"></span>
+        <span id="statusText">Active</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toggle-row">
+        <div>
+          <div class="label">Auto-Solve on Page Load</div>
+          <div class="desc">Fills captcha in 0.2s without clicking</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleEnabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div class="label">Auto-Focus Submit</div>
+          <div class="desc">Focus button after solving</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleFocus" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button id="btnSolveNow" class="primary-btn">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+      </svg>
+      <span>Solve Captcha Now</span>
+    </button>
+
+    <div class="footer">
+      <a href="https://52-66-250-175.sslip.io" target="_blank" class="portal-link">
+        Open Student Corner Portal →
+      </a>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

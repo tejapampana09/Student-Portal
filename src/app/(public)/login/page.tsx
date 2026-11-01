@@ -206,14 +206,14 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Official SRM Captcha Bookmarklet Link */}
+          {/* Official SRM Captcha Extension & Bookmarklet Link */}
           <div className="pt-2 text-center">
             <Link
-              href="/bookmarklet"
+              href="/extension"
               className="inline-flex items-center gap-1.5 text-[11px] text-blue-500 hover:text-blue-400 hover:underline transition-colors font-medium"
             >
               <Sparkles className="h-3 w-3 text-blue-400" />
-              <span>Using official SRM Portal? Get Mobile Captcha Bookmarklet</span>
+              <span>Using official SRM Portal? Get Auto-Solver Extension & Bookmarklet</span>
             </Link>
           </div>
         </form>
