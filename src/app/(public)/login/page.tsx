@@ -205,6 +205,17 @@ const Login = () => {
               <span>SSL Protected</span>
             </div>
           </div>
+
+          {/* Official SRM Captcha Bookmarklet Link */}
+          <div className="pt-2 text-center">
+            <Link
+              href="/bookmarklet"
+              className="inline-flex items-center gap-1.5 text-[11px] text-blue-500 hover:text-blue-400 hover:underline transition-colors font-medium"
+            >
+              <Sparkles className="h-3 w-3 text-blue-400" />
+              <span>Using official SRM Portal? Get Mobile Captcha Bookmarklet</span>
+            </Link>
+          </div>
         </form>
       </main>
 
